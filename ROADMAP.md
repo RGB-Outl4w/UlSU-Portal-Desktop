@@ -140,3 +140,54 @@ M1 → M8 (base UI kit, so new screens use it) → M2 → M3 → M6 → M5 → M
 - Never automate login, password or the MAX code. User always types them in the real portal page.
 - Any action that changes data on the portal (submit form, send message, order certificate, upload) asks for confirmation.
 - Don't store personal data outside the app's own session/cache folder.
+
+---
+
+# Platforms (after 1.0.0)
+
+The app stays "Desktop": macOS comes first, Android later. iOS is out of scope for now (needs a Mac, a paid Apple account, background limits, App Store review risk for an unofficial ULSU app).
+
+## P1. macOS build pipeline
+
+- `build.mac` in package.json: targets `dmg` + `zip`, separate `arm64` (Apple Silicon) and `x64` (Intel) builds, `category: public.app-category.education`.
+- No Apple Developer account yet: builds are **ad-hoc signed** (required on Apple Silicon) and not notarized. Check with `codesign --verify --deep --strict` in CI.
+- CI: add a `macos-latest` job to `.github/workflows/build.yml` next to the Windows job. On `v*` tags both attach to the same draft release. A manual run (`workflow_dispatch`) produces **test builds** as artifacts.
+- Test builds for the tester go out as a GitHub **pre-release** (`v1.1.0-beta.N`), so no GitHub login is needed to download.
+- Done when: CI produces `ULSU-Portal-Desktop-<ver>-arm64.dmg` and `-x64.dmg`, and they launch on a Mac.
+
+## P2. macOS adaptations
+
+Code that is Windows-specific today, by file:
+- **main.js — window:** no `backgroundMaterial: 'mica'` or `titleBarOverlay` on macOS. Use `titleBarStyle: 'hiddenInset'` with `trafficLightPosition`, and `vibrancy: 'sidebar'` for the translucent sidebar.
+- **main.js — menu:** `Menu.setApplicationMenu(null)` breaks ⌘C/⌘V/⌘Q/⌘W on macOS. It needs a minimal role-based app menu (App, Edit, View, Window).
+- **main.js — tray → menu bar:** a monochrome `iconTemplate.png` (16 + 32 px @2x). Closing the window keeps the app in the menu bar and Dock. The Dock click (`activate`) shows the window again.
+- **main.js — notifications:** `setAppUserModelId` is Windows-only. macOS asks for notification permission on the first toast.
+- **main.js — autostart:** `setLoginItemSettings({ openAtLogin, openAsHidden })` instead of the `--hidden` args.
+- **app.js:** shortcuts use `ctrlKey` → use `metaKey` on macOS (⌘K, ⌘R, ⌘1–9, ⌘B). Labels such as "Ctrl K" become "⌘K" (`navigator.platform` / `process.platform` via preload).
+- **app.css:** title strip, drag regions and sidebar top padding make room for the traffic lights (left, not right). Under vibrancy, `body` stays transparent only on macOS.
+- **Docs and UI text:** data folder `~/Library/Application Support/ulportal` (PRIVACY, About, README). Site: per-OS download buttons.
+- **Update check:** link to the release page (unchanged). The tester picks arm64 or x64.
+- Done when: every item on the tester checklist (TESTING-macOS.md) passes on Apple Silicon and, if available, Intel.
+
+## P3. Test round with the volunteer
+
+- The tester follows [TESTING-macOS.md](TESTING-macOS.md) and reports through the **macOS test report** issue form.
+- Fix → new pre-release → retest, until the checklist is green.
+- Done when: no open `macos` issues marked blocker.
+
+## P4. macOS release
+
+- Version 1.1.0 ships with Windows + macOS assets. README and site get macOS install steps (including the first-launch "Open Anyway" step). CHANGELOG entry.
+- Later, optional: Apple Developer account ($99/year) → sign + notarize, which removes the Gatekeeper warning.
+
+## Android (later, outline only)
+
+- **A1:** Capacitor shell around the same `app.js`/`app.css`/`i18n.js`; `main.js` duties move to a small native-bridge layer:
+  - sign-in in an in-app portal page;
+  - cookie persistence;
+  - `CapacitorHttp` for portal requests (no CORS, shares cookies);
+  - file cache;
+  - downloads.
+- **A2:** mobile layout: bottom tab bar, single-column screens, touch targets ≥ 44 px.
+- **A3:** background check via WorkManager (≥ 15 min); session keepalive best-effort; local notifications.
+- **A4:** APK in GitHub Releases. Google Play later ($25 one-time).
