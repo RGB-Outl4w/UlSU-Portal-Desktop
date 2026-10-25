@@ -6,7 +6,10 @@ const path = require('path');
 
 // Data folder stays %APPDATA%\ulportal whatever the installer's product name is, so updates and
 // the dev build share one session and cache. Must run before anything reads userData (incl. the lock).
-app.setPath('userData', path.join(app.getPath('appData'), 'ulportal'));
+// Smoke tests (ULPORTAL_SMOKE) get a throwaway folder: no clash with a running copy or real session.
+app.setPath('userData', process.env.ULPORTAL_SMOKE
+  ? fs.mkdtempSync(path.join(os.tmpdir(), 'ulportal-smoke-'))
+  : path.join(app.getPath('appData'), 'ulportal'));
 
 const BASE = 'https://portal.ulsu.ru';
 const PARTITION = 'persist:ulsu';
@@ -287,8 +290,9 @@ function createTray() {
 
 // One instance only: a second launch would fight over the same cookie store.
 if (!app.requestSingleInstanceLock()) app.exit(0);
-// Windows toasts need an app id; in dev it must be the electron.exe path.
-app.setAppUserModelId(app.isPackaged ? 'ru.ulportal.app' : process.execPath);
+const IS_WIN = process.platform === 'win32';
+// Windows toasts need an app id; in dev it must be the electron.exe path. (Windows-only API.)
+if (IS_WIN) app.setAppUserModelId(app.isPackaged ? 'ru.ulportal.app' : process.execPath);
 app.on('second-instance', showMain);
 
 app.whenReady().then(() => {
@@ -338,23 +342,37 @@ app.whenReady().then(() => {
   // Renderer picks system/light/dark; Mica, title bar buttons and prefers-color-scheme all follow nativeTheme.
   ipcMain.handle('theme', (_e, mode) => { nativeTheme.themeSource = mode; });
   const symbolColor = () => (nativeTheme.shouldUseDarkColors ? '#e4e8f1' : '#1b2333');
-  nativeTheme.on('updated', () => mainWin.setTitleBarOverlay({ symbolColor: symbolColor() }));
+  nativeTheme.on('updated', () => { if (IS_WIN) mainWin.setTitleBarOverlay({ symbolColor: symbolColor() }); });
 
   Menu.setApplicationMenu(null); // no menu bar; also frees Ctrl+R for the app's own refresh
   mainWin = new BrowserWindow({
     width: 1240, height: 820, minWidth: 760, minHeight: 500,
     title: t('УлГУ · Портал студента'), icon: path.join(__dirname, 'icon.png'),
     show: !process.argv.includes('--hidden'),
-    // ponytail: Mica needs Windows 11; on Windows 10 the window just gets the transparent fallback color.
-    titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#00000000', symbolColor: symbolColor(), height: 44 },
-    backgroundMaterial: 'mica',
-    backgroundColor: '#00000000',
+    // Windows: custom title bar over Mica (ponytail: Mica needs Windows 11; Windows 10 gets the
+    // transparent fallback). macOS: native traffic lights on a solid background for now (P2: vibrancy).
+    ...(IS_WIN ? {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: '#00000000', symbolColor: symbolColor(), height: 44 },
+      backgroundMaterial: 'mica',
+      backgroundColor: '#00000000',
+    } : {
+      titleBarStyle: 'hiddenInset',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#16181f' : '#f4f6fb',
+    }),
     // Same partition so course images (pluginfile.php) load with the session cookie.
     // plugins: Chromium's PDF viewer only runs with it (otherwise PDFs render blank).
     webPreferences: { partition: PARTITION, preload: path.join(__dirname, 'preload.js'), plugins: true },
   });
   mainWin.loadFile('index.html');
+  // CI smoke test: ULPORTAL_SMOKE=<file.png> → screenshot the window after it settles, then quit.
+  if (process.env.ULPORTAL_SMOKE) {
+    mainWin.webContents.once('did-finish-load', () => setTimeout(async () => {
+      fs.writeFileSync(process.env.ULPORTAL_SMOKE, (await mainWin.webContents.capturePage()).toPNG());
+      quitting = true;
+      app.quit();
+    }, 6000));
+  }
   // Close = hide to tray, so keepalive keeps running. Real quit only from the tray menu.
   mainWin.on('close', (e) => { if (!quitting) { e.preventDefault(); mainWin.hide(); } });
 
