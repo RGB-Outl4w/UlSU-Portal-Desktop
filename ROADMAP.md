@@ -121,6 +121,14 @@ Also from this round: a background refresh no longer repaints when the data is u
 - `electron-builder` NSIS installer, app icon, auto-update via GitHub Releases.
 - Git repo + basic CI build.
 
+**Status (2026-10-25):** done.
+- `npm run dist` builds `dist/ULSU-Portal-Desktop-Setup-<version>.exe`: NSIS, x64, per-user, RU/EN installer, choice of folder, shortcuts named "УлГУ · Портал студента". It is unsigned, so SmartScreen warns on first run.
+- `main.js` pins userData to `%APPDATA%\ulportal`, so the product name never moves the session or cache.
+- Updates: no auto-update (privacy). About has "Проверить обновления", which asks api.github.com for the latest release only on click and links to the download.
+- CI: `.github/workflows/build.yml` builds on every `v*` tag. It checks the tag against package.json and creates a **draft** release with the installer, which is published by hand. Release notes go in `CHANGELOG.md`.
+- To release: bump `version` in package.json, add a CHANGELOG entry, then commit, `git tag vX.Y.Z` and `git push --tags`. Review the draft on GitHub and publish it.
+- Later: code signing (removes the SmartScreen warning).
+
 ---
 
 ## Order

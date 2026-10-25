@@ -1,8 +1,12 @@
-const { app, BrowserWindow, ipcMain, session, shell, Tray, Menu, powerMonitor, nativeTheme, Notification, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Tray, Menu, powerMonitor, nativeTheme, Notification, dialog, net: electronNet } = require('electron');
 const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
+
+// Data folder stays %APPDATA%\ulportal whatever the installer's product name is, so updates and
+// the dev build share one session and cache. Must run before anything reads userData (incl. the lock).
+app.setPath('userData', path.join(app.getPath('appData'), 'ulportal'));
 
 const BASE = 'https://portal.ulsu.ru';
 const PARTITION = 'persist:ulsu';
@@ -130,6 +134,24 @@ async function upload({ itemid, filepath, name, bytes }) {
   const r = await res.json();
   if (r.error) throw new Error(r.error);
   return r;
+}
+
+// Only when the user presses "Проверить обновления": ask GitHub for the latest release.
+// Plain request on the default session (no portal cookies); never runs on its own.
+const newer = (a, b) => {
+  const [x, y] = [a, b].map((v) => v.replace(/^v/, '').split('.').map(Number));
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+async function checkUpdate() {
+  const res = await electronNet.fetch('https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest', {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': `ulportal/${app.getVersion()}` },
+  }).catch((e) => { throw new Error(`OFFLINE: ${e.message}`); });
+  const current = app.getVersion();
+  if (res.status === 404) return { current, latest: null }; // no releases published yet
+  if (!res.ok) throw new Error(`GitHub: ${res.status}`);
+  const r = await res.json();
+  return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update: newer(r.tag_name, current) };
 }
 
 // Form POST to a portal page (e.g. manual completion toggle); sesskey is added here.
@@ -294,6 +316,7 @@ app.whenReady().then(() => {
   ipcMain.handle('doc', (_e, name) => (DOCS.includes(name) ? fs.promises.readFile(path.join(__dirname, name), 'utf8') : null));
   ipcMain.handle('clearCache', () => fs.promises.rm(CACHE_DIR(), { recursive: true, force: true }));
   ipcMain.handle('openData', () => shell.openPath(app.getPath('userData')));
+  ipcMain.handle('checkUpdate', () => checkUpdate());
   ipcMain.handle('lang', async (_e, l) => {
     if (l === lang) return;
     lang = l;

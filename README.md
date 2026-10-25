@@ -62,7 +62,7 @@ Requires [Node.js](https://nodejs.org) 20 or newer.
 
 ## Privacy
 
-Everything stays on your computer. No analytics, no telemetry, no servers of our own. The app talks only to portal.ulsu.ru and to sites you open yourself. Read the full [Privacy Policy](PRIVACY.md).
+Everything stays on your computer. No analytics, no telemetry, no servers of our own. The app talks only to portal.ulsu.ru, to sites you open yourself, and to GitHub when you press "Check for updates". Read the full [Privacy Policy](PRIVACY.md).
 
 ## Disclaimer
 

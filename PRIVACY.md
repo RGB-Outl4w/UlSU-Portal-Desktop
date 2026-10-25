@@ -25,7 +25,8 @@ The app data folder on Windows is `%APPDATA%\ulportal`.
 
 - **portal.ulsu.ru**: all requests needed to show your data and to perform actions you confirm. This is the same traffic a browser sends when you use the portal.
 - **Sites you open yourself**: e-library links (e.g. Lan, Urait, Znanium, IPR SMART, eLIBRARY) open in your default browser. These links contain sign-in details that the portal creates for you. What those sites do is governed by their own policies.
-- **Nothing else.** No analytics, tracking, telemetry, crash reports, advertising or third-party servers. The app does not check for updates in the background.
+- **GitHub, only when you ask.** The **Check for updates** button in About sends one request to api.github.com to read the latest release number. It includes the app version in the User-Agent and no personal data. The app never checks on its own.
+- **Nothing else.** No analytics, tracking, telemetry, crash reports, advertising or third-party servers.
 
 ## Notifications
 

@@ -15,9 +15,64 @@
   "main": "main.js",
   "private": true,
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
   },
   "devDependencies": {
-    "electron": "^45.0.0"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "ru.ulportal.app",
+    "productName": "ULSU Portal Desktop",
+    "copyright": "© 2026 Maksim Surgutskii",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app.js",
+      "i18n.js",
+      "index.html",
+      "app.css",
+      "offline.html",
+      "logo.svg",
+      "icon.png",
+      "LICENSE",
+      "LICENSE.ru.md",
+      "NOTICE.md",
+      "PRIVACY.md",
+      "PRIVACY.ru.md",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "УлГУ · Портал студента",
+      "license": "LICENSE",
+      "artifactName": "ULSU-Portal-Desktop-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "ru_RU",
+        "en_US"
+      ],
+      "multiLanguageInstaller": true
+    }
   }
 }

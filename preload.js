@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('portal', {
   doc: (name) => ipcRenderer.invoke('doc', name),
   clearCache: () => ipcRenderer.invoke('clearCache'),
   openData: () => ipcRenderer.invoke('openData'),
+  checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
   poll: () => ipcRenderer.invoke('poll'),
   // Only these main->renderer events are exposed.
   onUnread: (cb) => ipcRenderer.on('unread', (_e, counts) => cb(counts)),

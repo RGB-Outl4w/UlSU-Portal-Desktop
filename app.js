@@ -1692,6 +1692,8 @@ Object.assign(views, {
             h('p', {}, T('Неофициальное настольное приложение для portal.ulsu.ru')),
             h('span', { class: 'pill' }, T('Версия {0}', a.version)))),
 
+        updateCard(),
+
         h('div', { class: 'card pane' },
           paneHead('profile', T('Автор')),
           h('p', { class: 'about-author' }, h('b', {}, T('Сургутский Максим Эдуардович')), h('br'), T('студент группы ИС-О-25/1')),
@@ -1731,6 +1733,31 @@ Object.assign(views, {
     },
   },
 });
+
+// Asks GitHub for the latest release only when the button is pressed (see PRIVACY.md).
+function updateCard() {
+  const status = h('p', { class: 'sub' }, T('Обновления проверяются только по кнопке.'));
+  const actions = h('div', { class: 'about-btns' });
+  const check = h('button', { class: 'chip-btn', onclick: async () => {
+    check.disabled = true;
+    status.textContent = T('Проверка…');
+    try {
+      const u = await portal.checkUpdate();
+      if (!u.latest) status.textContent = T('Опубликованных версий пока нет.');
+      else if (!u.update) status.textContent = T('Установлена последняя версия ({0}).', u.current);
+      else {
+        status.replaceChildren(h('b', {}, T('Доступна версия {0}', u.latest)), ` · ${T('у вас {0}', u.current)}`);
+        actions.replaceChildren(h('button', { class: 'btn', onclick: () => portal.open(u.url) }, T('Скачать')), check);
+      }
+    } catch (e) {
+      status.textContent = errText(e);
+    } finally {
+      check.disabled = false;
+    }
+  } }, T('Проверить обновления'));
+  actions.append(check);
+  return h('div', { class: 'card pane' }, paneHead('refresh', T('Обновления')), status, actions);
+}
 
 // Shown once: what the app is and isn't, before anything else.
 function firstRunNotice() {
