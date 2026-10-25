@@ -38,6 +38,8 @@ const MAIN_EN = {
   'Правка': 'Edit',
   'Вид': 'View',
   'Окно': 'Window',
+  'Сессия на портале завершилась': 'Your portal session has ended',
+  'Откройте приложение, чтобы войти снова.': 'Open the app to sign in again.',
   'Выход': 'Quit',
 };
 const t = (key, ...args) => ((lang === 'en' && MAIN_EN[key]) || key).replace(/\{(\d)\}/g, (_, i) => args[i]);
@@ -86,7 +88,7 @@ function login() {
       const url = win.webContents.getURL();
       if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
       if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
-      done = true; lastOk = Date.now(); log('logged in'); win.close(); resolve();
+      done = true; lastOk = Date.now(); log('logged in'); setSession('ok'); win.close(); resolve();
     });
     win.on('closed', () => { loginPromise = null; if (!done) reject(new Error(t('Вход отменён'))); });
     guardOffline(win);
@@ -95,9 +97,15 @@ function login() {
   return loginPromise;
 }
 
+// Moodle under maintenance answers 503 or its "maintenance" page layout; treated like being offline
+// (saved copies + a bar), never as "not logged in".
+const isMaintenance = (status, html) => status === 503 || /<body[^>]*\bpagelayout-maintenance\b/.test(html);
+
 async function get(p) {
   // session.fetch leaves res.url empty, so detect the login redirect by page content.
-  const html = await (await net(BASE + p)).text();
+  const res = await net(BASE + p);
+  const html = await res.text();
+  if (isMaintenance(res.status, html)) throw new Error('MAINTENANCE');
   if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return get(p); }
   sesskey = html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
   const id = Number(html.match(/data-userid="(\d+)"/)?.[1]);
@@ -194,7 +202,9 @@ async function call(methodname, args) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify([{ index: 0, methodname, args }]),
   });
-  return (await res.json())[0];
+  const text = await res.text();
+  if (isMaintenance(res.status, text)) throw new Error('MAINTENANCE');
+  return JSON.parse(text)[0];
 }
 
 async function ajax(methodname, args, retried) {
@@ -202,6 +212,7 @@ async function ajax(methodname, args, retried) {
   const r = await call(methodname, args);
   if (!r.error) return r.data;
   const code = r.exception?.errorcode || r.errorcode;
+  if (code === 'sitemaintenance') throw new Error('MAINTENANCE');
   if (!retried && RELOGIN.includes(code)) { sesskey = null; await get('/my/'); return ajax(methodname, args, true); }
   throw new Error(r.exception?.message || code);
 }
@@ -218,6 +229,18 @@ function toast(title, body, view) {
   if (!mainWin.isFocused()) mainWin.flashFrame(true);
 }
 
+// Session state as seen by the background check: 'ok' | 'expired' | 'maintenance'.
+// The window shows a bar; if it's hidden, one notification when the session ends.
+let sessionState = 'ok';
+function setSession(state) {
+  if (state === sessionState) return;
+  sessionState = state;
+  mainWin?.webContents.send('session', state);
+  if (state === 'expired' && !mainWin?.isVisible()) {
+    toast(t('Сессия на портале завершилась'), t('Откройте приложение, чтобы войти снова.'), 'today');
+  }
+}
+
 // Checks unread notifications/messages; doubles as the keepalive that stops Moodle's idle timeout.
 // Never opens the login window: a dead session is only logged; the next view load asks to log in.
 // First run only records what exists, so old items don't toast on startup.
@@ -230,11 +253,15 @@ async function poll() {
     ]);
     const dead = [notes, convs].find((r) => r.error);
     if (dead) {
-      log(`session lost (${dead.exception?.errorcode}), ${Math.round((Date.now() - lastOk) / 60000)} min after last ok poll`);
+      const code = dead.exception?.errorcode;
+      if (code === 'sitemaintenance') { setSession('maintenance'); return null; }
+      log(`session lost (${code}), ${Math.round((Date.now() - lastOk) / 60000)} min after last ok poll`);
       sesskey = null;
+      setSession('expired');
       return null;
     }
     lastOk = Date.now();
+    setSession('ok');
     const list = notes.data.notifications;
     const conversations = convs.data.conversations;
     const unread = {
@@ -255,6 +282,7 @@ async function poll() {
     for (const c of newMsgs.slice(0, 3)) toast(c.name || c.members[0]?.fullname || t('Новое сообщение'), strip(c.messages[0].text), 'messages');
     return unread;
   } catch (e) {
+    if (/MAINTENANCE/.test(e.message)) setSession('maintenance');
     log(`poll failed: ${e.message}`); // offline; keep sesskey and retry next tick
     return null;
   }
@@ -288,8 +316,21 @@ function open(url) {
   win.loadURL(url);
 }
 
-function showMain() {
+// A hidden window isn't painted. On macOS the vibrancy layer appears before the page repaints,
+// so the window flashes half-transparent: show it invisible, wait for two painted frames, then reveal.
+async function showMain() {
+  if (!IS_MAC || mainWin.isVisible()) {
+    mainWin.show();
+    mainWin.focus();
+    return;
+  }
+  mainWin.setOpacity(0);
   mainWin.show();
+  await Promise.race([
+    mainWin.webContents.executeJavaScript('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))'),
+    new Promise((r) => setTimeout(r, 300)), // never stay invisible
+  ]).catch(() => {});
+  mainWin.setOpacity(1);
   mainWin.focus();
 }
 

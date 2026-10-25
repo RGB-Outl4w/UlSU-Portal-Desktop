@@ -494,6 +494,7 @@ img.avatar { object-fit: cover; }
 
 /* ---------- calendar ---------- */
 .month-nav { display: flex; align-items: center; gap: 2px; }
+.loading-pill { animation: pulse 1.6s ease-in-out infinite; white-space: nowrap; }
 .month-nav .icon-btn { font-size: 22px; line-height: 1; }
 .month-name { min-width: 130px; text-align: center; font-weight: 650; }
 .cal-split { grid-template-columns: 1fr minmax(300px, 380px); }

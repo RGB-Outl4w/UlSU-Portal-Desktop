@@ -39,7 +39,7 @@ const viaDisk = (call) => {
     if (mode || !isOffline(e)) throw e;
     const r = await call('cache').catch(() => { throw e; }); // no saved copy: still "offline"
     staleAt = Math.min(staleAt ?? Infinity, r.at);
-    offline(staleAt);
+    offline(staleAt, e);
     return r.data;
   });
 };
@@ -1167,10 +1167,24 @@ Object.assign(views, {
   calendar: {
     title: T('Календарь'),
     sk: 'grid',
+    // The portal's first calendar request in a session can take minutes (it builds its cache; later
+    // ones take ~0.2 s). So the grid doesn't wait for it: classes show at once, the last saved events
+    // stay visible, and fresh events are painted in silently when they arrive.
     async load() {
-      const [my, events] = await Promise.all([cache.schedule ? { weeks: cache.schedule } : loadMy(), loadMonth(ui.cal.y, ui.cal.m)]);
+      const key = monthKey(ui.cal.y, ui.cal.m);
+      const month = loadMonth(ui.cal.y, ui.cal.m);
+      const my = cache.schedule ? { weeks: cache.schedule } : await loadMy();
       cache.schedule = my.weeks;
-      return { weeks: my.weeks, months: { [monthKey(ui.cal.y, ui.cal.m)]: events } };
+      const d = { weeks: my.weeks, months: {} };
+      const settled = await Promise.race([month.then((ev) => { d.months[key] = ev; return true; }), new Promise((r) => setTimeout(r, 1500, false))]);
+      if (settled) return d;
+      d.months[key] = cache.calendar?.months?.[key] || []; // keep what was on screen
+      d.loading = true;
+      month.then((ev) => { d.months[key] = ev; }, () => {}).finally(() => {
+        d.loading = false;
+        if (current === 'calendar' && cache.calendar === d) paint('calendar', 'silent');
+      });
+      return d;
     },
     tools(d) {
       const go = async (delta) => {
@@ -1195,6 +1209,7 @@ Object.assign(views, {
         setTimeout(() => delete $('#content').dataset.dir, 500);
       };
       return [
+        d.loading ? h('span', { class: 'pill loading-pill' }, T('Загрузка событий…')) : null,
         seg([['all', T('Всё')], ['pairs', T('Занятия')], ['events', T('События')]], ui.cal.show,
           (k) => {
             // No rebuild: chips fade via CSS on [data-show]; only the day panel refreshes, quietly.
@@ -1825,8 +1840,11 @@ let current = 'today';
 const msg = (text, cls = '') => h('div', { class: 'msg ' + cls }, text);
 
 // One place turns IPC errors into text people can read.
-const isOffline = (e) => /OFFLINE/.test(e?.message || String(e));
+// Portal unreachable: no network, or the portal is under maintenance (both fall back to saved copies).
+const isOffline = (e) => /OFFLINE|MAINTENANCE/.test(e?.message || String(e));
+const isMaintenance = (e) => /MAINTENANCE/.test(e?.message || String(e));
 function errText(e) {
+  if (isMaintenance(e)) return T('Портал на техническом обслуживании');
   if (isOffline(e)) return T('Нет подключения к порталу');
   return String(e?.message || e).replace(/^Error invoking remote method '\w+': (Error: )?/, '') || T('Что-то пошло не так');
 }
@@ -1842,6 +1860,10 @@ function stateBox({ kind = 'error', title, text, action }) {
 
 function errorBox(e, retry) {
   const action = retry && { label: T('Повторить'), run: retry };
+  if (isMaintenance(e)) {
+    return stateBox({ kind: 'offline', title: T('Портал на техническом обслуживании'), action,
+      text: T('Этот раздел ещё не открывался, поэтому сохранённой копии нет. Попробуйте позже.') });
+  }
   return isOffline(e)
     ? stateBox({ kind: 'offline', title: T('Нет подключения к порталу'), action,
       text: T('Этот раздел ещё не открывался, поэтому сохранённой копии нет. Он загрузится, когда связь вернётся.') })
@@ -1884,11 +1906,25 @@ function paint(name, quiet = false) {
 const loadedAt = {}; // view -> time its data was fetched (or saved to disk, for a cached copy)
 
 // "Нет подключения · данные от …" bar; hidden again by the next successful load.
-function offline(at) {
+function offline(at, e) {
   const when = at ? new Date(at).toLocaleString(LOCALE, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
-  $('#net-text').textContent = when ? T('Нет подключения к порталу · данные от {0}', when) : T('Нет подключения к порталу');
+  const what = isMaintenance(e) ? T('Портал на техническом обслуживании') : T('Нет подключения к порталу');
+  banner(when ? T('{0} · данные от {1}', what, when) : what, T('Повторить'));
+}
+
+// One bar above the content for portal state: offline, maintenance, or session ended. Its button
+// reloads the current section; when the session has ended that opens the portal's sign-in window.
+function banner(text, button) {
+  $('#net-text').textContent = text;
+  $('#net-retry').textContent = button;
   $('#net-banner').hidden = false;
 }
+
+portal.onSession((state) => {
+  if (state === 'expired') banner(T('Сессия на портале завершилась. Войдите снова, чтобы обновлять данные.'), T('Войти'));
+  else if (state === 'maintenance') banner(T('Портал на техническом обслуживании. Показаны сохранённые данные.'), T('Повторить'));
+  else $('#net-banner').hidden = true;
+});
 
 // Disk copy first (instant, also offline), then the network; the fresh result repaints quietly.
 async function show(name, reload = false) {
@@ -1923,7 +1959,7 @@ async function show(name, reload = false) {
     if (current === name) paint(name, before ? 'silent' : false);
   } catch (e) {
     if (current !== name) return;
-    if (isOffline(e) && before) return offline(loadedAt[name]); // keep showing what we have
+    if (isOffline(e) && before) return offline(loadedAt[name], e); // keep showing what we have
     tools();
     swap(errorBox(e, () => show(name, true)));
   } finally {
@@ -1946,9 +1982,12 @@ const PAGES = [
 let items = [];
 let sel = 0;
 
+const navIcon = (view) => document.querySelector(`#nav [data-view="${view}"] use`)?.getAttribute('href').replace('#i-', '') || view;
+
 function paletteItems() {
   return [
-    ...Object.entries(views).filter(([, v]) => !v.hidden).map(([k, v]) => ({ label: v.title, icon: k, kind: T('Раздел'), run: () => show(k) })),
+    // icon = the one on the sidebar button (view key and icon name differ, e.g. messages → i-chat)
+    ...Object.entries(views).filter(([, v]) => !v.hidden).map(([k, v]) => ({ label: v.title, icon: navIcon(k), kind: T('Раздел'), run: () => show(k) })),
     ...(cache.courses?.courses || []).map((c) => ({ label: c.fullname, icon: 'courses', kind: T('Курс'), run: () => openCourse(c) })),
     ...PAGES.map(([label, url]) => ({ label, icon: 'external', kind: T('Портал'), run: () => portal.open(BASE + url) })),
   ];
@@ -2103,6 +2142,8 @@ macLabels();
 setupLang();
 setTheme(pref('theme') || 'system');
 show(current);
+// Warm the portal's slow first calendar request (and the saved copy) in the background.
+setTimeout(() => { if (!cache.calendar) loadMonth(new Date().getFullYear(), new Date().getMonth()).catch(() => {}); }, 15000);
 firstRunNotice();
 $('#about-btn').addEventListener('click', () => show('about'));
 

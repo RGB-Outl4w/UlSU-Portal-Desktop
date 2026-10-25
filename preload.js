@@ -22,4 +22,5 @@ contextBridge.exposeInMainWorld('portal', {
   // Only these main->renderer events are exposed.
   onUnread: (cb) => ipcRenderer.on('unread', (_e, counts) => cb(counts)),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, view) => cb(view)),
+  onSession: (cb) => ipcRenderer.on('session', (_e, state) => cb(state)), // 'ok' | 'expired' | 'maintenance'
 });
