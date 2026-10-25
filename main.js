@@ -145,19 +145,39 @@ async function upload({ itemid, filepath, name, bytes }) {
 
 // Only when the user presses "Проверить обновления": ask GitHub for the latest release.
 // Plain request on the default session (no portal cookies); never runs on its own.
-const newer = (a, b) => {
-  const [x, y] = [a, b].map((v) => v.replace(/^v/, '').split('.').map(Number));
-  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+// Semver order, prereleases included: 1.1.0-beta.1 < 1.1.0-beta.2 < 1.1.0 < 1.1.1.
+function newer(a, b) {
+  const parse = (v) => {
+    const m = String(v).replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/) || [];
+    return { core: [1, 2, 3].map((i) => Number(m[i]) || 0), pre: m[4] ? m[4].split('.') : [] };
+  };
+  const x = parse(a), y = parse(b);
+  for (let i = 0; i < 3; i++) if (x.core[i] !== y.core[i]) return x.core[i] > y.core[i];
+  if (!x.pre.length || !y.pre.length) return !x.pre.length && y.pre.length > 0; // release beats its prerelease
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const [p, q] = [x.pre[i], y.pre[i]];
+    if (p === undefined || q === undefined) return q === undefined;
+    if (p === q) continue;
+    const [np, nq] = [/^\d+$/.test(p), /^\d+$/.test(q)];
+    if (np && nq) return Number(p) > Number(q);
+    if (np !== nq) return nq; // numeric identifiers sort before text
+    return p > q;
+  }
   return false;
-};
+}
 async function checkUpdate() {
-  const res = await electronNet.fetch('https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest', {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': `ulportal/${app.getVersion()}` },
-  }).catch((e) => { throw new Error(`OFFLINE: ${e.message}`); });
   const current = app.getVersion();
+  const beta = current.includes('-');
+  // /releases/latest skips pre-releases, so beta builds look through the list to see newer betas too.
+  const api = 'https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases';
+  const res = await electronNet.fetch(beta ? `${api}?per_page=20` : `${api}/latest`, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': `ulportal/${current}` },
+  }).catch((e) => { throw new Error(`OFFLINE: ${e.message}`); });
   if (res.status === 404) return { current, latest: null }; // no releases published yet
   if (!res.ok) throw new Error(`GitHub: ${res.status}`);
-  const r = await res.json();
+  const data = await res.json();
+  const r = beta ? data.filter((x) => !x.draft).reduce((best, x) => (!best || newer(x.tag_name, best.tag_name) ? x : best), null) : data;
+  if (!r) return { current, latest: null };
   return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update: newer(r.tag_name, current) };
 }
 

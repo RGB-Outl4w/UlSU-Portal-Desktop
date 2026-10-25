@@ -1,5 +1,25 @@
 # Changelog / История изменений
 
+## 1.1.0-beta.1 — 2026-10-25 (pre-release)
+
+First macOS test build. / Первая тестовая сборка для macOS.
+
+**English**
+- macOS: separate builds for Apple Silicon (arm64) and Intel (x64), `.dmg` and `.zip`.
+- Native macOS window: traffic lights, translucent sidebar, app menu (⌘C/⌘V/⌘Q/⌘W work), menu bar icon, Dock.
+- ⌘ shortcuts on macOS (⌘K, ⌘R, ⌘1–9, ⌘B); "Open at login" in the menu bar icon's menu.
+- Update check now understands pre-releases; beta builds are told about newer betas too.
+- Privacy policy lists the macOS data folder.
+
+**Русский**
+- macOS: отдельные сборки для Apple Silicon (arm64) и Intel (x64), `.dmg` и `.zip`.
+- Нативное окно macOS: «светофор», полупрозрачная боковая панель, меню приложения (работают ⌘C/⌘V/⌘Q/⌘W), значок в строке меню, Dock.
+- Сочетания с ⌘ на macOS (⌘K, ⌘R, ⌘1–9, ⌘B); «Открывать при входе в систему» в меню значка.
+- Проверка обновлений понимает тестовые версии и сообщает о более новых бета-версиях.
+- В политике конфиденциальности указана папка данных macOS.
+
+**macOS first launch / Первый запуск на macOS:** the build isn't notarized by Apple yet. macOS 15+: open it once, then System Settings → Privacy & Security → "Open Anyway". macOS 12–14: Control-click the app → Open. / Сборка пока не заверена Apple. macOS 15+: попробуйте открыть, затем «Системные настройки → Конфиденциальность и безопасность → Всё равно открыть». macOS 12–14: правый клик по приложению → «Открыть».
+
 ## 1.0.0 — 2026-10-25
 
 First public release. / Первый публичный выпуск.
