@@ -1,5 +1,25 @@
 # Changelog / История изменений
 
+## 1.1.0 — 2026-10-25
+
+**macOS support.** / **Поддержка macOS.**
+
+**English**
+- macOS builds for Apple Silicon and Intel (`.dmg`, `.zip`): native window with traffic lights and a translucent sidebar, app menu, menu bar icon, Dock, ⌘ shortcuts, "Open at login".
+- Calendar opens at once even when the portal is slow to answer its first calendar request; events arrive afterwards.
+- Alerts when the portal ends your session (with a "Sign in" button) and during portal maintenance (saved data stays visible).
+- Ctrl/⌘K search shows icons for every section.
+- Update check understands pre-releases.
+- macOS: the build isn't notarized by Apple yet; see the first-launch steps in the README.
+
+**Русский**
+- Сборки для macOS на Apple Silicon и Intel (`.dmg`, `.zip`): нативное окно со «светофором» и полупрозрачной боковой панелью, меню приложения, значок в строке меню, Dock, сочетания с ⌘, «Открывать при входе в систему».
+- Календарь открывается сразу, даже если портал долго отвечает на первый запрос календаря; события подгружаются следом.
+- Предупреждения, когда портал завершил сессию (с кнопкой «Войти»), и во время техработ на портале (сохранённые данные остаются видны).
+- В поиске Ctrl/⌘K у всех разделов есть значки.
+- Проверка обновлений понимает тестовые версии.
+- macOS: сборка пока не заверена Apple — шаги первого запуска есть в README.
+
 ## 1.1.0-beta.2 — 2026-10-25 (pre-release)
 
 Fixes from the first macOS test round. / Исправления по итогам первого круга тестов на macOS.

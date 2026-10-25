@@ -7,9 +7,9 @@
 **An unofficial desktop app for [portal.ulsu.ru](https://portal.ulsu.ru), the student portal of Ulyanovsk State University.**
 Stay signed in, see your day at a glance, and keep courses, deadlines, grades and messages one click away.
 
-[![Version](https://img.shields.io/badge/version-1.0.0-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-12a06a)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-5c677d)](#install)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5c677d)](#install)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
 [![Unofficial](https://img.shields.io/badge/unofficial-not%20affiliated%20with%20ULSU-d9770b)](NOTICE.md)
 
@@ -33,14 +33,29 @@ The portal logs you out every time you close the browser, and signing back in me
 | **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites |
 | **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters |
 | **Academic record** | Exam marks per semester with your average, and the full study plan with hours and syllabi |
-| **Notifications & messages** | Reading pane, chats with bubbles, sending, unread badges, Windows notifications |
+| **Notifications & messages** | Reading pane, chats with bubbles, sending, unread badges, system notifications |
 | **Services** | Certificate orders, questions to the university, personal files (upload/download), e-library sign-in links |
 | **Offline** | Every section is saved after you open it, so it still works without a connection |
 | **Comfort** | Light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support |
 
 ## Install
 
-> Windows 10/11. Installers will be published on the [Releases](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases) page.
+Download from the **[latest release](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest)**:
+
+| Your computer | File |
+|---|---|
+| Windows 10/11 | `ULSU-Portal-Desktop-Setup-<version>.exe` |
+| Mac with Apple M1–M4 | `ULSU-Portal-Desktop-<version>-arm64.dmg` |
+| Mac with Intel | `ULSU-Portal-Desktop-<version>-x64.dmg` |
+
+Not sure which Mac you have?  → **About This Mac** → **Chip**.
+
+**Windows:** run the installer. The installer isn't code-signed yet, so SmartScreen may warn: **More info** → **Run anyway**.
+
+**macOS 12+:** open the `.dmg` and drag the app to **Applications**. The app isn't notarized by Apple yet, so the first launch needs one extra step:
+- **macOS 15 and newer:** open the app once, then **System Settings** → **Privacy & Security** → **Open Anyway**.
+- **macOS 12–14:** Control-click the app → **Open** → **Open**.
+- If macOS still refuses, run in Terminal: `xattr -dr com.apple.quarantine "/Applications/ULSU Portal Desktop.app"`
 
 ### Run from source
 
@@ -78,6 +93,7 @@ i18n.js        English strings (the interface is written in Russian)
 index.html     Window markup, icons, dialogs
 app.css        Design tokens, layout, animations
 offline.html   Page shown in portal windows when there's no connection
+build/         App icons for packaging (macOS icon, menu bar template source)
 docs/          Project website (GitHub Pages)
 ```
 

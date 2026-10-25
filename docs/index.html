@@ -169,15 +169,20 @@
           <span class="ru">Настольное приложение для portal.ulsu.ru. Входите один раз и больше не ждёте код MAX. Расписание, курсы, дедлайны, оценки и сообщения — в быстром и удобном интерфейсе.</span>
           <span class="en">A desktop app for portal.ulsu.ru. Sign in once and stop waiting for MAX codes. Schedule, courses, deadlines, grades and messages in a fast, clean interface.</span>
         </p>
+        <!-- Download links point at the latest release page; the script swaps in the exact files. -->
         <div class="cta">
-          <a class="btn primary" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases">
+          <a class="btn primary" data-dl="win" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">
             <span class="ru">Скачать для Windows</span><span class="en">Download for Windows</span>
           </a>
-          <a class="btn ghost" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">
-            <span class="ru">Исходный код</span><span class="en">Source code</span>
+          <a class="btn ghost" data-dl="mac-arm64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">
+            <span class="ru">Скачать для macOS</span><span class="en">Download for macOS</span>
           </a>
         </div>
-        <p class="note"><span class="ru">Windows 10/11 · Бесплатно · Открытый код (MIT) · Версия 1.0.0</span><span class="en">Windows 10/11 · Free · Open source (MIT) · Version 1.0.0</span></p>
+        <p class="note">
+          <span class="ru">Mac на Intel — <a data-dl="mac-x64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">отдельная сборка</a> · <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">Исходный код</a></span>
+          <span class="en">Mac with Intel — <a data-dl="mac-x64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">separate build</a> · <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">Source code</a></span>
+        </p>
+        <p class="note"><span class="ru">Windows 10/11 · macOS 12+ · Бесплатно · Открытый код (MIT) · Версия <span data-ver>1.1.0</span></span><span class="en">Windows 10/11 · macOS 12+ · Free · Open source (MIT) · Version <span data-ver>1.1.0</span></span></p>
       </div>
 
       <!-- Illustration with sample data; not a screenshot of anyone's account. -->
@@ -255,9 +260,9 @@
       <h2 class="reveal"><span class="ru">Как начать</span><span class="en">Getting started</span></h2>
       <p class="sub reveal"><span class="ru">Три шага — и портал всегда под рукой.</span><span class="en">Three steps and the portal is always at hand.</span></p>
       <div class="steps">
-        <div class="step reveal"><h3><span class="ru">Установите</span><span class="en">Install</span></h3><p><span class="ru">Скачайте установщик со страницы релизов и запустите его.</span><span class="en">Download the installer from the releases page and run it.</span></p></div>
+        <div class="step reveal"><h3><span class="ru">Установите</span><span class="en">Install</span></h3><p><span class="ru">Windows — запустите установщик. Mac — перетащите приложение в «Программы»; при первом запуске разрешите его в «Конфиденциальность и безопасность».</span><span class="en">Windows: run the installer. Mac: drag the app to Applications; on first launch allow it in Privacy &amp; Security.</span></p></div>
         <div class="step reveal"><h3><span class="ru">Войдите один раз</span><span class="en">Sign in once</span></h3><p><span class="ru">На настоящей странице портала: логин, пароль и код MAX — как обычно.</span><span class="en">On the real portal page: login, password and MAX code, as usual.</span></p></div>
-        <div class="step reveal"><h3><span class="ru">Пользуйтесь</span><span class="en">Done</span></h3><p><span class="ru">Сессия сохраняется до 30 дней, а приложение может запускаться вместе с Windows.</span><span class="en">The session is kept for up to 30 days, and the app can start with Windows.</span></p></div>
+        <div class="step reveal"><h3><span class="ru">Пользуйтесь</span><span class="en">Done</span></h3><p><span class="ru">Сессия сохраняется до 30 дней, а приложение может запускаться вместе с системой.</span><span class="en">The session is kept for up to 30 days, and the app can start when you log in.</span></p></div>
       </div>
     </div>
   </section>
@@ -289,8 +294,8 @@
         <p><span class="ru">Вы вводите его на настоящей странице входа portal.ulsu.ru, открытой в окне приложения. Приложение не читает поля входа и не хранит пароль; сохраняется только cookie сессии портала — так же, как в браузере.</span><span class="en">You type it on the real portal.ulsu.ru login page shown in the app's window. The app doesn't read the sign-in fields or store your password; only the portal's session cookie is kept, just like in a browser.</span></p></details>
       <details class="reveal"><summary><span class="ru">Почему не нужно каждый раз вводить код MAX?</span><span class="en">Why don't I need a MAX code every time?</span></summary>
         <p><span class="ru">Браузер удаляет cookie сессии портала при закрытии. Приложение сохраняет его на диске и поддерживает сессию активной, пока работает.</span><span class="en">Browsers delete the portal's session cookie when they close. The app saves it on disk and keeps the session alive while it runs.</span></p></details>
-      <details class="reveal"><summary><span class="ru">Есть версия для macOS или телефона?</span><span class="en">Is there a macOS or phone version?</span></summary>
-        <p><span class="ru">Пока только Windows 10/11. Код открыт — сборку для других систем можно сделать из исходников.</span><span class="en">Windows 10/11 for now. The code is open, so builds for other systems can be made from source.</span></p></details>
+      <details class="reveal"><summary><span class="ru">Работает на Mac? А на телефоне?</span><span class="en">Does it work on a Mac? On a phone?</span></summary>
+        <p><span class="ru">Да, на Mac с macOS 12 и новее — и на Apple M1–M4, и на Intel. Сборка пока не заверена Apple, поэтому при первом запуске откройте «Системные настройки → Конфиденциальность и безопасность → Всё равно открыть» (на macOS 12–14 — правый клик по приложению → «Открыть»). Версии для телефонов пока нет.</span><span class="en">Yes, on Macs with macOS 12 or newer, both Apple M1–M4 and Intel. The build isn't notarized by Apple yet, so on first launch go to System Settings → Privacy &amp; Security → Open Anyway (on macOS 12–14: Control-click the app → Open). There's no phone version yet.</span></p></details>
       <details class="reveal"><summary><span class="ru">Что-то перестало работать</span><span class="en">Something stopped working</span></summary>
         <p><span class="ru">Портал иногда меняется. Создайте issue на GitHub с названием раздела и описанием; не прикладывайте пароли, коды и чужие персональные данные.</span><span class="en">The portal changes from time to time. Open a GitHub issue with the section name and what you see; never include passwords, codes or other people's personal data.</span></p></details>
     </div>
@@ -329,6 +334,26 @@
     };
     setLang(['ru', 'en'].includes(param) ? param : saved || (navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en'));
     document.querySelectorAll('[data-set-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.setLang)));
+
+    // Exact download files from the latest GitHub release (names contain the version). If the API
+    // isn't reachable, the links keep pointing at the release page. The visitor's OS gets the main button.
+    fetch('https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((rel) => {
+        const pick = { win: /Setup-.*\.exe$/, 'mac-arm64': /-arm64\.dmg$/, 'mac-x64': /-x64\.dmg$/ };
+        document.querySelectorAll('[data-dl]').forEach((a) => {
+          const asset = rel.assets.find((x) => pick[a.dataset.dl].test(x.name));
+          if (asset) a.href = asset.browser_download_url;
+        });
+        document.querySelectorAll('[data-ver]').forEach((el) => { el.textContent = rel.tag_name.replace(/^v/, ''); });
+      })
+      .catch(() => {});
+    if (/Mac/i.test(navigator.platform || navigator.userAgent)) {
+      const [win, mac] = [document.querySelector('[data-dl="win"]'), document.querySelector('[data-dl="mac-arm64"]')];
+      win.classList.replace('primary', 'ghost');
+      mac.classList.replace('ghost', 'primary');
+      mac.parentNode.insertBefore(mac, win);
+    }
 
     // Fade sections in as they scroll into view.
     const io = new IntersectionObserver((entries) => entries.forEach((e) => {

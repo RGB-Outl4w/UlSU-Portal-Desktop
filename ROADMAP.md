@@ -22,7 +22,7 @@ Plan:
 Done when: close app, reopen next day, data loads with no login.
 
 **Status (2026-10-25):** 1, 2, 3 done and verified (quit + relaunch opens without login). 4 partly: `poll()` (was `ping()`) writes to `%APPDATA%\ulportal\session.log`; read it after a few days to learn the real timeout and tune `POLL_MS`. 6 checked: no "remember device" cookie seen after the MAX step.
-**TODO — session expired banner (item 5):** when `poll()` sees the session is dead, main process sends `session-expired` to the renderer. The renderer shows a non-blocking banner "Сессия истекла — войти" at the top instead of a login window popping up on the next click. Requests that fail meanwhile go into a queue and replay after login. Hook point: the `sesskey = null` branch in `poll()` in `main.js`.
+**Done in 1.1.0 — session expired banner (item 5):** when `poll()` sees the session is dead, main process sends `session-expired` to the renderer. The renderer shows a non-blocking banner "Сессия истекла — войти" at the top instead of a login window popping up on the next click. Requests that fail meanwhile go into a queue and replay after login. Hook point: the `sesskey = null` branch in `poll()` in `main.js`.
 
 ## M2. Dashboard and profile
 
@@ -188,10 +188,16 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - Fix → new pre-release → retest, until the checklist is green.
 - Done when: no open `macos` issues marked blocker.
 
+**Status (2026-10-25):** done.
+- beta.1 found three issues: half-transparent window on return from the Dock (macOS), missing ⌘K icons for Messages/Notifications, and a very slow first calendar load (the portal's own cold cache, ~25 s to minutes).
+- All three are fixed in beta.2 and confirmed by the tester. Session-ended and maintenance alerts were added on the way (M1 item 5).
+
 ## P4. macOS release
 
 - Version 1.1.0 ships with Windows + macOS assets. README and site get macOS install steps (including the first-launch "Open Anyway" step). CHANGELOG entry.
 - Later, optional: Apple Developer account ($99/year) → sign + notarize, which removes the Gatekeeper warning.
+
+**Status (2026-10-25):** 1.1.0 released with Windows + macOS assets. README (EN/RU) has a download table and macOS first-launch steps. The site's download buttons pick the exact file for each OS from the latest release (via the GitHub API, falling back to the release page). CHANGELOG entry added.
 
 ## Android (later, outline only)
 

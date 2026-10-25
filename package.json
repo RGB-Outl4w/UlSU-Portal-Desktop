@@ -1,6 +1,6 @@
 {
   "name": "ulportal",
-  "version": "1.1.0-beta.2",
+  "version": "1.1.0",
   "description": "Unofficial desktop client for portal.ulsu.ru (Ulyanovsk State University)",
   "author": "Maksim Surgutskii",
   "license": "MIT",
