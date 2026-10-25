@@ -155,6 +155,12 @@ The app stays "Desktop": macOS comes first, Android later. iOS is out of scope f
 - Test builds go out as a GitHub **pre-release** (`v1.1.0-beta.N`), so no GitHub login is needed to download.
 - Done when: CI produces `ULSU-Portal-Desktop-<ver>-arm64.dmg` and `-x64.dmg`, and they launch on a Mac.
 
+**Status (2026-10-25):** done in CI (manual run).
+- Artifacts: `-arm64`/`-x64` `.dmg` + `.zip`, both `Signature=adhoc`, `codesign --verify --deep --strict` passes, `lipo` shows arm64 / x86_64.
+- Smoke test on the macos-26 arm64 runner: the packaged app starts, draws its window (welcome dialog, sidebar, skeletons) and quits cleanly (`ULPORTAL_SMOKE`).
+- Seen for P2: the traffic lights sit over the sidebar logo; the shortcut label still says "Ctrl K".
+- Not yet verified on a real Mac (Gatekeeper first launch, Intel build).
+
 ## P2. macOS adaptations
 
 Code that is Windows-specific today, by file:
