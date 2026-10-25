@@ -65,6 +65,8 @@ jobs:
           export ULPORTAL_SMOKE="$PWD/smoke-macos.png"
           "$APP/Contents/MacOS/$(basename "$APP" .app)" > smoke.log 2>&1 &
           PID=$!
+          # whole screen too: traffic lights, vibrancy and the menu bar icon aren't in the page capture
+          (sleep 5 && screencapture -x screen-macos.png) &
           for i in $(seq 60); do kill -0 $PID 2>/dev/null || break; sleep 1; done
           kill $PID 2>/dev/null && { echo "app did not quit in 60s"; cat smoke.log; exit 1; }
           CODE=0; wait $PID || CODE=$?
@@ -83,6 +85,7 @@ jobs:
           name: macos-smoke
           path: |
             smoke-macos.png
+            screen-macos.png
             smoke.log
 
   release:

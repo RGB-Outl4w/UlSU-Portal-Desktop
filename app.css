@@ -733,6 +733,14 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .welcome-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
 #welcome .btn { min-width: 140px; }
 
+/* ---------- macOS window chrome ---------- */
+/* traffic lights sit top-left (main.js trafficLightPosition), so the sidebar starts below them;
+   no caption buttons on the right, so the drag strip runs to the edge; the sidebar shows the
+   native "sidebar" vibrancy through the transparent body */
+.mac #side { padding-top: 34px; }
+.mac main::before { right: 0; }
+.mac kbd { font-family: -apple-system, system-ui, sans-serif; }
+
 /* background refresh with changed data: swap in place, no motion */
 /* (silent also has .quiet, which already stops entry animations; this drops the soft fade too,
    while live indicators like the "now" pulse keep running) */

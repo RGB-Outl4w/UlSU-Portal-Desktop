@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('portal', {
+  platform: process.platform, // 'win32' | 'darwin' — for ⌘ vs Ctrl and window chrome
   // mode 'cache': answer from the disk copy only, as { at, data }
   get: (path, mode) => ipcRenderer.invoke('get', path, mode),
   post: (path, fields) => ipcRenderer.invoke('post', path, fields),

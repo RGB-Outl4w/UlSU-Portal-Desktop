@@ -19,7 +19,7 @@ ULSU Portal Desktop is an open-source app made by an individual student (see [NO
 | Settings (theme, language, accent, collapsed sidebar, sort order) | You | Your computer | To remember your choices |
 | Files you upload or download | You / the portal | Your chosen folder; uploads go to your personal files on the portal | Only when you ask |
 
-The app data folder on Windows is `%APPDATA%\ulportal`.
+The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Application Support/ulportal` on macOS.
 
 ## Where data is sent
 
@@ -30,13 +30,13 @@ The app data folder on Windows is `%APPDATA%\ulportal`.
 
 ## Notifications
 
-The app checks the portal for new notifications and messages every few minutes while it runs, including in the tray. Notification text is shown by Windows on your computer and is not sent anywhere else.
+The app checks the portal for new notifications and messages every few minutes while it runs, including from the tray / menu bar. Notification text is shown by your operating system on your computer and is not sent anywhere else.
 
 ## Deleting your data
 
 - **Settings → Log out** ends the portal session and deletes the saved cookies and cached copies.
 - **About → Clear cache** deletes cached copies but keeps you signed in.
-- To remove everything, uninstall the app and delete `%APPDATA%\ulportal`.
+- To remove everything, uninstall the app and delete the app data folder (see above).
 
 Data stored on the portal itself (your account, messages, files, orders) is managed by the university, not by this app.
 

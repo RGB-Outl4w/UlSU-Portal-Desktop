@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- macOS menu bar template: black + alpha only; the system tints it. Same motif as logo.svg. -->
+  <defs>
+    <mask id="m">
+      <rect width="32" height="32" fill="#fff"/>
+      <!-- open book cut out of the tile -->
+      <path d="M7 19.5c3-1.6 6-1.6 9 0 3-1.6 6-1.6 9 0v4c-3-1.6-6-1.6-9 0-3-1.6-6-1.6-9 0z" fill="#000"/>
+      <!-- "У" stroke -->
+      <path d="M11 7.5 16 15.5M21 7.5 13.5 19" stroke="#000" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    </mask>
+  </defs>
+  <rect x="2" y="2" width="28" height="28" rx="7" fill="#000" mask="url(#m)"/>
+</svg>

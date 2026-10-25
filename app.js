@@ -2070,10 +2070,20 @@ $('#logout').addEventListener('click', async () => {
   show(current, true);
 });
 
-// ---- shortcuts (by physical key, so they work in the Russian layout too) ----
+// ---- shortcuts (by physical key, so they work in the Russian layout too); ⌘ on macOS, Ctrl elsewhere ----
+
+const IS_MAC = portal.platform === 'darwin';
+if (IS_MAC) document.body.classList.add('mac');
+
+// Static labels say "Ctrl K" / "(Ctrl+1)"; on macOS show ⌘ instead.
+function macLabels() {
+  if (!IS_MAC) return;
+  for (const el of document.querySelectorAll('kbd')) el.textContent = el.textContent.replace(/^Ctrl\s*/, '⌘');
+  for (const el of document.querySelectorAll('[title]')) el.title = el.title.replace(/Ctrl\+/g, '⌘');
+}
 
 document.addEventListener('keydown', (e) => {
-  if (!e.ctrlKey) return;
+  if (!(IS_MAC ? e.metaKey : e.ctrlKey)) return;
   const tab = e.code.startsWith('Digit') && document.querySelectorAll('#nav [data-view]')[Number(e.code.slice(5)) - 1]?.dataset.view; // Ctrl+N = Nth sidebar tab
   const act = {
     KeyK: openPalette,
@@ -2089,6 +2099,7 @@ $('#refresh').addEventListener('click', () => show(current, true));
 if (pref('collapsed')) document.body.classList.add('collapsed');
 setAccent(ACCENTS.includes(pref('accent')) ? pref('accent') : ACCENTS[0]);
 translateStatic();
+macLabels();
 setupLang();
 setTheme(pref('theme') || 'system');
 show(current);

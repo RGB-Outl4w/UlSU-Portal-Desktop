@@ -34,6 +34,10 @@ const MAIN_EN = {
   'Новое сообщение': 'New message',
   'Открыть': 'Open',
   'Запускать с Windows': 'Start with Windows',
+  'Открывать при входе в систему': 'Open at login',
+  'Правка': 'Edit',
+  'Вид': 'View',
+  'Окно': 'Window',
   'Выход': 'Quit',
 };
 const t = (key, ...args) => ((lang === 'en' && MAIN_EN[key]) || key).replace(/\{(\d)\}/g, (_, i) => args[i]);
@@ -270,30 +274,51 @@ function showMain() {
 }
 
 // Called again on language change: reuses the icon, rebuilds tooltip and menu.
+// Windows: colour icon in the tray. macOS: monochrome template icon in the menu bar (the system tints it).
 function createTray() {
   if (!tray) {
-    tray = new Tray(path.join(__dirname, 'icon.png'));
+    tray = new Tray(path.join(__dirname, IS_MAC ? 'iconTemplate.png' : 'icon.png'));
     tray.on('click', showMain);
   }
   tray.setToolTip(t('УлГУ · Портал студента'));
+  // macOS has no launch args for login items; the app just opens at login.
+  // ponytail: no hidden start on macOS (wasOpenedAsHidden is deprecated with SMAppService).
+  const login = IS_MAC ? {} : { args: LOGIN_ARGS };
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: t('Открыть'), click: showMain },
     {
-      label: t('Запускать с Windows'), type: 'checkbox',
-      checked: app.getLoginItemSettings({ args: LOGIN_ARGS }).openAtLogin,
-      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, args: LOGIN_ARGS }),
+      label: t(IS_MAC ? 'Открывать при входе в систему' : 'Запускать с Windows'), type: 'checkbox',
+      checked: app.getLoginItemSettings(login).openAtLogin,
+      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, ...login }),
     },
     { type: 'separator' },
     { label: t('Выход'), click: () => app.quit() },
   ]));
 }
 
+// macOS needs an app menu: without it ⌘C/⌘V/⌘A/⌘Q/⌘W don't work. No reload item, so ⌘R stays the
+// app's own refresh. Windows keeps no menu bar at all.
+function appMenu() {
+  if (!IS_MAC) return null;
+  return Menu.buildFromTemplate([
+    { role: 'appMenu' },
+    { label: t('Правка'), submenu: [
+      { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+      { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+    ] },
+    { label: t('Вид'), submenu: [{ role: 'togglefullscreen' }] },
+    { label: t('Окно'), submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'close' }, { role: 'front' }] },
+  ]);
+}
+
 // One instance only: a second launch would fight over the same cookie store.
 if (!app.requestSingleInstanceLock()) app.exit(0);
 const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
 // Windows toasts need an app id; in dev it must be the electron.exe path. (Windows-only API.)
 if (IS_WIN) app.setAppUserModelId(app.isPackaged ? 'ru.ulportal.app' : process.execPath);
 app.on('second-instance', showMain);
+app.on('activate', () => mainWin && showMain()); // macOS: Dock icon click brings the window back
 
 app.whenReady().then(() => {
   ses = session.fromPartition(PARTITION);
@@ -325,6 +350,7 @@ app.whenReady().then(() => {
     if (l === lang) return;
     lang = l;
     createTray();
+    Menu.setApplicationMenu(appMenu());
     mainWin.setTitle(t('УлГУ · Портал студента'));
     await fs.promises.writeFile(LANG_FILE(), JSON.stringify(lang)).catch(() => {});
   }); // renderer asks after marking things read
@@ -344,7 +370,7 @@ app.whenReady().then(() => {
   const symbolColor = () => (nativeTheme.shouldUseDarkColors ? '#e4e8f1' : '#1b2333');
   nativeTheme.on('updated', () => { if (IS_WIN) mainWin.setTitleBarOverlay({ symbolColor: symbolColor() }); });
 
-  Menu.setApplicationMenu(null); // no menu bar; also frees Ctrl+R for the app's own refresh
+  Menu.setApplicationMenu(appMenu()); // Windows: none (frees Ctrl+R for the app's refresh); macOS: Edit/Window roles
   mainWin = new BrowserWindow({
     width: 1240, height: 820, minWidth: 760, minHeight: 500,
     title: t('УлГУ · Портал студента'), icon: path.join(__dirname, 'icon.png'),
@@ -357,8 +383,12 @@ app.whenReady().then(() => {
       backgroundMaterial: 'mica',
       backgroundColor: '#00000000',
     } : {
+      // macOS: native traffic lights inside our 44px title strip, translucent sidebar material
       titleBarStyle: 'hiddenInset',
-      backgroundColor: nativeTheme.shouldUseDarkColors ? '#16181f' : '#f4f6fb',
+      trafficLightPosition: { x: 18, y: 15 },
+      vibrancy: 'sidebar',
+      visualEffectState: 'active',
+      backgroundColor: '#00000000',
     }),
     // Same partition so course images (pluginfile.php) load with the session cookie.
     // plugins: Chromium's PDF viewer only runs with it (otherwise PDFs render blank).
