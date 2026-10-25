@@ -1,5 +1,23 @@
 # Changelog / История изменений
 
+## 1.1.0-beta.2 — 2026-10-25 (pre-release)
+
+Fixes from the first macOS test round. / Исправления по итогам первого круга тестов на macOS.
+
+**English**
+- macOS: the window no longer flashes half-transparent when brought back from the Dock or menu bar.
+- Ctrl/⌘K search: Messages and Notifications now have their icons.
+- Calendar opens right away: the portal's first calendar request in a session can take minutes, so classes and saved events show immediately and fresh events appear when ready. The current month is also loaded in the background shortly after start.
+- If the portal ends your session (for example from its side), a bar with a "Sign in" button appears, plus a system notification when the window is hidden.
+- During portal maintenance the app shows saved data with an "under maintenance" bar instead of empty sections.
+
+**Русский**
+- macOS: окно больше не появляется полупрозрачным при возврате из Dock или строки меню.
+- Поиск Ctrl/⌘K: у «Сообщений» и «Уведомлений» появились значки.
+- Календарь открывается сразу: первый запрос календаря к порталу за сессию может идти минутами, поэтому занятия и сохранённые события показываются сразу, а свежие события подгружаются следом. Текущий месяц также подгружается в фоне вскоре после запуска.
+- Если портал завершил сессию (например, со своей стороны), появляется плашка с кнопкой «Войти», а при скрытом окне — системное уведомление.
+- Во время техработ на портале приложение показывает сохранённые данные с плашкой «Портал на техническом обслуживании», а не пустые разделы.
+
 ## 1.1.0-beta.1 — 2026-10-25 (pre-release)
 
 First macOS test build. / Первая тестовая сборка для macOS.
