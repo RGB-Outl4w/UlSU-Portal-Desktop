@@ -10,6 +10,7 @@ out/
 Thumbs.db
 desktop.ini
 brag-output/
+brag-output-*/
 
 # local-only notes and guides (never published)
 private/
