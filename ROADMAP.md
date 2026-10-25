@@ -152,7 +152,7 @@ The app stays "Desktop": macOS comes first, Android later. iOS is out of scope f
 - `build.mac` in package.json: targets `dmg` + `zip`, separate `arm64` (Apple Silicon) and `x64` (Intel) builds, `category: public.app-category.education`.
 - No Apple Developer account yet: builds are **ad-hoc signed** (required on Apple Silicon) and not notarized. Check with `codesign --verify --deep --strict` in CI.
 - CI: add a `macos-latest` job to `.github/workflows/build.yml` next to the Windows job. On `v*` tags both attach to the same draft release. A manual run (`workflow_dispatch`) produces **test builds** as artifacts.
-- Test builds for the tester go out as a GitHub **pre-release** (`v1.1.0-beta.N`), so no GitHub login is needed to download.
+- Test builds go out as a GitHub **pre-release** (`v1.1.0-beta.N`), so no GitHub login is needed to download.
 - Done when: CI produces `ULSU-Portal-Desktop-<ver>-arm64.dmg` and `-x64.dmg`, and they launch on a Mac.
 
 ## P2. macOS adaptations
@@ -166,12 +166,12 @@ Code that is Windows-specific today, by file:
 - **app.js:** shortcuts use `ctrlKey` → use `metaKey` on macOS (⌘K, ⌘R, ⌘1–9, ⌘B). Labels such as "Ctrl K" become "⌘K" (`navigator.platform` / `process.platform` via preload).
 - **app.css:** title strip, drag regions and sidebar top padding make room for the traffic lights (left, not right). Under vibrancy, `body` stays transparent only on macOS.
 - **Docs and UI text:** data folder `~/Library/Application Support/ulportal` (PRIVACY, About, README). Site: per-OS download buttons.
-- **Update check:** link to the release page (unchanged). The tester picks arm64 or x64.
-- Done when: every item on the tester checklist (TESTING-macOS.md) passes on Apple Silicon and, if available, Intel.
+- **Update check:** link to the release page (unchanged); the user picks arm64 or x64.
+- Done when: the macOS test checklist passes on Apple Silicon and, if available, Intel.
 
-## P3. Test round with the volunteer
+## P3. Test rounds on real Macs
 
-- The tester follows [TESTING-macOS.md](TESTING-macOS.md) and reports through the **macOS test report** issue form.
+- Testers install the pre-release and report through the **Bug report** issue form (platform: macOS).
 - Fix → new pre-release → retest, until the checklist is green.
 - Done when: no open `macos` issues marked blocker.
 

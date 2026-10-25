@@ -1,0 +1,83 @@
+name: Bug report / Сообщить об ошибке
+description: Something doesn't work or looks wrong / Что-то не работает или выглядит не так
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never include** passwords, MAX codes, cookies, or screenshots with personal data (names, grades, messages) — blur them first.
+        **Не прикладывайте** пароли, коды MAX, cookie и скриншоты с личными данными (ФИО, оценки, сообщения) — закрасьте их.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / Платформа
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS version / Версия системы
+      placeholder: "Windows 11 24H2 / macOS 15.3"
+  - type: input
+    id: version
+    attributes:
+      label: App version / Версия приложения
+      description: About → Version / «О приложении» → Версия
+      placeholder: "1.1.0-beta.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / Где проблема
+      options:
+        - Install / first launch — Установка / первый запуск
+        - Window, menu, tray / menu bar — Окно, меню, трей / строка меню
+        - Sign-in / session — Вход / сессия
+        - A section of the app — Раздел приложения
+        - Keyboard — Клавиатура
+        - Notifications / autostart — Уведомления / автозапуск
+        - Offline — Работа без сети
+        - Language / About — Язык / «О приложении»
+        - Other — Другое
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity / Насколько мешает
+      options:
+        - Blocking (won't start, can't sign in, crashes) — Блокирует
+        - Gets in the way — Мешает работать
+        - Minor / cosmetic — Мелочь / внешний вид
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps / Шаги
+      placeholder: |
+        1. Open Courses / Открыть «Курсы»
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs. actual / Что ожидалось и что произошло
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output or session.log (optional) / Вывод или session.log (необязательно)
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots, personal data blurred (optional) / Скриншоты, личные данные закрашены (необязательно)
