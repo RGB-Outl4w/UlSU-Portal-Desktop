@@ -1,0 +1,23 @@
+{
+  "name": "ulportal",
+  "version": "1.0.0",
+  "description": "Unofficial desktop client for portal.ulsu.ru (Ulyanovsk State University)",
+  "author": "Maksim Surgutskii",
+  "license": "MIT",
+  "homepage": "https://rgb-outl4w.github.io/UlSU-Portal-Desktop/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RGB-Outl4w/UlSU-Portal-Desktop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/issues"
+  },
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^45.0.0"
+  }
+}

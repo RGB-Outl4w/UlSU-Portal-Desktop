@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ru" data-lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>УлГУ · Портал студента — ULSU Portal Desktop</title>
+  <meta name="description" content="Неофициальное настольное приложение для portal.ulsu.ru. Unofficial desktop app for the Ulyanovsk State University student portal.">
+  <meta property="og:title" content="ULSU Portal Desktop · УлГУ · Портал студента">
+  <meta property="og:description" content="Sign in once, see your day at a glance. Unofficial desktop app for portal.ulsu.ru.">
+  <meta name="theme-color" content="#0d45ca">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <script>document.documentElement.classList.add('js');</script>
+  <style>
+    :root {
+      --brand: #0d45ca; --brand-2: #2f7bff;
+      --bg: #f6f7fb; --surface: #ffffff; --text: #18202e; --muted: #5f687c; --line: rgba(20, 30, 60, .1);
+      --green: #12a06a; --orange: #d9770b; --soft: rgba(13, 69, 202, .08);
+      --r: 14px; --ease: cubic-bezier(.2, .8, .2, 1);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #111318; --surface: #1a1d24; --text: #e7eaf1; --muted: #9aa3b8; --line: rgba(255, 255, 255, .09);
+        --brand: #5b8cff; --green: #3cc98d; --orange: #f2a145; --soft: rgba(91, 140, 255, .12);
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: var(--brand); }
+    img { max-width: 100%; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+    /* language: content is written twice, one copy hidden */
+    html[data-lang="ru"] .en, html[data-lang="en"] .ru { display: none !important; }
+
+    /* nav */
+    nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); background: color-mix(in oklab, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+    nav .wrap { display: flex; align-items: center; gap: 16px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; color: var(--text); text-decoration: none; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .brand span { font-weight: 400; color: var(--muted); }
+    nav .links { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: 14px; }
+    nav .links a { color: var(--muted); text-decoration: none; }
+    nav .links a:hover { color: var(--text); }
+    .lang { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--soft); }
+    .lang button { border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 8px; cursor: pointer; color: var(--muted); }
+    .lang button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+    /* hero */
+    .hero { position: relative; overflow: hidden; padding: 72px 0 40px; }
+    .hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 640px; background: radial-gradient(closest-side, color-mix(in oklab, var(--brand) 22%, transparent), transparent); pointer-events: none; }
+    .hero .wrap { position: relative; display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: center; }
+    .tag { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--orange); background: color-mix(in oklab, var(--orange) 12%, transparent); padding: 4px 12px; border-radius: 20px; }
+    h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.08; letter-spacing: -.02em; margin: 16px 0 16px; }
+    h1 b { background: linear-gradient(120deg, var(--brand-2), var(--brand)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { font-size: 18px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 22px; border-radius: 12px; font-weight: 600; text-decoration: none; transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.primary { color: #fff; background: linear-gradient(120deg, var(--brand-2), #0d45ca); box-shadow: 0 10px 24px -10px rgba(13, 69, 202, .8); }
+    .btn.ghost { color: var(--text); background: var(--surface); border: 1px solid var(--line); }
+    .note { font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+    /* app mock-up (sample data only) */
+    .mock { border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 40px 80px -30px rgba(13, 30, 80, .45); overflow: hidden; display: grid; grid-template-columns: 150px 1fr; min-height: 380px; font-size: 13px; transform: perspective(1400px) rotateY(-6deg) rotateX(2deg); }
+    .mock aside { background: color-mix(in oklab, var(--bg) 70%, var(--surface)); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--line); }
+    .mock aside .b { display: flex; align-items: center; gap: 8px; font-weight: 800; padding: 0 6px 12px; }
+    .mock aside .b img { width: 22px; border-radius: 6px; }
+    .mock aside i { font-style: normal; padding: 7px 10px; border-radius: 8px; color: var(--muted); }
+    .mock aside i.on { background: var(--soft); color: var(--brand); font-weight: 600; }
+    .mock main { padding: 16px; display: grid; gap: 12px; align-content: start; }
+    .mock .banner { color: #fff; border-radius: 12px; padding: 14px 16px; background: linear-gradient(125deg, #2f7bff, #0d45ca 60%, #0a2f8f); }
+    .mock .banner small { opacity: .8; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 10px; }
+    .mock .banner b { display: block; font-size: 16px; margin: 4px 0 2px; }
+    .mock .bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .25); margin-top: 10px; }
+    .mock .bar i { display: block; height: 100%; width: 62%; border-radius: 3px; background: #fff; }
+    .mock .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; }
+    .mock .card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .mock .card h4 { margin: 0 0 6px; font-size: 13px; }
+    .mock .row { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); min-width: 0; }
+    .mock .row > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mock .row:first-of-type { border-top: 0; }
+    .mock .t { font-weight: 600; font-variant-numeric: tabular-nums; flex: none; }
+    .mock .pill { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; }
+    .mock .lec { color: var(--brand); background: var(--soft); }
+    .mock .pra { color: var(--green); background: color-mix(in oklab, var(--green) 14%, transparent); }
+    .mock .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); margin-top: 6px; flex: none; }
+    .mock .muted { color: var(--muted); font-size: 11px; }
+
+    section { padding: 64px 0; }
+    h2 { font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -.01em; margin: 0 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 32px; max-width: 46em; }
+
+    /* features */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .feat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
+    .feat:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -18px rgba(13, 30, 80, .4); }
+    .feat svg { width: 26px; height: 26px; fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .feat h3 { margin: 10px 0 6px; font-size: 17px; }
+    .feat p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    /* steps */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: s; }
+    .step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+    .step::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--soft); color: var(--brand); font-weight: 800; margin-bottom: 10px; }
+    .step h3 { margin: 0 0 6px; font-size: 17px; }
+    .step p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    /* privacy band */
+    .privacy { background: linear-gradient(135deg, color-mix(in oklab, var(--green) 10%, var(--surface)), var(--surface)); border: 1px solid var(--line); border-radius: 20px; padding: 32px; display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; }
+    .privacy .big { width: 72px; height: 72px; border-radius: 20px; display: grid; place-items: center; background: color-mix(in oklab, var(--green) 16%, transparent); }
+    .privacy .big svg { width: 36px; height: 36px; fill: none; stroke: var(--green); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .privacy ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+
+    /* faq */
+    details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+    summary { cursor: pointer; font-weight: 600; }
+    details p { color: var(--muted); margin: 10px 0 0; }
+
+    footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: grid; gap: 10px; }
+    footer .links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+    /* hidden only when JS runs (it reveals them on scroll); without JS everything stays visible */
+    .js .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+    .js .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .btn, .feat { transition: none; } .mock { transform: none; } html { scroll-behavior: auto; } }
+
+    @media (max-width: 880px) {
+      .hero .wrap { grid-template-columns: 1fr; }
+      .mock { transform: none; grid-template-columns: 1fr; }
+      .mock aside { display: none; }
+      .steps { grid-template-columns: 1fr; }
+      .privacy { grid-template-columns: 1fr; }
+      nav .links a { display: none; }
+    }
+    @media (max-width: 520px) { .mock .cols { grid-template-columns: 1fr; } .brand span { display: none; } }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <a class="brand" href="#"><img src="logo.svg" alt=""> УлГУ <span class="ru">Портал студента</span><span class="en">Student Portal</span></a>
+      <div class="links">
+        <a href="#features"><span class="ru">Возможности</span><span class="en">Features</span></a>
+        <a href="#privacy"><span class="ru">Конфиденциальность</span><span class="en">Privacy</span></a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">GitHub</a>
+        <div class="lang" role="group" aria-label="Language / Язык">
+          <button data-set-lang="ru">RU</button>
+          <button data-set-lang="en">EN</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="tag">● <span class="ru">Неофициальное приложение</span><span class="en">Unofficial app</span></span>
+        <h1>
+          <span class="ru">Портал УлГУ — <b>без повторного входа</b></span>
+          <span class="en">The ULSU portal, <b>signed in for good</b></span>
+        </h1>
+        <p class="lead">
+          <span class="ru">Настольное приложение для portal.ulsu.ru. Входите один раз и больше не ждёте код MAX. Расписание, курсы, дедлайны, оценки и сообщения — в быстром и удобном интерфейсе.</span>
+          <span class="en">A desktop app for portal.ulsu.ru. Sign in once and stop waiting for MAX codes. Schedule, courses, deadlines, grades and messages in a fast, clean interface.</span>
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases">
+            <span class="ru">Скачать для Windows</span><span class="en">Download for Windows</span>
+          </a>
+          <a class="btn ghost" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">
+            <span class="ru">Исходный код</span><span class="en">Source code</span>
+          </a>
+        </div>
+        <p class="note"><span class="ru">Windows 10/11 · Бесплатно · Открытый код (MIT) · Версия 1.0.0</span><span class="en">Windows 10/11 · Free · Open source (MIT) · Version 1.0.0</span></p>
+      </div>
+
+      <!-- Illustration with sample data; not a screenshot of anyone's account. -->
+      <div class="mock reveal" aria-hidden="true">
+        <aside>
+          <div class="b"><img src="logo.svg" alt="">УлГУ</div>
+          <i class="on"><span class="ru">Сегодня</span><span class="en">Today</span></i>
+          <i><span class="ru">Расписание</span><span class="en">Schedule</span></i>
+          <i><span class="ru">Календарь</span><span class="en">Calendar</span></i>
+          <i><span class="ru">Курсы</span><span class="en">Courses</span></i>
+          <i><span class="ru">Дедлайны</span><span class="en">Deadlines</span></i>
+          <i><span class="ru">Сообщения</span><span class="en">Messages</span></i>
+          <i><span class="ru">Оценки</span><span class="en">Grades</span></i>
+        </aside>
+        <main>
+          <div class="banner">
+            <small><span class="ru">Идёт сейчас</span><span class="en">Happening now</span></small>
+            <b><span class="ru">Базы данных</span><span class="en">Databases</span></b>
+            <span class="ru">Лекции · 3/217 · до 12:20 · осталось 34 мин</span><span class="en">Lecture · 3/217 · until 12:20 · 34 min left</span>
+            <div class="bar"><i></i></div>
+          </div>
+          <div class="cols">
+            <div class="card">
+              <h4><span class="ru">Пары сегодня</span><span class="en">Classes today</span></h4>
+              <div class="row"><span class="t">09:30–10:50</span><span><span class="pill pra"><span class="ru">Практ.</span><span class="en">Practice</span></span> <span class="ru">Философия</span><span class="en">Philosophy</span></span></div>
+              <div class="row"><span class="t">11:00–12:20</span><span><span class="pill lec"><span class="ru">Лекции</span><span class="en">Lecture</span></span> <span class="ru">Базы данных</span><span class="en">Databases</span></span></div>
+              <div class="row"><span class="t">12:45–14:05</span><span><span class="pill pra"><span class="ru">Практ.</span><span class="en">Practice</span></span> <span class="ru">Web-технологии</span><span class="en">Web technologies</span></span></div>
+            </div>
+            <div class="card">
+              <h4><span class="ru">Дедлайны</span><span class="en">Deadlines</span></h4>
+              <div class="row"><span class="dot"></span><span><span class="ru">Лабораторная работа 3</span><span class="en">Lab assignment 3</span><br><span class="muted"><span class="ru">через 2 дня</span><span class="en">in 2 days</span></span></span></div>
+              <div class="row"><span class="dot"></span><span><span class="ru">Тест по разделу 2</span><span class="en">Section 2 quiz</span><br><span class="muted"><span class="ru">через 5 дней</span><span class="en">in 5 days</span></span></span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </header>
+
+  <section id="features">
+    <div class="wrap">
+      <h2 class="reveal"><span class="ru">Всё, что нужно на учёбе, — в одном окне</span><span class="en">Everything for your studies in one window</span></h2>
+      <p class="sub reveal"><span class="ru">Данные берутся с вашего портала, но показываются быстрее и удобнее.</span><span class="en">Your data comes from the portal, presented faster and more clearly.</span></p>
+      <div class="grid">
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+          <h3><span class="ru">Сегодня</span><span class="en">Today</span></h3>
+          <p><span class="ru">Какая пара идёт и какая следующая, дедлайны, уведомления и задолженности на одном экране.</span><span class="en">The class in progress and the next one, deadlines, notifications and debts on one screen.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <h3><span class="ru">Расписание и календарь</span><span class="en">Schedule & calendar</span></h3>
+          <p><span class="ru">I/II неделя, текущая и следующая неделя, месяц с занятиями и событиями курсов.</span><span class="en">I/II week parity, this and next week, and a month view with classes and course events.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <h3><span class="ru">Курсы внутри приложения</span><span class="en">Courses inside the app</span></h3>
+          <p><span class="ru">Разделы, отметки о выполнении, материалы по типам, просмотр PDF, участники и избранное.</span><span class="en">Sections, completion, materials by type, a PDF viewer, participants and favourites.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg>
+          <h3><span class="ru">Оценки и успеваемость</span><span class="en">Grades & record</span></h3>
+          <p><span class="ru">Оценки по курсам, средний балл по семестрам и учебный план с нагрузкой по часам.</span><span class="en">Course grades, your average per semester, and the study plan with hours per discipline.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <h3><span class="ru">Сообщения и уведомления</span><span class="en">Messages & notifications</span></h3>
+          <p><span class="ru">Чаты, ответы, счётчики непрочитанного и уведомления Windows даже из трея.</span><span class="en">Chats, replies, unread badges and Windows notifications, even from the tray.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <h3><span class="ru">Сервисы</span><span class="en">Services</span></h3>
+          <p><span class="ru">Заказ справок, вопросы университету, личные файлы и вход в электронные библиотеки.</span><span class="en">Certificate orders, questions to the university, personal files and e-library sign-in.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.82a15 15 0 0 1 4.17-2.65M10.66 5c4.01-.36 8.14.9 11.34 3.76M12 20h.01"/></svg>
+          <h3><span class="ru">Работает без сети</span><span class="en">Works offline</span></h3>
+          <p><span class="ru">Открытые разделы сохраняются и показываются мгновенно, даже без подключения.</span><span class="en">Opened sections are saved and show up instantly, even without a connection.</span></p></div>
+        <div class="feat reveal"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <h3><span class="ru">Удобство</span><span class="en">Comfort</span></h3>
+          <p><span class="ru">Светлая и тёмная тема, русский и английский, поиск по Ctrl+K и горячие клавиши.</span><span class="en">Light and dark themes, Russian and English, Ctrl+K search and keyboard shortcuts.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="reveal"><span class="ru">Как начать</span><span class="en">Getting started</span></h2>
+      <p class="sub reveal"><span class="ru">Три шага — и портал всегда под рукой.</span><span class="en">Three steps and the portal is always at hand.</span></p>
+      <div class="steps">
+        <div class="step reveal"><h3><span class="ru">Установите</span><span class="en">Install</span></h3><p><span class="ru">Скачайте установщик со страницы релизов и запустите его.</span><span class="en">Download the installer from the releases page and run it.</span></p></div>
+        <div class="step reveal"><h3><span class="ru">Войдите один раз</span><span class="en">Sign in once</span></h3><p><span class="ru">На настоящей странице портала: логин, пароль и код MAX — как обычно.</span><span class="en">On the real portal page: login, password and MAX code, as usual.</span></p></div>
+        <div class="step reveal"><h3><span class="ru">Пользуйтесь</span><span class="en">Done</span></h3><p><span class="ru">Сессия сохраняется до 30 дней, а приложение может запускаться вместе с Windows.</span><span class="en">The session is kept for up to 30 days, and the app can start with Windows.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <div class="privacy reveal">
+        <div class="big"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <div>
+          <h2><span class="ru">Ваши данные остаются у вас</span><span class="en">Your data stays with you</span></h2>
+          <ul>
+            <li><span class="ru">Пароль и код MAX вводятся на странице портала — приложение их не видит.</span><span class="en">Your password and MAX code are entered on the portal's page; the app never sees them.</span></li>
+            <li><span class="ru">Всё хранится только на вашем компьютере. Своих серверов у приложения нет.</span><span class="en">Everything is stored only on your computer. The app has no servers of its own.</span></li>
+            <li><span class="ru">Нет аналитики, телеметрии и рекламы. Связь — только с portal.ulsu.ru.</span><span class="en">No analytics, telemetry or ads. It only talks to portal.ulsu.ru.</span></li>
+          </ul>
+          <p><a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/blob/main/PRIVACY.ru.md" class="ru">Политика конфиденциальности →</a><a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/blob/main/PRIVACY.md" class="en">Privacy policy →</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2 class="reveal">FAQ</h2>
+      <p class="sub reveal"><span class="ru">Частые вопросы.</span><span class="en">Common questions.</span></p>
+      <details class="reveal"><summary><span class="ru">Это официальное приложение УлГУ?</span><span class="en">Is this an official ULSU app?</span></summary>
+        <p><span class="ru">Нет. Это независимый проект студента; университет его не создавал и не одобрял. Важное всегда проверяйте на официальном портале.</span><span class="en">No. It's an independent student project, not made or endorsed by the university. Always check important information on the official portal.</span></p></details>
+      <details class="reveal"><summary><span class="ru">Безопасно ли вводить пароль?</span><span class="en">Is it safe to enter my password?</span></summary>
+        <p><span class="ru">Вы вводите его на настоящей странице входа portal.ulsu.ru, открытой в окне приложения. Приложение не читает поля входа и не хранит пароль; сохраняется только cookie сессии портала — так же, как в браузере.</span><span class="en">You type it on the real portal.ulsu.ru login page shown in the app's window. The app doesn't read the sign-in fields or store your password; only the portal's session cookie is kept, just like in a browser.</span></p></details>
+      <details class="reveal"><summary><span class="ru">Почему не нужно каждый раз вводить код MAX?</span><span class="en">Why don't I need a MAX code every time?</span></summary>
+        <p><span class="ru">Браузер удаляет cookie сессии портала при закрытии. Приложение сохраняет его на диске и поддерживает сессию активной, пока работает.</span><span class="en">Browsers delete the portal's session cookie when they close. The app saves it on disk and keeps the session alive while it runs.</span></p></details>
+      <details class="reveal"><summary><span class="ru">Есть версия для macOS или телефона?</span><span class="en">Is there a macOS or phone version?</span></summary>
+        <p><span class="ru">Пока только Windows 10/11. Код открыт — сборку для других систем можно сделать из исходников.</span><span class="en">Windows 10/11 for now. The code is open, so builds for other systems can be made from source.</span></p></details>
+      <details class="reveal"><summary><span class="ru">Что-то перестало работать</span><span class="en">Something stopped working</span></summary>
+        <p><span class="ru">Портал иногда меняется. Создайте issue на GitHub с названием раздела и описанием; не прикладывайте пароли, коды и чужие персональные данные.</span><span class="en">The portal changes from time to time. Open a GitHub issue with the section name and what you see; never include passwords, codes or other people's personal data.</span></p></details>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <span class="ru">Автор — Сургутский Максим Эдуардович, студент группы ИС-О-25/1, при участии Claude Code (Anthropic).</span>
+        <span class="en">Made by Maksim Surgutskii, student of group ИС-О-25/1, with the help of Claude Code (Anthropic).</span>
+      </div>
+      <div>
+        <span class="ru">Неофициальный проект, не связан с Ульяновским государственным университетом. Названия «УлГУ» и «ULSU» принадлежат их правообладателям.</span>
+        <span class="en">Unofficial project, not affiliated with Ulyanovsk State University. "УлГУ" and "ULSU" belong to their respective owners.</span>
+      </div>
+      <div class="links">
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">GitHub</a>
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/blob/main/LICENSE"><span class="ru">Лицензия MIT</span><span class="en">MIT License</span></a>
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/blob/main/NOTICE.md"><span class="ru">Отказ от ответственности</span><span class="en">Disclaimer</span></a>
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/blob/main/THIRD_PARTY_NOTICES.md"><span class="ru">Сторонние компоненты</span><span class="en">Third-party notices</span></a>
+        <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/issues"><span class="ru">Сообщить о проблеме</span><span class="en">Report a problem</span></a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Language: ?lang=ru|en, then the saved choice, then the browser language.
+    const root = document.documentElement;
+    const saved = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })();
+    const param = new URLSearchParams(location.search).get('lang');
+    const setLang = (l) => {
+      root.dataset.lang = l;
+      root.lang = l;
+      document.querySelectorAll('[data-set-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setLang === l)));
+      try { localStorage.setItem('lang', l); } catch {}
+    };
+    setLang(['ru', 'en'].includes(param) ? param : saved || (navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en'));
+    document.querySelectorAll('[data-set-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.setLang)));
+
+    // Fade sections in as they scroll into view.
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  </script>
+</body>
+</html>

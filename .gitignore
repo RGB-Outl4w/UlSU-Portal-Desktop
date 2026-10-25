@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.log
+
+# local tooling / editor
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
