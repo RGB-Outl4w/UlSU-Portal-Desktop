@@ -175,6 +175,13 @@ Code that is Windows-specific today, by file:
 - **Update check:** link to the release page (unchanged); the user picks arm64 or x64.
 - Done when: the macOS test checklist passes on Apple Silicon and, if available, Intel.
 
+**Status (2026-10-25):** implemented. CI full-screen capture on macOS 26 (arm64) shows:
+- traffic lights in the title strip, with the sidebar starting below them; sidebar vibrancy;
+- app menu (app name / Edit / View / Window), template icon in the menu bar, Dock icon, ⌘K label;
+- the sign-in window opens as a native sheet of the main window.
+
+Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, Edit-menu clipboard in text fields, Dock/menu-bar behaviour, "Open at login", notification permission, Gatekeeper first launch, Intel build.
+
 ## P3. Test rounds on real Macs
 
 - Testers install the pre-release and report through the **Bug report** issue form (platform: macOS).
