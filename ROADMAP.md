@@ -253,4 +253,5 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - A local signed build passes `apksigner verify`. It installs on a clean emulator, isn't debuggable, and opens the portal sign-in page.
   - CI: an `android` job (JDK 21) builds `ULSU-Portal-Android-<version>.apk`, checks the signature, and joins the release with the Windows and macOS files. It needs the repo secrets `ANDROID_KEYSTORE` (the .jks, base64) and `ANDROID_KEYSTORE_PASSWORD`.
   - README (EN/RU) has an Android row and install steps; PRIVACY (EN/RU) describes Android storage and the background check; the site has an Android button (the main one on Android phones); CHANGELOG has an Unreleased entry.
-  - Next: set the two secrets, then tag a pre-release (`v1.2.0-beta.1`) for testers.
+  - 1.2.0-beta.1 was published as a pre-release on 2026-10-27. All 4 CI jobs passed. The `ULSU-Portal-Android-1.2.0-beta.1.apk` asset (versionCode 1020001) is signed with the release key (SHA-256 `36c93229…a04a23`).
+  - Next: test rounds on real phones (as P3 was for macOS), then 1.2.0.
