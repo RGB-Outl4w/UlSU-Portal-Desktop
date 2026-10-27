@@ -78,7 +78,9 @@
     if (isMaintenance(res.status, html)) throw new Error('MAINTENANCE');
     if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return get(p); }
     sesskey = html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
-    userid = Number(html.match(/data-userid="(\d+)"/)?.[1]) || userid;
+    const id = Number(html.match(/data-userid="(\d+)"/)?.[1]);
+    if (id && !userid) setTimeout(firstPoll, 2000); // first unread counts right after sign-in/startup
+    userid = id || userid;
     return html;
   }
 
@@ -184,6 +186,30 @@
     return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update: newer(r.tag_name, current) };
   }
 
+  // Unread check (PortalCheck.java, which also posts the notifications): every 3 min while the app is on
+  // screen and whenever it comes back; WorkManager runs the same check every 15 min in the background.
+  const POLL_MS = 3 * 60 * 1000;
+  const listeners = { unread: [], session: [] };
+  async function poll() {
+    if (loginPromise) return null; // the sign-in page is open: the session is being replaced
+    try {
+      const r = await native('poll');
+      listeners.session.forEach((cb) => cb(r.session));
+      if (r.session !== 'ok') return null;
+      const unread = { notifications: r.notifications, messages: r.messages };
+      listeners.unread.forEach((cb) => cb(unread));
+      return unread;
+    } catch {
+      return null; // offline; the next tick retries
+    }
+  }
+  function firstPoll() {
+    poll();
+    native('askNotifications'); // Android 13+: once
+  }
+  setInterval(() => { if (!document.hidden) poll(); }, POLL_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+
   const clearCache = () => store('readwrite', (s) => s.clear());
   const DOCS = ['PRIVACY.md', 'PRIVACY.ru.md', 'NOTICE.md', 'LICENSE', 'LICENSE.ru.md', 'THIRD_PARTY_NOTICES.md'];
 
@@ -214,10 +240,11 @@
     doc: (name) => (DOCS.includes(name) ? fetch(name).then((r) => r.text()) : Promise.resolve(null)),
     clearCache,
     checkUpdate,
-    poll: async () => null, // A3: background check via WorkManager
-    onUnread: () => {},
-    onNavigate: () => {},
-    onSession: () => {},
+    poll,
+    onUnread: (cb) => listeners.unread.push(cb),
+    onSession: (cb) => listeners.session.push(cb),
+    // notification tap (UlPortalPlugin.handleOnNewIntent)
+    onNavigate: (cb) => Capacitor.nativeCallback('UlPortal', 'addListener', { eventName: 'navigate' }, (d) => cb(d.view)),
     // Back button / gesture (UlPortalPlugin forwards it unless the portal overlay is open)
     onBack: (cb) => Capacitor.nativeCallback('UlPortal', 'addListener', { eventName: 'back' }, cb),
     minimize: () => native('minimize'),

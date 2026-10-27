@@ -233,4 +233,15 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - Fixed: Services' wide tab row made the page wider than the screen, which pushed the tab bar off-screen. The header tools now have `min-width: 0`, and there is a viewport meta tag.
   - Not yet: 44 px for small icon buttons (refresh, month arrows); a real phone.
 - **A3:** background check via WorkManager (≥ 15 min); session keepalive best-effort; local notifications.
+
+  **Status (2026-10-27):** working on the emulator.
+  - `PortalCheck.java` is the Android version of main.js `poll()`. It sends one `service.php` request with both calls (popup notifications + conversations), using the WebView's cookies and a cached sesskey/userid; on a stale sesskey it looks at `/my/` once.
+  - It returns the unread counts and the session state (ok / expired / maintenance).
+  - It notifies about new unread items (at most 3 of each kind; the first run only records what exists) and, once, about a session that ended. Seen ids and state live in SharedPreferences `poll`; logout clears them, so a logout doesn't count as an ended session.
+  - The app runs it every 3 min while on screen and whenever it comes back (`portal.poll`). This drives the badges and the session bar.
+  - WorkManager runs it every 15 min in the background (needs network). It doubles as the keepalive; Doze can stretch the interval, so the keepalive is best-effort.
+  - Android 13+ asks for notification permission once, after the first session is seen. A notification tap opens its view (Notifications / Messages / Today), from a cold start too.
+  - Verified with a temporary test build that treated read items as new: the foreground path, the background job starting the app with no UI (cookies work), the bell status icon, and tap → Messages.
+  - Not verified: the "session ended" notification (it needs a real expiry); how long the session survives overnight under Doze.
+  - Capacitor's console logging is off (`loggingBehavior: none`): debug builds were printing every portal response to logcat.
 - **A4:** APK in GitHub Releases. Google Play later ($25 one-time).

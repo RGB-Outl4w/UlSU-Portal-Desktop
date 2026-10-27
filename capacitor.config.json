@@ -2,6 +2,7 @@
   "appId": "ru.ulportal.app",
   "appName": "ULSU Portal",
   "webDir": "www",
+  "loggingBehavior": "none",
   "plugins": {
     "CapacitorCookies": { "enabled": true }
   }

@@ -1,11 +1,13 @@
 package ru.ulportal.app;
 
 import android.app.DownloadManager;
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -22,6 +24,8 @@ import android.webkit.WebViewClient;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
@@ -44,6 +48,8 @@ public class UlPortalPlugin extends Plugin {
         // Transparent, so the theme-coloured window background (res/values*/page.xml) shows instead of white
         // while the page repaints after a light/dark switch.
         getBridge().getWebView().setBackgroundColor(Color.TRANSPARENT);
+        PortalCheck.schedule(getContext());
+        handleOnNewIntent(getActivity().getIntent()); // started from a notification
         // Synchronous localStorage mirror for portal-android.js (WebView doesn't flush localStorage before a kill).
         SharedPreferences prefs = getContext().getSharedPreferences("webprefs", Context.MODE_PRIVATE);
         getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -191,8 +197,44 @@ public class UlPortalPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    // Unread counts + session state for the app (portal.poll); also notifies about new items.
+    @PluginMethod
+    public void poll(PluginCall call) {
+        new Thread(() -> {
+            try {
+                call.resolve(PortalCheck.check(getContext()));
+            } catch (Exception e) {
+                call.reject("OFFLINE: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    // Asked once, after the first successful sign-in or start with a session (Android 13+).
+    @PluginMethod
+    public void askNotifications(PluginCall call) {
+        SharedPreferences p = PortalCheck.prefs(getContext());
+        if (Build.VERSION.SDK_INT >= 33 && !p.getBoolean("asked", false)
+            && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            p.edit().putBoolean("asked", true).apply();
+            ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.POST_NOTIFICATIONS }, 1);
+        }
+        call.resolve();
+    }
+
+    // Notification tap: app.js opens the matching view (kept until the listener is attached on a cold start).
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        String view = intent == null ? null : intent.getStringExtra("view");
+        if (view == null) return;
+        intent.removeExtra("view");
+        JSObject data = new JSObject();
+        data.put("view", view);
+        notifyListeners("navigate", data, true);
+    }
+
     @PluginMethod
     public void clearCookies(PluginCall call) {
+        PortalCheck.reset(getContext());
         CookieManager.getInstance().removeAllCookies((ok) -> {
             CookieManager.getInstance().flush();
             call.resolve();
