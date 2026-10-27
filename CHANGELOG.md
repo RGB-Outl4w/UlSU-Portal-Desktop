@@ -1,5 +1,25 @@
 # Changelog / История изменений
 
+## 1.2.0 — 2026-10-27
+
+**Android app.** / **Приложение для Android.**
+
+**English**
+- Android 10+ app (`.apk`): the same sections as on desktop, in a phone layout: a bottom tab bar, a More sheet, and list → detail for messages and notifications. The back button works, and there are light and dark themes.
+- Sign-in on the real portal page inside the app. When there's no live session it opens straight away, and after sign-in the app takes over smoothly. The session survives the app being closed.
+- Background check about every 15 minutes: notifications for new portal notifications and messages, and when the session ends. It also keeps the session alive (Android may run it less often to save battery). Tapping a notification opens its section.
+- PDFs open in the phone's own viewer; downloads go to Downloads.
+- Since 1.2.0-beta.1: the app's own icon and launch screen, no flash or text selection when tapping buttons, and a tidier course header on phones.
+- Windows and macOS: no changes for users.
+
+**Русский**
+- Приложение для Android 10+ (`.apk`): те же разделы, что на компьютере, в телефонном интерфейсе: нижняя панель вкладок, лист «Ещё», список → подробности для сообщений и уведомлений. Работает кнопка «Назад», есть светлая и тёмная тема.
+- Вход на настоящей странице портала внутри приложения. Если живой сессии нет, страница входа открывается сразу, а после входа плавно сменяется приложением. Сессия сохраняется и после закрытия приложения.
+- Фоновая проверка примерно раз в 15 минут: уведомления о новых уведомлениях и сообщениях портала и о завершении сессии. Она же поддерживает сессию (для экономии батареи Android может запускать её реже). Нажатие на уведомление открывает нужный раздел.
+- PDF открываются в программе просмотра на телефоне; файлы сохраняются в «Загрузки».
+- После 1.2.0-beta.1: собственный значок и экран запуска, кнопки не подсвечиваются и не выделяются при нажатии, аккуратнее шапка курса на телефоне.
+- Windows и macOS: для пользователей ничего не изменилось.
+
 ## 1.2.0-beta.1 — 2026-10-27 (pre-release)
 
 **Android app.** / **Приложение для Android.**
