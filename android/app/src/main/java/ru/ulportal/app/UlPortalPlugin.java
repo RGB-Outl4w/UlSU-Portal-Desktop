@@ -11,9 +11,13 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.view.Gravity;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
@@ -21,6 +25,8 @@ import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -35,6 +41,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 // Native side of portal-android.js: what main.js does with windows, files and the theme on desktop.
 @CapacitorPlugin(name = "UlPortal")
@@ -69,6 +77,14 @@ public class UlPortalPlugin extends Plugin {
                 notifyListeners("back", new JSObject());
             }
         });
+        // No session known to be alive (first start, after logout or an ended session): open the sign-in page
+        // right away, so the app's own screen doesn't show for a moment first. Posted: the activity's content
+        // view isn't set yet while plugins load.
+        if (!"ok".equals(PortalCheck.prefs(getContext()).getString("state", "none"))) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (closeLogin == null) showPortal(BASE + "/login/index.php", true, true);
+            });
+        }
     }
 
     // app.js has nothing left to close: leave the app like Home does, keeping it alive.
@@ -80,31 +96,57 @@ public class UlPortalPlugin extends Plugin {
 
     // Real portal login page: the user types login/password and the MAX code. We never touch the form,
     // only watch for landing on a logged-in page outside login/2FA paths (same check as main.js login()).
+    // Every sign-in request waits on one overlay, which may already be open from start-up (see load()).
+    private final List<PluginCall> loginCalls = new ArrayList<>();
+    private Runnable closeLogin; // set while the sign-in overlay is open
+
     @PluginMethod
     public void login(PluginCall call) {
-        showPortal(call, BASE + "/login/index.php", true);
+        getActivity().runOnUiThread(() -> {
+            loginCalls.add(call);
+            if (closeLogin == null) showPortal(BASE + "/login/index.php", true, false);
+        });
+    }
+
+    private void loginDone(boolean ok) {
+        if (ok) PortalCheck.prefs(getContext()).edit().putString("state", "ok").apply();
+        for (PluginCall c : loginCalls) {
+            if (ok) c.resolve();
+            else c.reject("Вход отменён");
+        }
+        loginCalls.clear();
     }
 
     // Portal pages open in an in-app WebView with the session; anything else in the system browser.
     @PluginMethod
     public void open(PluginCall call) {
         String url = call.getString("url", "");
-        if (url.startsWith(BASE)) {
-            showPortal(call, url, false);
-            return;
-        }
-        try {
-            getActivity().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-        } catch (ActivityNotFoundException ignored) {
+        if (url.startsWith(BASE)) showPortal(url, false, false);
+        else {
+            try {
+                getActivity().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            } catch (ActivityNotFoundException ignored) {
+            }
         }
         call.resolve();
     }
 
+    static boolean isLoginPage(String page) {
+        String path = page.startsWith(BASE + "/") ? Uri.parse(page).getPath() : null;
+        return path != null && path.toLowerCase().matches(".*(login|auth|mfa).*");
+    }
+
     // An overlay in the activity's own window, not a Dialog: with a Dialog the keyboard opened under it
     // (focus stayed on the activity window), so the MAX code page could not be typed into.
-    private void showPortal(PluginCall call, String url, boolean login) {
+    // A page-coloured cover sits under the WebView: it hides the app while signing in, and the WebView only
+    // fades in once a page has drawn. After sign-in the portal's own page stays hidden while the cover fades
+    // out to the app. instant: no fade-in (opened at start-up, before the app has drawn anything).
+    private void showPortal(String url, boolean login, boolean instant) {
         AppCompatActivity activity = getActivity();
         activity.runOnUiThread(() -> {
+            FrameLayout cover = new FrameLayout(activity);
+            cover.setBackgroundColor(ContextCompat.getColor(activity, R.color.page));
+            cover.setClickable(true); // taps don't reach the app underneath
             WebView web = new WebView(activity);
             WebSettings s = web.getSettings();
             s.setJavaScriptEnabled(true);
@@ -112,13 +154,17 @@ public class UlPortalPlugin extends Plugin {
             s.setBuiltInZoomControls(true);
             s.setDisplayZoomControls(false);
             web.setBackgroundColor(Color.WHITE);
+            web.setAlpha(0f);
+            // Shows while nothing is drawn yet, and after sign-in until the app takes over.
+            cover.addView(new ProgressBar(activity), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+            cover.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             // Edge-to-edge (targetSdk 35+): keep the page clear of the system bars and the keyboard.
-            ViewCompat.setOnApplyWindowInsetsListener(web, (v, insets) -> {
+            ViewCompat.setOnApplyWindowInsetsListener(cover, (v, insets) -> {
                 Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
                 v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
                 return WindowInsetsCompat.CONSUMED;
             });
-            boolean[] done = { false };
+            boolean[] done = { false }, closing = { false };
             Runnable[] close = { null };
             OnBackPressedCallback back = new OnBackPressedCallback(true) {
                 @Override
@@ -128,23 +174,42 @@ public class UlPortalPlugin extends Plugin {
                 }
             };
             close[0] = () -> {
-                if (web.getParent() == null) return;
+                if (closing[0]) return;
+                closing[0] = true;
                 back.remove();
-                ((ViewGroup) web.getParent()).removeView(web);
-                web.destroy();
-                if (login && !done[0]) call.reject("Вход отменён");
+                if (login) {
+                    closeLogin = null;
+                    if (!done[0]) loginDone(false);
+                }
+                cover.animate().alpha(0f).setDuration(220).withEndAction(() -> {
+                    ((ViewGroup) cover.getParent()).removeView(cover);
+                    web.destroy();
+                });
             };
             web.setWebViewClient(new WebViewClient() {
                 @Override
+                public void onPageStarted(WebView view, String page, Bitmap favicon) {
+                    // Leaving the sign-in pages: the portal itself (/my/) loads next. Keep it out of sight.
+                    if (login && page.startsWith(BASE + "/") && !isLoginPage(page)) view.animate().alpha(0f).setDuration(120);
+                }
+
+                // Fades in only once loaded: the portal's pages draw in visible stages (photo, bare form, styles).
+                @Override
                 public void onPageFinished(WebView view, String page) {
-                    if (!login || done[0] || !page.startsWith(BASE + "/")) return;
-                    String path = Uri.parse(page).getPath();
-                    if (path != null && path.toLowerCase().matches(".*(login|auth|mfa).*")) return;
+                    if (closing[0]) return;
+                    if (!login || isLoginPage(page) || !page.startsWith(BASE + "/")) {
+                        view.animate().alpha(1f).setDuration(180);
+                        return;
+                    }
                     view.evaluateJavascript("document.body.classList.contains('notloggedin')", (r) -> {
-                        if (done[0] || "true".equals(r)) return;
+                        if (done[0] || closing[0]) return;
+                        if ("true".equals(r)) {
+                            view.animate().alpha(1f).setDuration(180); // still signed out: show whatever this is
+                            return;
+                        }
                         done[0] = true;
                         persistSession();
-                        call.resolve();
+                        loginDone(true);
                         close[0].run();
                     });
                 }
@@ -158,12 +223,16 @@ public class UlPortalPlugin extends Plugin {
                 req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(link, disposition, mime));
                 getContext().getSystemService(DownloadManager.class).enqueue(req);
             });
+            if (login) closeLogin = close[0];
             activity.getOnBackPressedDispatcher().addCallback(back);
-            activity.addContentView(web, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            ViewCompat.requestApplyInsets(web);
+            if (!instant) {
+                cover.setAlpha(0f);
+                cover.animate().alpha(1f).setDuration(200);
+            }
+            activity.addContentView(cover, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            ViewCompat.requestApplyInsets(cover);
             web.requestFocus();
             web.loadUrl(url);
-            if (!login) call.resolve();
         });
     }
 
