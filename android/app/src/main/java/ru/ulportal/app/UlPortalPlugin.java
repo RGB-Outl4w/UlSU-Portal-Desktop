@@ -3,7 +3,9 @@ package ru.ulportal.app;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -12,6 +14,7 @@ import android.util.Base64;
 import android.graphics.Color;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -33,6 +36,38 @@ import java.io.OutputStream;
 @CapacitorPlugin(name = "UlPortal")
 public class UlPortalPlugin extends Plugin {
     static final String BASE = "https://portal.ulsu.ru";
+
+    // Back button / gesture goes to app.js (closes dialogs, the sheet, goes up a level). Registered first,
+    // so a portal overlay's own callback (added later) still wins while it is open.
+    @Override
+    public void load() {
+        // Synchronous localStorage mirror for portal-android.js (WebView doesn't flush localStorage before a kill).
+        SharedPreferences prefs = getContext().getSharedPreferences("webprefs", Context.MODE_PRIVATE);
+        getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public String load() {
+                return prefs.getString("localStorage", "{}");
+            }
+
+            @JavascriptInterface
+            public void save(String json) {
+                prefs.edit().putString("localStorage", json).commit();
+            }
+        }, "UlPrefs");
+        getActivity().getOnBackPressedDispatcher().addCallback(getActivity(), new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                notifyListeners("back", new JSObject());
+            }
+        });
+    }
+
+    // app.js has nothing left to close: leave the app like Home does, keeping it alive.
+    @PluginMethod
+    public void minimize(PluginCall call) {
+        getActivity().runOnUiThread(() -> getActivity().moveTaskToBack(true));
+        call.resolve();
+    }
 
     // Real portal login page: the user types login/password and the MAX code. We never touch the form,
     // only watch for landing on a logged-in page outside login/2FA paths (same check as main.js login()).

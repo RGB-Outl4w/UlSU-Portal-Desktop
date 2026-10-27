@@ -650,10 +650,14 @@ function portalImg(url, attrs = {}) {
   return img;
 }
 
+// Phones show a list or its detail (.split.detail, app.css); this closes the detail.
+const splitBack = () => h('button', { class: 'icon-btn split-back', title: T('Назад'), onclick: (e) => e.target.closest('.split').classList.remove('detail') }, '‹');
+
 function setBadge(view, count) {
-  const b = document.querySelector(`#nav [data-view="${view}"]`);
-  b?.querySelector('.count')?.remove();
-  if (count) b?.append(h('span', { class: 'count' }, count > 99 ? '99+' : String(count)));
+  for (const b of document.querySelectorAll(`#nav [data-view="${view}"], #tabbar [data-view="${view}"]`)) {
+    b.querySelector('.count')?.remove();
+    if (count) b.append(h('span', { class: 'count' }, count > 99 ? '99+' : String(count)));
+  }
 }
 portal.onUnread((c) => { setBadge('notifications', c.notifications); setBadge('messages', c.messages); });
 portal.onNavigate((view) => show(view, true));
@@ -685,7 +689,7 @@ Object.assign(views, {
         item.parentNode.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
         item.classList.add('sel');
         reader.replaceChildren(...clean([
-          h('div', { class: 'reader-head' },
+          h('div', { class: 'reader-head' }, splitBack(),
             h('span', { class: 'pill' + (n.component === NEWS ? ' ok' : '') }, n.component === NEWS ? T('Объявление') : T('Портал')),
             h('h2', {}, textOf(n.subject)),
             h('div', { class: 'sub' }, new Date(n.timecreated * 1000).toLocaleString(LOCALE, { dateStyle: 'long', timeStyle: 'short' }))),
@@ -760,7 +764,7 @@ Object.assign(views, {
         const err = h('div', { class: 'send-err' });
         const canSend = c.type === 2 || other?.canmessage !== false;
         chat.replaceChildren(
-          h('div', { class: 'chat-head' }, avatarOf(other, nameOf(c)),
+          h('div', { class: 'chat-head' }, splitBack(), avatarOf(other, nameOf(c)),
             h('div', {}, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : ''))),
           feed,
           canSend ? h('div', { class: 'composer' }, input, sendBtn) : h('div', { class: 'note composer-off' }, T('Этому собеседнику нельзя написать')),
@@ -1721,7 +1725,7 @@ Object.assign(views, {
         h('div', { class: 'card pane' },
           paneHead('settings', T('Работает на')),
           h('dl', { class: 'about-dl' },
-            row('Electron', a.electron), row('Chromium', a.chrome), row('Node.js', a.node), row('V8', a.v8), row('Windows', a.os))),
+            (a.runtime || [['Electron', a.electron], ['Chromium', a.chrome], ['Node.js', a.node], ['V8', a.v8], ['Windows', a.os]]).map(([k, v]) => row(k, v)))),
 
         h('div', { class: 'card pane' },
           paneHead('plan', T('Правовая информация')),
@@ -1734,14 +1738,14 @@ Object.assign(views, {
 
         h('div', { class: 'card pane' },
           paneHead('services', T('Данные и проект')),
-          h('p', { class: 'sub' }, T('Папка данных: {0}', a.dataDir)),
+          a.dataDir ? h('p', { class: 'sub' }, T('Папка данных: {0}', a.dataDir)) : null, // Android: app-private, nothing to open
           h('div', { class: 'about-btns' },
-            h('button', { class: 'chip-btn', onclick: async (e) => {
+            a.dataDir ? h('button', { class: 'chip-btn', onclick: async (e) => {
               // openPath resolves to an error string on failure, e.g. when Windows virtualizes %APPDATA%
               // for an app started from inside another packaged (MSIX) app.
               const err = await portal.openData();
               if (err) e.target.closest('.pane').append(h('div', { class: 'send-err' }, T('Не удалось открыть папку: {0}', err)));
-            } }, T('Открыть папку данных')),
+            } }, T('Открыть папку данных')) : null,
             h('button', { class: 'chip-btn', onclick: async (e) => {
               if (!await confirmBox(T('Очистить кэш?'), T('Сохранённые копии разделов будут удалены. Вы останетесь в системе.'), T('Очистить'))) return;
               await portal.clearCache();
@@ -1934,7 +1938,8 @@ portal.onSession((state) => {
 async function show(name, reload = false) {
   current = name;
   const tab = views[name].parent || name; // sub-screens (a course) keep their sidebar tab highlighted
-  document.querySelectorAll('#nav [data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === tab));
+  document.querySelectorAll('#nav [data-view], #tabbar [data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === tab));
+  document.body.classList.remove('sheet');
   slide($('#nav'));
   const { title } = views[name];
   $('#title').textContent = typeof title === 'function' ? title() : title;
@@ -2079,6 +2084,7 @@ function setupLang() {
     b.addEventListener('click', () => {
       if (b.dataset.lang === LANG) return;
       pref('lang', b.dataset.lang);
+      keepPlace();
       portal.setLang(b.dataset.lang).then(() => location.reload());
     });
   });
@@ -2092,6 +2098,17 @@ function setTheme(mode) {
   slide($('#theme-seg'));
 }
 
+// A settings change that reloads the UI (language; theme on Android) comes back to the same tab with
+// settings open. Timestamped, so a change that didn't reload (same theme after all) can't resurface later.
+const keepPlace = () => pref('resume', `${views[current].parent || current} ${Date.now()}`);
+function resumePlace() {
+  const [view, at] = (pref('resume') || '').split(' ');
+  if (!views[view] || Date.now() - at > 10000) return;
+  pref('resume', '');
+  current = view;
+  requestAnimationFrame(() => $('#settings').showPopover());
+}
+
 function setAccent(color) {
   pref('accent', color);
   document.documentElement.style.setProperty('--accent-base', color);
@@ -2103,7 +2120,11 @@ function toggleCollapse() {
 }
 
 $('#accents').append(...ACCENTS.map((c) => h('button', { 'data-c': c, style: `--c:${c}`, title: c, onclick: () => setAccent(c) })));
-document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+// Android recreates the app on a light/dark change, which reloads the page.
+document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener('click', () => {
+  if (portal.platform === 'android') keepPlace();
+  setTheme(b.dataset.theme);
+}));
 $('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); } });
 $('#collapse').addEventListener('click', toggleCollapse);
 $('#logout').addEventListener('click', async () => {
@@ -2136,7 +2157,28 @@ document.addEventListener('keydown', (e) => {
   if (act) { e.preventDefault(); act(); }
 });
 
-document.querySelectorAll('#nav [data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+document.querySelectorAll('#nav [data-view], #tabbar [data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+
+// Phones: Ещё opens the sidebar as a sheet; any button in it or a tap outside closes it.
+$('#more').addEventListener('click', () => { document.body.classList.toggle('sheet'); slide($('#nav')); });
+$('#side-backdrop').addEventListener('click', () => document.body.classList.remove('sheet'));
+$('#side').addEventListener('click', (e) => { if (e.target.closest('button')) document.body.classList.remove('sheet'); });
+// Phones show list or detail (app.css): tapping a notification/conversation switches to the detail.
+$('#content').addEventListener('click', (e) => e.target.closest('.split .inbox-item')?.closest('.split').classList.add('detail'));
+
+// Android back: close the top layer (dialog, popover, sheet), then go up a level, then leave the app.
+portal.onBack?.(() => {
+  const dlg = [...document.querySelectorAll('dialog[open]')].pop();
+  if (dlg) return dlg.close();
+  const pop = document.querySelector(':popover-open');
+  if (pop) return pop.hidePopover();
+  if (document.body.classList.contains('sheet')) return document.body.classList.remove('sheet');
+  const detail = $('#content .split.detail');
+  if (detail) return detail.classList.remove('detail');
+  if (views[current].parent) return show(views[current].parent);
+  if (current !== 'today') return show('today');
+  portal.minimize();
+});
 $('#refresh').addEventListener('click', () => show(current, true));
 
 if (pref('collapsed')) document.body.classList.add('collapsed');
@@ -2145,6 +2187,7 @@ translateStatic();
 macLabels();
 setupLang();
 setTheme(pref('theme') || 'system');
+resumePlace();
 show(current);
 // Warm the portal's slow first calendar request (and the saved copy) in the background.
 setTimeout(() => { if (!cache.calendar) loadMonth(new Date().getFullYear(), new Date().getMonth()).catch(() => {}); }, 15000);

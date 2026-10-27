@@ -217,5 +217,18 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - Not yet: About shows Electron rows, the "Ctrl K" label, `openData`. Unread counts, polling and session events wait for A3.
   - Build: JDK 21 and `android/local.properties` with `sdk.dir`, then `gradlew assembleDebug`. minSdk 29.
 - **A2:** mobile layout: bottom tab bar, single-column screens, touch targets ≥ 44 px.
+
+  **Status (2026-10-27):** done on the emulator (Pixel 7 size, light and dark).
+  - Below 760 px wide (Android only; the desktop window's minimum is 760), app.css switches to the phone layout. A bottom tab bar has Сегодня, Расписание, Курсы, Сообщения and Ещё; Ещё opens the whole sidebar as a bottom sheet with 48 px rows.
+  - Header tools (filters, search) move to their own row, which scrolls sideways.
+  - Notifications and messages show the list first; tapping an item opens its detail.
+  - The calendar puts the month grid above the day panel; event chips become colour bars.
+  - The Android back button closes things in order: a dialog, a popover, the sheet, the detail view. Then it goes up a level, then to Today, then leaves the app.
+  - Theme: the activity is recreated on a light/dark change (`uiMode` taken out of `configChanges`), so the WebView's `prefers-color-scheme` follows it.
+  - localStorage never reached disk before Android killed the app, so settings and "welcome seen" were lost. It is now mirrored in SharedPreferences (`UlPrefs`).
+  - About lists Android and WebView versions; the data-folder row is hidden.
+  - An open chat or notification has a ‹ button that returns to the list. Header tools fill the width and wrap onto extra rows. The More sheet uses 44 px rows and up to the full screen height, so it fits without scrolling on a Pixel 7.
+  - A settings change that reloads the UI (language; theme on Android) comes back to the same tab with Settings open. A one-shot, timestamped `resume` pref does this.
+  - Not yet: 44 px for small icon buttons (refresh, month arrows); a real phone.
 - **A3:** background check via WorkManager (≥ 15 min); session keepalive best-effort; local notifications.
 - **A4:** APK in GitHub Releases. Google Play later ($25 one-time).

@@ -742,6 +742,81 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .mac main::before { right: 0; }
 .mac kbd { font-family: -apple-system, system-ui, sans-serif; }
 
+/* ---------- phones (Android; desktop windows never get this narrow, main.js minWidth 760) ---------- */
+/* bottom tab bar with the main tabs; Ещё opens the whole sidebar as a bottom sheet */
+#tabbar, #side-backdrop, .split-back { display: none; }
+@media (max-width: 759px) {
+  :root { --bar-h: 60px; --solid: #f4f6fa; --sheet: #ffffff; }
+  body { flex-direction: column; background: var(--solid); }
+  main { margin: 0; min-height: 0; border: 0; border-radius: 0; padding-bottom: var(--bar-h); background: none; } /* min-height: stay one screen tall, #content scrolls */
+  main::before { display: none; }
+  header { padding: 14px 16px 8px; }
+  header h1 { font-size: 21px; }
+  #content { padding: 4px 16px 20px; }
+
+  #tabbar {
+    display: flex; position: fixed; inset: auto 0 0 0; height: var(--bar-h); z-index: 20;
+    background: var(--sheet); border-top: 1px solid var(--line);
+  }
+  #tabbar button {
+    position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-size: 11px; color: var(--muted); transition: color var(--t-fast);
+  }
+  #tabbar button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+  #tabbar button.active { color: var(--accent); font-weight: 600; }
+  #tabbar .i { width: 22px; height: 22px; }
+  #tabbar .count {
+    position: absolute; top: 5px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; background: var(--danger);
+  }
+
+  #side, body.collapsed #side {
+    position: fixed; inset: auto 0 0 0; width: auto; max-height: calc(100% - 12px); overflow: auto; z-index: 30;
+    padding: 8px 12px 10px; background: var(--sheet); border-radius: 18px 18px 0 0;
+    box-shadow: 0 -20px 50px -12px rgba(0, 0, 0, .35);
+    transform: translateY(105%); transition: transform var(--t) var(--ease);
+  }
+  body.sheet #side { transform: none; }
+  #side::before, .brand, #collapse, #side kbd, .spacer { display: none; }
+  body.collapsed #side .label { opacity: 1; pointer-events: auto; }
+  #side > * { flex: none; } /* the sheet scrolls instead of squeezing its buttons */
+  #nav button, .side-btn { height: 44px; }
+  #side-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 25; background: rgba(10, 14, 25, .4);
+    opacity: 0; pointer-events: none; transition: opacity var(--t);
+  }
+  body.sheet #side-backdrop { opacity: 1; pointer-events: auto; }
+
+  /* header tools (filters, search, tabs) get their own rows and fill the width */
+  header { flex-wrap: wrap; row-gap: 8px; }
+  #tools { order: 3; flex: 1 0 100%; flex-wrap: wrap; }
+  #tools:empty { display: none; }
+  #tools > :is(input, select, .seg, .month-nav) { flex: 1 1 auto; width: auto; min-width: 0; }
+  #tools > input { flex-basis: 100%; }
+  #tools > .seg { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #tools > .seg button { flex: 1 0 auto; }
+  #tools > .month-nav { display: flex; justify-content: space-between; }
+
+  /* list + detail (notifications, messages): one at a time; tapping an item adds .detail (app.js) */
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split:not(.cal-split):not(.detail) > :last-child, .split.detail > :first-child { display: none; }
+  .split-back { display: grid; place-items: center; width: 40px; height: 40px; margin-left: -8px; font-size: 28px; line-height: 1; }
+  .reader-head .split-back { margin: -8px 0 4px -10px; }
+  /* calendar: month grid above the day panel, cells just show the date and counts */
+  .cal-split { height: auto; }
+  .cal-grid { grid-auto-rows: minmax(52px, auto); gap: 2px; }
+  .cal-cell { padding: 4px; }
+  .cal-cell .cal-ev { font-size: 0; padding: 0; height: 4px; background: currentColor; } /* event chips shrink to colour bars */
+  .cal-cell .cal-more { display: none; }
+
+  #settings, #profile { inset: auto 8px 8px 8px; width: auto; }
+  #palette { margin-top: 6vh; }
+  #reader { width: 100vw; max-width: 100vw; height: 100%; max-height: 100%; margin: 0; border: 0; border-radius: 0; }
+}
+@media (max-width: 759px) and (prefers-color-scheme: dark) {
+  :root { --solid: #16181d; --sheet: #1f2229; }
+}
+
 /* background refresh with changed data: swap in place, no motion */
 /* (silent also has .quiet, which already stops entry animations; this drops the soft fade too,
    while live indicators like the "now" pulse keep running) */

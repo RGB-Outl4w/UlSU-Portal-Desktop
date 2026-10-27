@@ -12,6 +12,7 @@ const EN = {
   'Дедлайны': 'Deadlines',
   'Уведомления': 'Notifications',
   'Сообщения': 'Messages',
+  'Ещё': 'More',
   'Оценки': 'Grades',
   'Успеваемость': 'Academic record',
   'Учебный план': 'Study plan',

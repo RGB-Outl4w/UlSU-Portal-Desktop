@@ -8,6 +8,17 @@
   const native = (method, opts = {}) => Capacitor.nativePromise('UlPortal', method, opts);
   let sesskey, userid, loginPromise;
 
+  // WebView's localStorage (app.js prefs: welcome seen, language, recent courses…) never reached disk
+  // before Android killed the app. Mirror it in SharedPreferences through UlPrefs (sync, see UlPortalPlugin).
+  if (window.UlPrefs) {
+    for (const [k, v] of Object.entries(JSON.parse(UlPrefs.load() || '{}'))) localStorage.setItem(k, v);
+    const sync = () => UlPrefs.save(JSON.stringify({ ...localStorage }));
+    for (const m of ['setItem', 'removeItem', 'clear']) {
+      const orig = Storage.prototype[m];
+      Storage.prototype[m] = function (...args) { orig.apply(this, args); if (this === localStorage) sync(); };
+    }
+  }
+
   // Network failures (no connection, DNS, portal down) become one recognisable error for the renderer.
   async function net(url, opts = {}) {
     try {
@@ -194,15 +205,17 @@
     setLang: async () => {},
     async about() {
       const i = await native('info');
-      return { version: i.version, electron: '—', chrome: i.webview, node: '—', v8: '—', os: `Android ${i.android} (API ${i.sdk})`, dataDir: '—' };
+      return { version: i.version, runtime: [['Android', `${i.android} (API ${i.sdk})`], ['WebView', i.webview]], dataDir: null };
     },
     doc: (name) => (DOCS.includes(name) ? fetch(name).then((r) => r.text()) : Promise.resolve(null)),
     clearCache,
-    openData: async () => 'Android',
     checkUpdate,
     poll: async () => null, // A3: background check via WorkManager
     onUnread: () => {},
     onNavigate: () => {},
     onSession: () => {},
+    // Back button / gesture (UlPortalPlugin forwards it unless the portal overlay is open)
+    onBack: (cb) => Capacitor.nativeCallback('UlPortal', 'addListener', { eventName: 'back' }, cb),
+    minimize: () => native('minimize'),
   };
 })();
