@@ -41,6 +41,9 @@ public class UlPortalPlugin extends Plugin {
     // so a portal overlay's own callback (added later) still wins while it is open.
     @Override
     public void load() {
+        // Transparent, so the theme-coloured window background (res/values*/page.xml) shows instead of white
+        // while the page repaints after a light/dark switch.
+        getBridge().getWebView().setBackgroundColor(Color.TRANSPARENT);
         // Synchronous localStorage mirror for portal-android.js (WebView doesn't flush localStorage before a kill).
         SharedPreferences prefs = getContext().getSharedPreferences("webprefs", Context.MODE_PRIVATE);
         getBridge().getWebView().addJavascriptInterface(new Object() {

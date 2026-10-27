@@ -789,17 +789,20 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 
   /* header tools (filters, search, tabs) get their own rows and fill the width */
   header { flex-wrap: wrap; row-gap: 8px; }
-  #tools { order: 3; flex: 1 0 100%; flex-wrap: wrap; }
+  #tools { order: 3; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; } /* min-width: a wide tab row scrolls instead of widening the page */
   #tools:empty { display: none; }
   #tools > :is(input, select, .seg, .month-nav) { flex: 1 1 auto; width: auto; min-width: 0; }
   #tools > input { flex-basis: 100%; }
   #tools > .seg { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #tools > .seg::-webkit-scrollbar { display: none; }
   #tools > .seg button { flex: 1 0 auto; }
   #tools > .month-nav { display: flex; justify-content: space-between; }
 
   /* list + detail (notifications, messages): one at a time; tapping an item adds .detail (app.js) */
   .split { grid-template-columns: minmax(0, 1fr); }
   .split:not(.cal-split):not(.detail) > :last-child, .split.detail > :first-child { display: none; }
+  .split.moved.detail > :last-child { animation: slide-in-r .25s var(--ease); }
+  .split.moved:not(.detail) > :first-child { animation: slide-in-l .25s var(--ease); }
   .split-back { display: grid; place-items: center; width: 40px; height: 40px; margin-left: -8px; font-size: 28px; line-height: 1; }
   .reader-head .split-back { margin: -8px 0 4px -10px; }
   /* calendar: month grid above the day panel, cells just show the date and counts */

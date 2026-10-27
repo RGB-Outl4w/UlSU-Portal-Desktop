@@ -1900,7 +1900,8 @@ function swap(nodes, quiet = false) {
     $('#content').replaceChildren(...clean([nodes]));
     if (!quiet) $('#content').scrollTop = 0;
   };
-  if (!quiet && document.startViewTransition) document.startViewTransition(run);
+  // Android: no snapshot cross-fade, it costs ~50 ms per switch in the WebView; the new view still rises in (.stagger).
+  if (!quiet && document.startViewTransition && portal.platform !== 'android') document.startViewTransition(run);
   else run();
 }
 
@@ -2164,7 +2165,8 @@ $('#more').addEventListener('click', () => { document.body.classList.toggle('she
 $('#side-backdrop').addEventListener('click', () => document.body.classList.remove('sheet'));
 $('#side').addEventListener('click', (e) => { if (e.target.closest('button')) document.body.classList.remove('sheet'); });
 // Phones show list or detail (app.css): tapping a notification/conversation switches to the detail.
-$('#content').addEventListener('click', (e) => e.target.closest('.split .inbox-item')?.closest('.split').classList.add('detail'));
+// .moved: from now on the switch slides (app.css), but not the list's first appearance.
+$('#content').addEventListener('click', (e) => e.target.closest('.split .inbox-item')?.closest('.split').classList.add('detail', 'moved'));
 
 // Android back: close the top layer (dialog, popover, sheet), then go up a level, then leave the app.
 portal.onBack?.(() => {

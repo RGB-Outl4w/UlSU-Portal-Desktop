@@ -29,7 +29,11 @@
   }
   const header = (res, name) => Object.entries(res.headers || {}).find(([k]) => k.toLowerCase() === name)?.[1] || '';
   const text = (res) => (typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
-  const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const fromB64 = (s) => {
+    const bin = atob(s), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  };
   const toB64 = (bytes) => {
     let s = '';
     for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));

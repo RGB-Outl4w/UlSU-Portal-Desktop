@@ -229,6 +229,8 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - About lists Android and WebView versions; the data-folder row is hidden.
   - An open chat or notification has a ‹ button that returns to the list. Header tools fill the width and wrap onto extra rows. The More sheet uses 44 px rows and up to the full screen height, so it fits without scrolling on a Pixel 7.
   - A settings change that reloads the UI (language; theme on Android) comes back to the same tab with Settings open. A one-shot, timestamped `resume` pref does this.
+  - Smoothness (measured with requestAnimationFrame frame times and Long Animation Frames): tab switches, the sheet, list ↔ detail (now a short slide), settings and the palette run at 60 fps on the emulator. Android skips the View Transition snapshot, which cost about 50 ms per switch; the new view still rises in. A theme switch repaints over the theme's own background colour (`res/values*/page.xml` with a transparent WebView) instead of flashing white. The first Courses open after launch takes about 80 ms before its first frame.
+  - Fixed: Services' wide tab row made the page wider than the screen, which pushed the tab bar off-screen. The header tools now have `min-width: 0`, and there is a viewport meta tag.
   - Not yet: 44 px for small icon buttons (refresh, month arrows); a real phone.
 - **A3:** background check via WorkManager (≥ 15 min); session keepalive best-effort; local notifications.
 - **A4:** APK in GitHub Releases. Google Play later ($25 one-time).
