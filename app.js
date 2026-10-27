@@ -953,6 +953,10 @@ async function openReader(a) {
 // process (it has the session cookie) and are shown from a local blob: URL.
 let blobUrl;
 async function openFile(a, kind) {
+  if (kind === 'pdf' && portal.platform === 'android') { // Android WebView has no PDF viewer: system app
+    portal.download(a.url, a.name).then(() => a.completion && !a.completion.done && refreshCourse(), (e) => showReader(a, errorBox(e)));
+    return;
+  }
   showReader(a, msg(T('Загрузка файла…')), true);
   try {
     const { type, bytes } = await portal.file(a.url);

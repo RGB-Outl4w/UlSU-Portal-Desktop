@@ -207,6 +207,15 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - `CapacitorHttp` for portal requests (no CORS, shares cookies);
   - file cache;
   - downloads.
+
+  **Status (2026-10-27):** working on the emulator (Android 15, debug APK).
+  - Capacitor 8 project in `android/`. `npm run android:sync` copies the UI into `www/` (`build-www.js`) and adds `portal-android.js`, which provides the same `window.portal` as `preload.js`. `app.js` is unchanged, except that PDFs open in the system app.
+  - Portal requests go through CapacitorHttp. The offline copy lives in IndexedDB.
+  - `UlPortalPlugin.java` handles sign-in and portal pages (an overlay WebView in the activity window; a Dialog put the keyboard under it), Downloads, the theme and version info.
+  - The MoodleSession cookie is re-set with a 30-day expiry on sign-in and on pause, so the session survives the app being killed (verified with force-stop).
+  - Verified: sign-in with the MAX code, `/my/`, AJAX, files.
+  - Not yet: About shows Electron rows, the "Ctrl K" label, `openData`. Unread counts, polling and session events wait for A3.
+  - Build: JDK 21 and `android/local.properties` with `sdk.dir`, then `gradlew assembleDebug`. minSdk 29.
 - **A2:** mobile layout: bottom tab bar, single-column screens, touch targets ≥ 44 px.
 - **A3:** background check via WorkManager (≥ 15 min); session keepalive best-effort; local notifications.
 - **A4:** APK in GitHub Releases. Google Play later ($25 one-time).

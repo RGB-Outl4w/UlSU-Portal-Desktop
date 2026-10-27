@@ -17,9 +17,13 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win --publish never",
-    "dist:mac": "electron-builder --mac --publish never"
+    "dist:mac": "electron-builder --mac --publish never",
+    "android:sync": "node build-www.js && cap sync android"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "electron": "^45.0.0",
     "electron-builder": "^26.18.0"
   },
