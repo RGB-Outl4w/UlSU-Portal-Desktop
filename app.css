@@ -816,6 +816,10 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
   .reader-head .split-back { margin: -8px 0 4px -10px; }
   /* calendar: month grid above the day panel, cells just show the date and counts */
   .cal-split { height: auto; }
+  /* course header: the cover image becomes a banner above the details */
+  .course-hero { flex-direction: column; }
+  .course-hero .img { width: auto; height: 96px; }
+  .course-hero .body { padding: 14px 16px 16px; }
   .cal-grid { grid-auto-rows: minmax(52px, auto); gap: 2px; }
   .cal-cell { padding: 4px; }
   .cal-cell .cal-ev { font-size: 0; padding: 0; height: 4px; background: currentColor; } /* event chips shrink to colour bars */
