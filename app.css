@@ -692,8 +692,11 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .files { padding: 6px; }
 .file-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r); }
 @media (hover: hover) { .file-row:hover { background: var(--side-hover); } }
-.file-row .act-link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-row .sub { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+/* name over size and date, so neither squeezes the other */
+.file-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.file-row .act-link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.file-row .sub { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.file-row .more { flex: none; }
 .file-ico { width: 38px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: .03em; color: var(--accent); background: var(--accent-soft); }
 .file-ico.folder { color: var(--lab); background: color-mix(in oklab, var(--lab) 14%, transparent); }
 .file-ico .i { width: 17px; height: 17px; }
@@ -708,6 +711,13 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #confirm h3 { margin: 0 0 6px; font-size: 17px; }
 #confirm p { margin: 0 0 18px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+#confirm-text:empty { display: none; }
+.confirm-extra { margin: 4px 0 18px; display: flex; flex-direction: column; gap: 12px; }
+.confirm-extra .about-dl { margin: 0; }
+.box-label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.box-input { height: 38px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 14px; }
+.box-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.chip-btn.danger { color: var(--danger); }
 .confirm-actions .btn { margin: 0; }
 
 /* ---------- about, docs, welcome ---------- */
@@ -812,6 +822,12 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
   .split:not(.cal-split):not(.detail) > :last-child, .split.detail > :first-child { display: none; }
   .split.moved.detail > :last-child { animation: slide-in-r .25s var(--ease); }
   .split.moved:not(.detail) > :first-child { animation: slide-in-l .25s var(--ease); }
+  .files-bar { flex-wrap: wrap; }
+  .files-bar .crumbs { flex-basis: 100%; }
+  .files-bar .tool-btn { margin-left: auto; }
+  .files-bar .btn { margin: 0; }
+  .file-row { gap: 10px; padding: 8px 6px; }
+  .file-row .more { padding: 6px 8px; }
   .split-back { display: grid; place-items: center; width: 40px; height: 40px; margin-left: -8px; font-size: 28px; line-height: 1; }
   .reader-head .split-back { margin: -8px 0 4px -10px; }
   /* calendar: month grid above the day panel, cells just show the date and counts */

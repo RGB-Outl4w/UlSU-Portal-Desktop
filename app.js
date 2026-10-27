@@ -1336,6 +1336,24 @@ function confirmBox(title, text, okLabel = T('Подтвердить')) {
   return new Promise((resolve) => dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true }));
 }
 
+// #confirm with extra content (fields, details, action buttons) under the title. Resolves to the value the
+// dialog closed with: 'ok' for the main button, 'cancel', or whatever an extra button passed to close().
+async function formBox(title, nodes, okLabel) {
+  const dlg = $('#confirm');
+  const extra = h('div', { class: 'confirm-extra' }, nodes);
+  $('#confirm-text').after(extra);
+  const cancel = $('#confirm [value=cancel]');
+  cancel.autofocus = true; // not the text field: on a phone that would pop up the keyboard just to read details
+  await confirmBox(title, '', okLabel);
+  cancel.autofocus = false;
+  setTimeout(() => extra.remove(), 300); // after the close animation
+  return dlg.returnValue;
+}
+// A text field for formBox; Enter confirms (the form's first button is Cancel, so it can't submit by itself).
+const boxInput = (value, label) => h('input', { class: 'box-input', value, 'aria-label': label, onkeydown: (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('#confirm').close('ok'); }
+} });
+
 const fmtSize = (b) => (b == null ? '' : b < 1024 ? T('{0} Б', b) : b < 1048576 ? T('{0} КБ', (b / 1024).toFixed(0)) : T('{0} МБ', (b / 1048576).toFixed(1).replace('.', ',')));
 const formFields = (form) => Object.fromEntries([...form.querySelectorAll('input[type=hidden]')].filter((i) => i.name !== 'sesskey').map((i) => [i.name, i.value]));
 
@@ -1509,6 +1527,13 @@ async function loadFiles() {
   };
 }
 
+// One change to the draft area (delete, mkdir, updatefile, updatedir), then saving the form commits it.
+async function fileAction(fs, action, fields) {
+  const r = JSON.parse(await portal.post(`/repository/draftfiles_ajax.php?action=${action}`, { client_id: fs.client, itemid: fs.itemid, ...fields }));
+  if (r?.error) throw new Error(r.error);
+  await portal.post('/user/files.php', fs.save);
+}
+
 async function listFiles(fs, filepath) {
   const r = JSON.parse(await portal.post('/repository/draftfiles_ajax.php?action=list', { client_id: fs.client, itemid: fs.itemid, filepath }));
   return r.list || [];
@@ -1537,6 +1562,14 @@ function filesTab() {
         } catch (e) { alertLine(T('Не загружено: {0}', errText(e))); }
       } });
       const alertLine = (t) => box.querySelector('.send-err')?.replaceChildren(t);
+      // Every change commits the draft, which gives the area a new itemid: reload it, then redraw.
+      const change = async (run) => {
+        try {
+          await run();
+          ui.svc.fs = null;
+          draw();
+        } catch (e) { alertLine(T('Не сохранено: {0}', errText(e))); }
+      };
       box.replaceChildren(
         fs.quota ? h('div', { class: 'card pane quota' },
           h('div', { class: 'pane-head' }, icon('courses'), h('h3', {}, T('Личные файлы')), h('span', { class: 'hours-total' }, T('{0} из {1}', fs.quota.used, fs.quota.limit))),
@@ -1546,26 +1579,52 @@ function filesTab() {
             h('button', { onclick: () => go('/') }, T('Файлы')),
             crumbs.map((c, i) => [h('span', {}, '›'), h('button', { onclick: () => go(`/${crumbs.slice(0, i + 1).join('/')}/`) }, c)])),
           picker,
+          h('button', { class: 'tool-btn', onclick: async () => {
+            const input = boxInput('', T('Название папки'));
+            setTimeout(() => input.focus(), 50);
+            if (await formBox(T('Новая папка'), [input], T('Создать')) !== 'ok' || !input.value.trim()) return;
+            change(() => fileAction(fs, 'mkdir', { filepath: ui.svc.path, newdirname: input.value.trim() }));
+          } }, T('Новая папка')),
           h('button', { class: 'btn', onclick: () => picker.click() }, T('Загрузить файлы'))),
         h('div', { class: 'send-err' }),
         list.length ? stagger(h('div', { class: 'card files' }, list.map((f) => {
           const folder = f.type === 'folder';
           const name = folder ? f.fullname : f.filename;
+          const pdf = /pdf/.test(f.mimetype || f.type);
+          const remove = async () => {
+            if (!await confirmBox(T('Удалить «{0}»?', name), folder ? T('Папка будет удалена вместе со всем содержимым.') : T('Файл будет удалён из личных файлов на портале.'), T('Удалить'))) return;
+            change(() => fileAction(fs, 'delete', { filepath: f.filepath, filename: folder ? '.' : f.filename }));
+          };
+          // Details and renaming: a file's name opens it, a folder's Edit button too (its name opens the folder).
+          const when = (s) => s && new Date(s * 1000).toLocaleString(LOCALE, { dateStyle: 'long', timeStyle: 'short' });
+          const details = async () => {
+            const input = boxInput(name, T('Имя'));
+            const close = (v) => () => $('#confirm').close(v);
+            const how = await formBox(name, [
+              folder ? null : h('dl', { class: 'about-dl' },
+                [[T('Размер'), fmtSize(f.size)], [T('Изменён'), when(f.datemodified)], [T('Создан'), when(f.datecreated)], [T('Автор'), f.author]]
+                  .filter(([, v]) => v).map(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
+              h('label', { class: 'box-label' }, T('Имя'), input),
+              folder ? null : h('div', { class: 'about-btns' },
+                h('button', { type: 'button', class: 'chip-btn', onclick: close('open') }, pdf ? T('Открыть') : T('Скачать')),
+                h('button', { type: 'button', class: 'chip-btn danger', onclick: close('delete') }, T('Удалить'))),
+            ], T('Переименовать'));
+            const to = input.value.trim();
+            if (how === 'open') return pdf ? openFile({ name, url: f.url }, 'pdf') : portal.download(f.url, name);
+            if (how === 'delete') return remove();
+            if (how !== 'ok' || !to || to === name) return;
+            change(() => (folder
+              ? fileAction(fs, 'updatedir', { filepath: f.filepath, newdirname: to, newfilepath: ui.svc.path })
+              : fileAction(fs, 'updatefile', { filepath: f.filepath, filename: f.filename, newfilename: to })));
+          };
           return h('div', { class: 'file-row', 'data-name': name.toLowerCase() },
             h('span', { class: 'file-ico' + (folder ? ' folder' : '') }, folder ? icon('folder') : (f.type || 'file').slice(0, 4).toUpperCase()),
-            h('button', { class: 'act-link', onclick: () => (folder ? go(f.filepath)
-              : /pdf/.test(f.mimetype || f.type) ? openFile({ name, url: f.url }, 'pdf') : portal.download(f.url, name)) }, name),
-            h('span', { class: 'sub' }, folder ? T('папка') : [fmtSize(f.size), f.datemodified_f_s].filter(Boolean).join(' · ')),
-            folder ? null : h('button', { class: 'more', title: T('Скачать'), onclick: () => portal.download(f.url, name) }, T('Скачать')),
-            h('button', { class: 'more danger', title: T('Удалить'), onclick: async () => {
-              if (!await confirmBox(T('Удалить «{0}»?', name), folder ? T('Папка будет удалена вместе со всем содержимым.') : T('Файл будет удалён из личных файлов на портале.'), T('Удалить'))) return;
-              try {
-                await portal.post('/repository/draftfiles_ajax.php?action=delete', { client_id: fs.client, itemid: fs.itemid, filepath: f.filepath, filename: folder ? '.' : f.filename });
-                await portal.post('/user/files.php', fs.save);
-                ui.svc.fs = null;
-                draw();
-              } catch (e) { alertLine(T('Не удалено: {0}', errText(e))); }
-            } }, T('Удалить')));
+            h('div', { class: 'file-main' },
+              h('button', { class: 'act-link', title: name, onclick: folder ? () => go(f.filepath) : details }, name),
+              h('span', { class: 'sub' }, folder ? T('папка') : [fmtSize(f.size), f.datemodified_f_s].filter(Boolean).join(' · '))),
+            folder ? h('button', { class: 'more', onclick: details }, T('Изменить'))
+              : h('button', { class: 'more', title: T('Скачать'), onclick: () => portal.download(f.url, name) }, T('Скачать')),
+            h('button', { class: 'more danger', title: T('Удалить'), onclick: remove }, T('Удалить')));
         }))) : stateBox({ kind: 'empty', title: T('Здесь пусто'), text: T('Загрузите файлы кнопкой выше.') }));
     } catch (e) {
       box.replaceChildren(errorBox(e, () => { ui.svc.fs = null; draw(); }));
