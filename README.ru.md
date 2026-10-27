@@ -7,7 +7,7 @@
 **Неофициальное приложение для [portal.ulsu.ru](https://portal.ulsu.ru) — портала студентов Ульяновского государственного университета — для Windows, macOS и Android.**
 Входите один раз, видите свой день целиком, а курсы, дедлайны, оценки и сообщения — в один клик.
 
-[![Версия](https://img.shields.io/badge/версия-1.2.0-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
+[![Версия](https://img.shields.io/badge/версия-1.2.1-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-12a06a)](LICENSE.ru.md)
 [![Платформа](https://img.shields.io/badge/платформа-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#установка)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)

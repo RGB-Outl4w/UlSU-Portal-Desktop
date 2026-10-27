@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## 1.2.1 — 2026-10-28
+
+**Personal files and small fixes.** / **Личные файлы и мелкие исправления.**
+
+**English**
+- Personal files: the name sits over its size and date, so it's no longer squeezed out on phones. Tapping a file's name opens its details (size, dates, author), where you can rename, download or open, and delete it.
+- Personal files: new folders, and renaming folders (Edit).
+- Desktop: the logo's glow is no longer cut off when the sidebar is collapsed.
+
+**Русский**
+- Личные файлы: название стоит над размером и датой и больше не пропадает на телефоне. Нажатие на название файла открывает подробности (размер, даты, автор), где файл можно переименовать, скачать или открыть и удалить.
+- Личные файлы: создание папок и переименование папок («Изменить»).
+- Компьютер: свечение логотипа больше не обрезается при свёрнутой боковой панели.
+
 ## 1.2.0 — 2026-10-27
 
 **Android app.** / **Приложение для Android.**
