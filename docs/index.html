@@ -177,12 +177,15 @@
           <a class="btn ghost" data-dl="mac-arm64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">
             <span class="ru">Скачать для macOS</span><span class="en">Download for macOS</span>
           </a>
+          <a class="btn ghost" data-dl="android" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">
+            <span class="ru">Скачать для Android</span><span class="en">Download for Android</span>
+          </a>
         </div>
         <p class="note">
           <span class="ru">Mac на Intel — <a data-dl="mac-x64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">отдельная сборка</a> · <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">Исходный код</a></span>
           <span class="en">Mac with Intel — <a data-dl="mac-x64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">separate build</a> · <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">Source code</a></span>
         </p>
-        <p class="note"><span class="ru">Windows 10/11 · macOS 12+ · Бесплатно · Открытый код (MIT) · Версия <span data-ver>1.1.0</span></span><span class="en">Windows 10/11 · macOS 12+ · Free · Open source (MIT) · Version <span data-ver>1.1.0</span></span></p>
+        <p class="note"><span class="ru">Windows 10/11 · macOS 12+ · Android 10+ · Бесплатно · Открытый код (MIT) · Версия <span data-ver>1.1.0</span></span><span class="en">Windows 10/11 · macOS 12+ · Android 10+ · Free · Open source (MIT) · Version <span data-ver>1.1.0</span></span></p>
       </div>
 
       <!-- Illustration with sample data; not a screenshot of anyone's account. -->
@@ -340,7 +343,7 @@
     fetch('https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest')
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((rel) => {
-        const pick = { win: /Setup-.*\.exe$/, 'mac-arm64': /-arm64\.dmg$/, 'mac-x64': /-x64\.dmg$/ };
+        const pick = { win: /Setup-.*\.exe$/, 'mac-arm64': /-arm64\.dmg$/, 'mac-x64': /-x64\.dmg$/, android: /-Android-.*\.apk$/ };
         document.querySelectorAll('[data-dl]').forEach((a) => {
           const asset = rel.assets.find((x) => pick[a.dataset.dl].test(x.name));
           if (asset) a.href = asset.browser_download_url;
@@ -348,11 +351,12 @@
         document.querySelectorAll('[data-ver]').forEach((el) => { el.textContent = rel.tag_name.replace(/^v/, ''); });
       })
       .catch(() => {});
-    if (/Mac/i.test(navigator.platform || navigator.userAgent)) {
-      const [win, mac] = [document.querySelector('[data-dl="win"]'), document.querySelector('[data-dl="mac-arm64"]')];
+    const own = /Android/i.test(navigator.userAgent) ? 'android' : /Mac/i.test(navigator.platform || navigator.userAgent) ? 'mac-arm64' : null;
+    if (own) {
+      const [win, mine] = [document.querySelector('[data-dl="win"]'), document.querySelector(`[data-dl="${own}"]`)];
       win.classList.replace('primary', 'ghost');
-      mac.classList.replace('ghost', 'primary');
-      mac.parentNode.insertBefore(mac, win);
+      mine.classList.replace('ghost', 'primary');
+      mine.parentNode.insertBefore(mine, win);
     }
 
     // Fade sections in as they scroll into view.

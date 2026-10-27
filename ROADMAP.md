@@ -245,3 +245,12 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - Not verified: the "session ended" notification (it needs a real expiry); how long the session survives overnight under Doze.
   - Capacitor's console logging is off (`loggingBehavior: none`): debug builds were printing every portal response to logcat.
 - **A4:** APK in GitHub Releases. Google Play later ($25 one-time).
+
+  **Status (2026-10-27):** ready locally; CI not run yet.
+  - The APK's version comes from package.json. versionCode = major·1000000 + minor·10000 + patch·100 + (beta number, or 99 for a release), so every pre-release sorts below its release.
+  - Release key: `~/.android/ulportal-release.jks` (PKCS12, alias `ulportal`), with its password in `ulportal-release-keystore.txt` next to it. **Back it up:** losing it means users can't update without uninstalling.
+  - Gradle signs when the `ULPORTAL_KEYSTORE` / `ULPORTAL_KEYSTORE_PASSWORD` env vars are set.
+  - A local signed build passes `apksigner verify`. It installs on a clean emulator, isn't debuggable, and opens the portal sign-in page.
+  - CI: an `android` job (JDK 21) builds `ULSU-Portal-Android-<version>.apk`, checks the signature, and joins the release with the Windows and macOS files. It needs the repo secrets `ANDROID_KEYSTORE` (the .jks, base64) and `ANDROID_KEYSTORE_PASSWORD`.
+  - README (EN/RU) has an Android row and install steps; PRIVACY (EN/RU) describes Android storage and the background check; the site has an Android button (the main one on Android phones); CHANGELOG has an Unreleased entry.
+  - Next: set the two secrets, then tag a pre-release (`v1.2.0-beta.1`) for testers.

@@ -9,7 +9,7 @@ Stay signed in, see your day at a glance, and keep courses, deadlines, grades an
 
 [![Version](https://img.shields.io/badge/version-1.1.0-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-12a06a)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5c677d)](#install)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#install)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
 [![Unofficial](https://img.shields.io/badge/unofficial-not%20affiliated%20with%20ULSU-d9770b)](NOTICE.md)
 
@@ -42,11 +42,12 @@ The portal logs you out every time you close the browser, and signing back in me
 
 Download from the **[latest release](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest)**:
 
-| Your computer | File |
+| Your device | File |
 |---|---|
 | Windows 10/11 | `ULSU-Portal-Desktop-Setup-<version>.exe` |
 | Mac with Apple M1–M4 | `ULSU-Portal-Desktop-<version>-arm64.dmg` |
 | Mac with Intel | `ULSU-Portal-Desktop-<version>-x64.dmg` |
+| Android 10+ phone | `ULSU-Portal-Android-<version>.apk` |
 
 Not sure which Mac you have?  → **About This Mac** → **Chip**.
 
@@ -56,6 +57,8 @@ Not sure which Mac you have?  → **About This Mac** → **Chip**.
 - **macOS 15 and newer:** open the app once, then **System Settings** → **Privacy & Security** → **Open Anyway**.
 - **macOS 12–14:** Control-click the app → **Open** → **Open**.
 - If macOS still refuses, run in Terminal: `xattr -dr com.apple.quarantine "/Applications/ULSU Portal Desktop.app"`
+
+**Android 10+:** download the `.apk` on the phone and open it. Android asks once to allow installing apps from your browser or file manager; allow it, then tap **Install**. The app isn't on Google Play yet. It asks for permission to show notifications. In the background it checks for new notifications and messages about every 15 minutes, which also keeps the portal session alive. Android may check less often to save battery.
 
 ### Run from source
 

@@ -19,7 +19,7 @@ ULSU Portal Desktop is an open-source app made by an individual student (see [NO
 | Settings (theme, language, accent, collapsed sidebar, sort order) | You | Your computer | To remember your choices |
 | Files you upload or download | You / the portal | Your chosen folder; uploads go to your personal files on the portal | Only when you ask |
 
-The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Application Support/ulportal` on macOS.
+The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Application Support/ulportal` on macOS. On Android everything stays in the app's private storage, which other apps can't read; uninstalling the app deletes it. The Android background check (about every 15 minutes) talks only to portal.ulsu.ru, and its notifications are created on the phone itself.
 
 ## Where data is sent
 

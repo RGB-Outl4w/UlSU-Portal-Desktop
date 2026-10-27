@@ -9,7 +9,7 @@
 
 [![Версия](https://img.shields.io/badge/версия-1.1.0-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-12a06a)](LICENSE.ru.md)
-[![Платформа](https://img.shields.io/badge/платформа-Windows%20%7C%20macOS-5c677d)](#установка)
+[![Платформа](https://img.shields.io/badge/платформа-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#установка)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
 [![Неофициальное](https://img.shields.io/badge/неофициальное-не%20связано%20с%20УлГУ-d9770b)](NOTICE.md#русский)
 
@@ -42,11 +42,12 @@
 
 Скачайте из **[последнего выпуска](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest)**:
 
-| Ваш компьютер | Файл |
+| Ваше устройство | Файл |
 |---|---|
 | Windows 10/11 | `ULSU-Portal-Desktop-Setup-<версия>.exe` |
 | Mac на Apple M1–M4 | `ULSU-Portal-Desktop-<версия>-arm64.dmg` |
 | Mac на Intel | `ULSU-Portal-Desktop-<версия>-x64.dmg` |
+| Телефон на Android 10+ | `ULSU-Portal-Android-<версия>.apk` |
 
 Не знаете, какой у вас Mac?  → **Об этом Mac** → **Чип**.
 
@@ -56,6 +57,8 @@
 - **macOS 15 и новее:** попробуйте открыть приложение, затем **Системные настройки** → **Конфиденциальность и безопасность** → **Всё равно открыть**.
 - **macOS 12–14:** нажмите на приложение с Control (правой кнопкой) → **Открыть** → **Открыть**.
 - Если macOS всё равно не пускает, выполните в Терминале: `xattr -dr com.apple.quarantine "/Applications/ULSU Portal Desktop.app"`
+
+**Android 10+:** скачайте `.apk` на телефоне и откройте его. Android один раз попросит разрешить установку приложений из браузера или файлового менеджера: разрешите, затем нажмите **Установить**. В Google Play приложения пока нет. Оно попросит разрешение на уведомления. В фоне оно примерно раз в 15 минут проверяет новые уведомления и сообщения и заодно поддерживает сессию на портале. Для экономии батареи Android может проверять реже.
 
 ### Запуск из исходников
 

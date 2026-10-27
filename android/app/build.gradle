@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+// Version comes from package.json, like the desktop builds. versionCode must grow with every release and a
+// pre-release must sort below its release: 1.2.0-beta.3 -> 1020003, 1.2.0 -> 1020099.
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../package.json')).version
+def versionParts = (appVersion =~ /^(\d+)\.(\d+)\.(\d+)(?:-[a-z]+\.(\d+))?/)[0]
+def appVersionCode = versionParts[1].toInteger() * 1000000 + versionParts[2].toInteger() * 10000 +
+    versionParts[3].toInteger() * 100 + (versionParts[4] ? versionParts[4].toInteger() : 99)
+
+// Release signing from environment variables (CI secrets, or set by hand for a local release build).
+// Without them the release APK is left unsigned.
+def keystoreFile = System.getenv('ULPORTAL_KEYSTORE')
+
 android {
     namespace = "ru.ulportal.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +18,8 @@ android {
         applicationId "ru.ulportal.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.1.0" // keep in step with package.json
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +27,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreFile) {
+                storeFile file(keystoreFile)
+                storePassword System.getenv('ULPORTAL_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ULPORTAL_KEY_ALIAS') ?: 'ulportal'
+                keyPassword System.getenv('ULPORTAL_KEYSTORE_PASSWORD') // PKCS12: one password for store and key
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreFile) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

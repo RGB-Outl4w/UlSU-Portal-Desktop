@@ -1,5 +1,21 @@
 # Changelog / История изменений
 
+## Unreleased
+
+**Android app.** / **Приложение для Android.**
+
+**English**
+- Android 10+ app (`.apk`): the same sections as on desktop, in a phone layout: a bottom tab bar, a More sheet, and list → detail for messages and notifications. The back button works, and there are light and dark themes.
+- Sign-in on the real portal page inside the app; the session survives the app being closed.
+- Background check about every 15 minutes: notifications for new portal notifications and messages, and when the session ends. It also keeps the session alive (Android may run it less often to save battery).
+- PDFs open in the phone's own viewer; downloads go to Downloads.
+
+**Русский**
+- Приложение для Android 10+ (`.apk`): те же разделы, что на компьютере, в телефонном интерфейсе: нижняя панель вкладок, лист «Ещё», список → подробности для сообщений и уведомлений. Работает кнопка «Назад», есть светлая и тёмная тема.
+- Вход на настоящей странице портала внутри приложения; сессия сохраняется и после закрытия приложения.
+- Фоновая проверка примерно раз в 15 минут: уведомления о новых уведомлениях и сообщениях портала и о завершении сессии. Она же поддерживает сессию (для экономии батареи Android может запускать её реже).
+- PDF открываются в программе просмотра на телефоне; файлы сохраняются в «Загрузки».
+
 ## 1.1.0 — 2026-10-25
 
 **macOS support.** / **Поддержка macOS.**

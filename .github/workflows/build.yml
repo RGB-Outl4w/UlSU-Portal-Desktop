@@ -1,4 +1,4 @@
-# Builds the Windows installer and the macOS apps.
+# Builds the Windows installer, the macOS apps and the Android APK.
 # - Manual run (workflow_dispatch): builds only; files are in the run's artifacts.
 # - Tag vX.Y.Z: creates a *draft* release with everything attached (published by hand).
 # - Tag vX.Y.Z-beta.N (any tag with "-"): publishes a *pre-release* right away, for testers.
@@ -88,9 +88,50 @@ jobs:
             screen-macos.png
             smoke.log
 
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21 # Capacitor 8
+      - run: npm ci
+      - name: Check tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - run: npm run android:sync
+      # Release key: secrets ANDROID_KEYSTORE (the .jks, base64) and ANDROID_KEYSTORE_PASSWORD.
+      # Every APK must be signed with this same key, or Android refuses it as an update.
+      - name: Build signed APK
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
+          ULPORTAL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "::error::ANDROID_KEYSTORE secret is not set"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ULPORTAL_KEYSTORE="$RUNNER_TEMP/release.jks"
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          mkdir -p ../dist
+          cp app/build/outputs/apk/release/app-release.apk "../dist/ULSU-Portal-Android-$(node -p "require('../package.json').version").apk"
+      - name: Verify signature
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$APKSIGNER" verify --print-certs dist/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*.apk
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [windows, macos]
+    needs: [windows, macos, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +142,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: macos
+          path: out
+      - uses: actions/download-artifact@v4
+        with:
+          name: android
           path: out
       - name: Create release
         env:
