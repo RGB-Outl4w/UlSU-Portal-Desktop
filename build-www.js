@@ -1,7 +1,7 @@
 // Android: copy the desktop UI into www/ for Capacitor and load portal-android.js (window.portal) before app.js.
 const fs = require('fs');
 
-const FILES = ['app.js', 'app.css', 'i18n.js', 'logo.svg', 'icon.png', 'portal-android.js',
+const FILES = ['app.js', 'layout.js', 'app.css', 'i18n.js', 'logo.svg', 'icon.png', 'portal-android.js',
   'PRIVACY.md', 'PRIVACY.ru.md', 'NOTICE.md', 'LICENSE', 'LICENSE.ru.md', 'THIRD_PARTY_NOTICES.md'];
 
 fs.rmSync('www', { recursive: true, force: true });

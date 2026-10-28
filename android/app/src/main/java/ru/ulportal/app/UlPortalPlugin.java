@@ -49,8 +49,14 @@ import java.util.List;
 public class UlPortalPlugin extends Plugin {
     static final String BASE = "https://portal.ulsu.ru";
 
-    // Back button / gesture goes to app.js (closes dialogs, the sheet, goes up a level). Registered first,
-    // so a portal overlay's own callback (added later) still wins while it is open.
+    // Back button / gesture: the top portal overlay handles it while one is open, otherwise it goes to app.js
+    // (closes dialogs, the sheet, goes up a level). One callback for both: with a callback per overlay the
+    // order broke after the activity restarted (a lifecycle-bound callback re-registers on top), so Back
+    // reached app.js under an open overlay, which minimized the app with the page still on screen.
+    private final List<Runnable> overlayBacks = new ArrayList<>();
+    private final List<Runnable> pageCloses = new ArrayList<>(); // portal pages (not sign-in), for handleOnStart
+    private long stoppedAt;
+
     @Override
     public void load() {
         // Transparent, so the theme-coloured window background (res/values*/page.xml) shows instead of white
@@ -74,7 +80,8 @@ public class UlPortalPlugin extends Plugin {
         getActivity().getOnBackPressedDispatcher().addCallback(getActivity(), new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                notifyListeners("back", new JSObject());
+                if (!overlayBacks.isEmpty()) overlayBacks.get(overlayBacks.size() - 1).run();
+                else notifyListeners("back", new JSObject());
             }
         });
         // No session known to be alive (first start, after logout or an ended session): open the sign-in page
@@ -166,17 +173,17 @@ public class UlPortalPlugin extends Plugin {
             });
             boolean[] done = { false }, closing = { false };
             Runnable[] close = { null };
-            OnBackPressedCallback back = new OnBackPressedCallback(true) {
-                @Override
-                public void handleOnBackPressed() {
-                    if (web.canGoBack()) web.goBack(); // back goes back in the page history, then closes
-                    else close[0].run();
-                }
+            // Sign-in: back steps back through the sign-in pages (password -> MAX code), then cancels.
+            // A portal page: one back closes it and returns to the app screen it was opened from.
+            Runnable back = () -> {
+                if (login && web.canGoBack()) web.goBack();
+                else close[0].run();
             };
             close[0] = () -> {
                 if (closing[0]) return;
                 closing[0] = true;
-                back.remove();
+                overlayBacks.remove(back);
+                pageCloses.remove(close[0]);
                 if (login) {
                     closeLogin = null;
                     if (!done[0]) loginDone(false);
@@ -195,7 +202,13 @@ public class UlPortalPlugin extends Plugin {
 
                 // Fades in only once loaded: the portal's pages draw in visible stages (photo, bare form, styles).
                 @Override
+                public void onPageCommitVisible(WebView view, String page) {
+                    fitWidth(view);
+                }
+
+                @Override
                 public void onPageFinished(WebView view, String page) {
+                    fitWidth(view);
                     if (closing[0]) return;
                     if (!login || isLoginPage(page) || !page.startsWith(BASE + "/")) {
                         view.animate().alpha(1f).setDuration(180);
@@ -224,7 +237,8 @@ public class UlPortalPlugin extends Plugin {
                 getContext().getSystemService(DownloadManager.class).enqueue(req);
             });
             if (login) closeLogin = close[0];
-            activity.getOnBackPressedDispatcher().addCallback(back);
+            else pageCloses.add(close[0]);
+            overlayBacks.add(back);
             if (!instant) {
                 cover.setAlpha(0f);
                 cover.animate().alpha(1f).setDuration(200);
@@ -234,6 +248,23 @@ public class UlPortalPlugin extends Plugin {
             web.requestFocus();
             web.loadUrl(url);
         });
+    }
+
+    // Portal pages are desktop-width in places (wide tables, fixed-width blocks, big images): make them fit
+    // the screen so only vertical scrolling is left. Pinch zoom still works.
+    private static final String FIT_WIDTH = "(function(){if(document.getElementById('ulp-fit'))return;"
+        + "var m=document.querySelector('meta[name=viewport]');"
+        + "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}"
+        + "m.content='width=device-width, initial-scale=1';"
+        + "var s=document.createElement('style');s.id='ulp-fit';"
+        + "s.textContent='html,body{max-width:100%!important;overflow-x:hidden!important;overflow-x:clip!important}"
+        + "img,video,iframe,embed,object,canvas,table,pre,.container,.container-fluid{max-width:100%!important}"
+        + "img,video{height:auto!important}pre{white-space:pre-wrap!important}"
+        + "td,th,p,li,a,span,div{overflow-wrap:anywhere}';"
+        + "document.head.appendChild(s);})()";
+
+    private static void fitWidth(WebView view) {
+        view.evaluateJavascript(FIT_WIDTH, null);
     }
 
     // Save bytes to Downloads, then open them in the system viewer (PDF, documents, video).
@@ -356,5 +387,19 @@ public class UlPortalPlugin extends Plugin {
     @Override
     protected void handleOnPause() {
         persistSession();
+    }
+
+    // A portal page left open doesn't come back when the app is opened again later: the app's own screen does.
+    // ponytail: "later" = away 5+ min; a short switch (copying a code, a file viewer) keeps the page.
+    @Override
+    protected void handleOnStop() {
+        stoppedAt = System.currentTimeMillis();
+    }
+
+    @Override
+    protected void handleOnStart() {
+        if (stoppedAt > 0 && System.currentTimeMillis() - stoppedAt > 5 * 60_000) {
+            for (Runnable c : new ArrayList<>(pageCloses)) c.run();
+        }
     }
 }

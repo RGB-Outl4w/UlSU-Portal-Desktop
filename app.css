@@ -340,10 +340,20 @@ input[type=search]:focus { width: 260px; }
 .greet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; color: var(--muted); font-size: 15px; }
 .greet b { color: var(--text); font-size: 17px; }
 .greet .week-num { font-size: 12px; margin-left: 4px; }
-.dash { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; max-width: 1200px; }
-.dash-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (max-width: 980px) { .dash { grid-template-columns: minmax(0, 1fr); } }
-.dash .pane .pair::before { left: -16px; }
+.dash-grid .pane .pair::before { left: -16px; }
+
+/* Сегодня grid (layout.js): blocks fill their cells and scroll inside when content is taller. */
+.dash-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: var(--row); gap: var(--gap); max-width: 1200px; }
+.tile { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.tile > .card, .tile > .hero { flex: 1; min-height: 0; }
+.tile > .card { overflow: auto; }
+.dash-grid.editing .tile > .card, .dash-grid.editing .tile > .hero { pointer-events: none; opacity: .8; }
+.dash-grid.editing .tile { outline: 2px dashed color-mix(in oklab, var(--accent) 45%, transparent); outline-offset: 2px; border-radius: var(--r-lg); }
+.tile.dragging { z-index: 2; outline-style: solid; }
+.tile-bar { display: flex; gap: 6px; margin-bottom: 6px; flex: none; }
+.tile-move { flex: 1; min-width: 0; padding: 6px 10px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 13px; text-align: left; cursor: grab; touch-action: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-x { width: 30px; border-radius: var(--r); background: var(--card); border: 1px solid var(--line); font-size: 18px; line-height: 1; }
+.tile-size { position: absolute; z-index: 1; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); cursor: nwse-resize; touch-action: none; box-shadow: 0 0 0 3px var(--card); }
 
 .hero {
   grid-column: 1 / -1; position: relative; overflow: hidden; color: #fff;
@@ -464,6 +474,12 @@ body.collapsed #nav .count { position: absolute; top: 4px; left: 28px; margin: 0
 .inbox-item.conv { align-items: center; }
 .conv-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; color: var(--muted); font-size: 11.5px; }
 img.avatar { object-fit: cover; }
+.avatar { position: relative; overflow: hidden; }
+.avatar > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.avatar.busy { opacity: .5; }
+.pp-pic { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; align-self: center; border-radius: var(--r); cursor: grab; touch-action: none; }
+.crop-zoom { width: 100%; accent-color: var(--accent); }
 
 .reader { overflow: auto; padding: 22px 26px; }
 .reader-head { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -480,6 +496,23 @@ img.avatar { object-fit: cover; }
 .chat-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .chat-head b { display: block; }
 .chat-head small { color: var(--muted); font-size: 12px; }
+.chat-who { flex: 1; min-width: 0; }
+.chat-actions { display: flex; gap: 4px; flex: none; }
+.icon-btn.danger { color: var(--danger); }
+@media (hover: hover) { .icon-btn.danger:hover { background: color-mix(in oklab, var(--danger) 12%, transparent); color: var(--danger); } }
+#tools .btn { margin-top: 0; height: 36px; }
+#ctx { position: fixed; inset: auto; margin: 0; min-width: 190px; padding: 5px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--text); box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .4); transition: opacity .12s; }
+@media (prefers-color-scheme: dark) { #ctx { background: #1f2229; } }
+#ctx:not(:popover-open) { opacity: 0; }
+#ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--r-sm); text-align: left; font-size: 13.5px; }
+#ctx button.danger { color: var(--danger); }
+@media (hover: hover) { #ctx button:hover { background: var(--side-hover); } }
+.inbox-item.conv { -webkit-touch-callout: none; user-select: none; }
+.bubble-del { display: none; margin-right: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.bubble.mine:hover .bubble-del, .bubble.mine:focus-within .bubble-del { display: inline; }
+.confirm-extra > .box-input { width: 100%; }
+.people-pick { display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow: auto; }
+.people-pick .sub { color: var(--muted); font-size: 13px; padding: 6px 2px; }
 .feed { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .day-sep { align-self: center; font-size: 12px; color: var(--muted); background: var(--sk); padding: 2px 10px; border-radius: 10px; margin: 8px 0; }
 .bubble {
@@ -557,7 +590,9 @@ img.avatar { object-fit: cover; }
 @media (hover: hover) { .fav:hover { transform: scale(1.1); } }
 .fav.on .i { fill: #ffd43b; stroke: #ffd43b; }
 .fav.on { animation: pop-in .3s var(--ease); }
-.recent { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.recent { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; min-width: 0; } /* one line: never pushes the list down */
+.recent .chip-btn { flex: 0 1 auto; min-width: 0; }
+.recent .tool-label { flex: none; }
 .chip-btn { padding: 5px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); font-size: 13px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: border-color var(--t-fast), color var(--t-fast); }
 @media (hover: hover) { .chip-btn:hover { border-color: var(--accent); color: var(--accent); } }
 header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

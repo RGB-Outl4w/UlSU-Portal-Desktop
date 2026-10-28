@@ -221,6 +221,8 @@ async function loadMy() {
   const [my, sched] = await Promise.all([pget('/my/'), pget('/blocks/schedule/ajax_schedule.php')]);
   const doc = html(my + JSON.parse(sched).html);
   const data = { weeks: parseSchedule(doc), profile: parseProfile(doc), userid: Number(doc.querySelector('[data-userid]')?.dataset.userid) };
+  const pic = doc.querySelector('.usermenu img.userpicture, .userbutton img.userpicture');
+  data.profile.picture = pic && !pic.classList.contains('defaultuserpic') ? new URL(pic.getAttribute('src'), BASE).href : null;
   renderProfile(data.profile);
   mySesskey = my.match(/"sesskey":"(\w+)"/)?.[1] || mySesskey;
   myUserid = data.userid || myUserid;
@@ -276,7 +278,7 @@ const ui = {
   plan: { q: '', sem: null }, // null = pick the current semester from the profile
   notes: { filter: 'all', open: null },
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: new Date().toDateString(), show: 'all' },
-  chat: { q: '', open: null, draft: null }, // draft = person to write to with no conversation yet
+  chat: { q: '', open: null, draft: null, box: 'inbox' }, // draft = person to write to with no conversation yet; box = inbox | archive
   svc: { tab: 'orders', path: '/', fs: null, flash: null }, // Сервисы: sub-tab, files folder, files draft area
 };
 const byName = (a = '', b = '') => a.localeCompare(b, 'ru');
@@ -338,6 +340,7 @@ const views = {
   today: {
     title: T('Сегодня'),
     sk: 'grid',
+    tools: (d) => dashTools(d.userid),
     async load() {
       const [my, deadlines, debts] = await Promise.all([loadMy(), views.deadlines.load(), pget('/blocks/buttons/debts.php')]);
       cache.schedule = my.weeks; // warm the other tabs for free
@@ -362,46 +365,46 @@ const views = {
       const debtsOk = /^0\D*$/.test(d.debts.academic) && /^0([,.]0+)?\D*$/.test(d.debts.finance);
       const debtsPage = () => portal.open(`${BASE}/blocks/buttons/debts.php`);
 
+      const tiles = {
+        hero: () => hero(pairs),
+
+        pairs: () => h('div', { class: 'card pane' },
+          paneHead('schedule', todayDay ? T('Пары сегодня') : T('Ближайшие занятия'),
+            !todayDay && nextDay ? h('span', { class: 'pill' }, nextDay.date.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })) : null,
+            () => show('schedule')),
+          (todayDay || nextDay)
+            ? (todayDay || nextDay).pairs.map((p) => pairRow(p, !!todayDay, now.getHours() * 60 + now.getMinutes()))
+            : h('div', { class: 'empty' }, T('Пар на ближайшие дни нет'))),
+
+        deadlines: () => h('div', { class: 'card pane' },
+          paneHead('deadlines', T('Дедлайны'), overdue ? h('span', { class: 'pill danger' }, T('{0} просрочено', overdue)) : null, () => show('deadlines')),
+          upcoming.length ? upcoming.map((e) => h('button', { class: 'mini', onclick: () => portal.open(e.url) },
+            h('span', { class: 'dot' }),
+            h('div', { class: 'main' }, h('div', { class: 't' }, e.name), h('div', { class: 'sub' }, [e.course?.fullname, relTime(e.timesort)].filter(Boolean).join(' · ')))))
+            : h('div', { class: 'empty' }, T('Нет предстоящих дедлайнов'))),
+
+        notes: () => h('div', { class: 'card pane' },
+          paneHead('bell', T('Уведомления'), d.unread ? h('span', { class: 'pill' }, T('{0} новых', d.unread)) : null,
+            () => show('notifications')),
+          d.notes.length ? d.notes.map((n) => h('button', { class: 'mini' + (n.read ? ' read' : ''), onclick: () => portal.open(n.contexturl || `${BASE}/message/output/popup/notifications.php?notificationid=${n.id}`) },
+            h('span', { class: 'dot' }),
+            h('div', { class: 'main' }, h('div', { class: 't' }, n.shortenedsubject || n.subject), h('div', { class: 'sub' }, relTime(n.timecreated)))))
+            : h('div', { class: 'empty' }, T('Уведомлений нет'))),
+
+        debts: () => h('div', { class: 'card pane' },
+          paneHead('wallet', T('Задолженности'), h('span', { class: 'pill ' + (debtsOk ? 'ok' : 'danger') }, debtsOk ? T('Всё чисто') : T('Есть долги')), debtsPage),
+          h('div', { class: 'stats' },
+            h('button', { class: 'stat' + (/^0\D*$/.test(d.debts.academic) ? '' : ' bad'), onclick: debtsPage },
+              h('b', {}, d.debts.academic || '—'), h('span', {}, T('академических долгов'))),
+            h('button', { class: 'stat' + (/^0([,.]0+)?\D*$/.test(d.debts.finance) ? '' : ' bad'), onclick: debtsPage },
+              h('b', {}, d.debts.finance || '—'), h('span', {}, T('финансовая задолженность'))))),
+      };
+
       return [
         h('p', { class: 'greet' }, h('b', {}, first ? `${hello}, ${first}` : hello),
           ` · ${now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}`,
           parity ? h('span', { class: 'week-num' }, T('{0} неделя', roman(parity))) : null),
-        // Two aligned columns under the banner: classes left, everything else stacked right.
-        stagger(h('div', { class: 'dash' },
-          hero(pairs),
-
-          h('div', { class: 'dash-col' }, h('div', { class: 'card pane' },
-            paneHead('schedule', todayDay ? T('Пары сегодня') : T('Ближайшие занятия'),
-              !todayDay && nextDay ? h('span', { class: 'pill' }, nextDay.date.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })) : null,
-              () => show('schedule')),
-            (todayDay || nextDay)
-              ? (todayDay || nextDay).pairs.map((p) => pairRow(p, !!todayDay, now.getHours() * 60 + now.getMinutes()))
-              : h('div', { class: 'empty' }, T('Пар на ближайшие дни нет')))),
-
-          h('div', { class: 'dash-col' },
-          h('div', { class: 'card pane' },
-            paneHead('deadlines', T('Дедлайны'), overdue ? h('span', { class: 'pill danger' }, T('{0} просрочено', overdue)) : null, () => show('deadlines')),
-            upcoming.length ? upcoming.map((e) => h('button', { class: 'mini', onclick: () => portal.open(e.url) },
-              h('span', { class: 'dot' }),
-              h('div', { class: 'main' }, h('div', { class: 't' }, e.name), h('div', { class: 'sub' }, [e.course?.fullname, relTime(e.timesort)].filter(Boolean).join(' · ')))))
-              : h('div', { class: 'empty' }, T('Нет предстоящих дедлайнов'))),
-
-          h('div', { class: 'card pane' },
-            paneHead('bell', T('Уведомления'), d.unread ? h('span', { class: 'pill' }, T('{0} новых', d.unread)) : null,
-              () => show('notifications')),
-            d.notes.length ? d.notes.map((n) => h('button', { class: 'mini' + (n.read ? ' read' : ''), onclick: () => portal.open(n.contexturl || `${BASE}/message/output/popup/notifications.php?notificationid=${n.id}`) },
-              h('span', { class: 'dot' }),
-              h('div', { class: 'main' }, h('div', { class: 't' }, n.shortenedsubject || n.subject), h('div', { class: 'sub' }, relTime(n.timecreated)))))
-              : h('div', { class: 'empty' }, T('Уведомлений нет'))),
-
-          h('div', { class: 'card pane' },
-            paneHead('wallet', T('Задолженности'), h('span', { class: 'pill ' + (debtsOk ? 'ok' : 'danger') }, debtsOk ? T('Всё чисто') : T('Есть долги')), debtsPage),
-            h('div', { class: 'stats' },
-              h('button', { class: 'stat' + (/^0\D*$/.test(d.debts.academic) ? '' : ' bad'), onclick: debtsPage },
-                h('b', {}, d.debts.academic || '—'), h('span', {}, T('академических долгов'))),
-              h('button', { class: 'stat' + (/^0([,.]0+)?\D*$/.test(d.debts.finance) ? '' : ' bad'), onclick: debtsPage },
-                h('b', {}, d.debts.finance || '—'), h('span', {}, T('финансовая задолженность')))))),
-        )),
+        dashGrid(d.userid, tiles),
       ];
     },
   },
@@ -432,16 +435,16 @@ const views = {
     async load() {
       const [{ courses }, recent] = await Promise.all([
         pajax('core_course_get_enrolled_courses_by_timeline_classification', { classification: 'inprogress', limit: 0, offset: 0, sort: 'fullname' }),
-        pajax('core_course_get_recent_courses', { userid: await myId(), limit: 6 }).catch(() => []),
+        pajax('core_course_get_recent_courses', { userid: await myId(), limit: RECENT_MAX }).catch(() => []),
       ]);
       return { courses, recent };
     },
     tools: () => [
       search(T('Поиск курса'), ui.courses),
       select([['all', T('Все курсы')], ['fav', T('Избранные')], ['active', T('Незавершённые')]],
-        ui.courses.only, (v) => { ui.courses.only = v; pref('only-courses', v); swap(views.courses.render(cache.courses), true); }),
+        ui.courses.only, (v) => { ui.courses.only = v; pref('only-courses', v); syncSoon(); swap(views.courses.render(cache.courses), true); }),
       select([['name', T('По названию')], ['progress-asc', T('Меньше пройдено')], ['progress-desc', T('Больше пройдено')], ['category', T('По категории')]],
-        ui.courses.sort, (v) => { ui.courses.sort = v; pref('sort-courses', v); swap(views.courses.render(cache.courses), true); }),
+        ui.courses.sort, (v) => { ui.courses.sort = v; pref('sort-courses', v); syncSoon(); swap(views.courses.render(cache.courses), true); }),
     ],
     render({ courses, recent }) {
       const pct = (c) => (c.hasprogress ? c.progress : -1); // courses without progress tracking go last
@@ -456,7 +459,7 @@ const views = {
       const byId = Object.fromEntries(courses.map((c) => [c.id, c]));
       const recentRow = recent?.length && ui.courses.only === 'all' ? h('div', { class: 'recent' },
         h('span', { class: 'tool-label' }, T('Недавние')),
-        recent.map((r) => h('button', { class: 'chip-btn', onclick: () => openCourse(byId[r.id] || r) }, r.fullname))) : null;
+        recent.slice(0, RECENT_MAX).map((r) => h('button', { class: 'chip-btn', title: r.fullname, onclick: () => openCourse(byId[r.id] || r) }, r.fullname))) : null;
       if (!list.length) return [recentRow, msg(ui.courses.only === 'fav' ? T('Нет избранных курсов: отметьте звёздочкой') : T('Нет курсов'))];
       return [recentRow, stagger(h('div', { class: 'courses' }, list.map((c) =>
         h('div', { class: 'card course lift', role: 'button', tabindex: 0, 'data-name': c.fullname.toLowerCase(), hidden: !matches(c.fullname, ui.courses.q),
@@ -725,22 +728,36 @@ Object.assign(views, {
       const { conversations } = await pajax('core_message_get_conversations', { userid: uid, limitfrom: 0, limitnum: 50 });
       return { uid, conversations };
     },
-    tools: () => search(T('Поиск диалога'), ui.chat),
-    render({ uid, conversations: loaded }) {
+    tools: (d) => {
+      const archived = archivedChats(d.uid);
+      const n = d.conversations.filter((c) => archived.has(c.id)).length;
+      return [
+        search(T('Поиск диалога'), ui.chat),
+        seg([['inbox', T('Диалоги')], ['archive', n ? T('Архив · {0}', n) : T('Архив')]], ui.chat.box,
+          (k) => { ui.chat.box = k; swap(views.messages.render(d), true); }),
+        h('button', { class: 'btn', onclick: () => newChat(d.uid) }, T('Новый диалог')),
+      ];
+    },
+    render(data) {
+      const { uid } = data;
+      const archived = archivedChats(uid);
+      const inArchive = ui.chat.box === 'archive';
+      const loaded = data.conversations.filter((c) => archived.has(c.id) === inArchive);
       // New contact (from Участники): a draft chat until the first message creates the conversation.
       const d = ui.chat.draft;
       const existing = d && loaded.find((c) => c.type === 1 && c.members[0]?.id === d.id);
       if (existing) { ui.chat.open = existing.id; ui.chat.draft = null; }
-      const conversations = d && !existing
+      const conversations = d && !existing && !inArchive
         ? [{ id: 'draft', type: 1, draft: true, messages: [], members: [{ id: d.id, fullname: d.name, profileimageurlsmall: d.picture, canmessage: true }] }, ...loaded]
         : loaded;
-      if (!conversations.length) return msg(T('Диалогов нет'));
+      if (!conversations.length) return msg(inArchive ? T('В архиве пусто') : T('Диалогов нет'));
       const chat = h('div', { class: 'card chat' });
       const nameOf = (c) => c.name || c.members.map((m) => m.fullname).join(', ') || T('Диалог');
       const items = conversations.map((c) => {
         const last = c.messages[0];
         const item = h('button', { class: 'inbox-item conv' + (c.unreadcount ? ' unread' : ''), 'data-name': nameOf(c).toLowerCase(),
-          hidden: !matches(nameOf(c), ui.chat.q), onclick: () => openChat(c, item) },
+          hidden: !matches(nameOf(c), ui.chat.q), onclick: () => openChat(c, item),
+          oncontextmenu: (e) => { if (!c.draft) { e.preventDefault(); chatMenu(e, c); } } },
         avatarOf(c.members[0], nameOf(c)),
         h('div', { class: 'main' },
           h('div', { class: 't' }, nameOf(c)),
@@ -750,6 +767,29 @@ Object.assign(views, {
           c.unreadcount ? h('span', { class: 'count' }, String(c.unreadcount)) : null));
         return item;
       });
+
+      // Archive is this app's own list (the portal has none); deleting a chat removes it only for you.
+      const archive = (c) => {
+        const set = archivedChats(uid);
+        if (set.has(c.id)) set.delete(c.id); else set.add(c.id);
+        pref(`chat-archive-${uid}`, JSON.stringify([...set]));
+        syncSoon();
+        if (ui.chat.open === c.id) ui.chat.open = null;
+        paint('messages', true);
+      };
+      const removeChat = async (c) => {
+        if (!await confirmBox(T('Удалить диалог?'), T('Переписка удалится только у вас. У собеседника она останется.'), T('Удалить'))) return;
+        try {
+          await pajax('core_message_delete_conversations_by_id', { userid: uid, conversationids: [c.id] });
+          data.conversations = data.conversations.filter((x) => x !== c);
+          if (ui.chat.open === c.id) ui.chat.open = null;
+          paint('messages', true);
+        } catch (e) { confirmBox(T('Не удалено: {0}', errText(e)), '', T('Понятно')); }
+      };
+      const chatMenu = (e, c) => ctxMenu(e, [
+        [archived.has(c.id) ? T('Из архива') : T('В архив'), 'archive', () => archive(c)],
+        [T('Удалить диалог'), 'trash', () => removeChat(c), true],
+      ]);
 
       async function openChat(c, item) {
         ui.chat.open = c.id;
@@ -765,7 +805,10 @@ Object.assign(views, {
         const canSend = c.type === 2 || other?.canmessage !== false;
         chat.replaceChildren(
           h('div', { class: 'chat-head' }, splitBack(), avatarOf(other, nameOf(c)),
-            h('div', {}, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : ''))),
+            h('div', { class: 'chat-who' }, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : '')),
+            c.draft ? null : h('div', { class: 'chat-actions' },
+              h('button', { class: 'icon-btn', title: archived.has(c.id) ? T('Из архива') : T('В архив'), onclick: () => archive(c) }, icon('archive')),
+              h('button', { class: 'icon-btn danger', title: T('Удалить диалог'), onclick: () => removeChat(c) }, icon('trash')))),
           feed,
           canSend ? h('div', { class: 'composer' }, input, sendBtn) : h('div', { class: 'note composer-off' }, T('Этому собеседнику нельзя написать')),
           err);
@@ -776,8 +819,22 @@ Object.assign(views, {
           const day = d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
           return [
             day !== lastDay ? h('div', { class: 'day-sep' }, (lastDay = day)) : null,
-            h('div', { class: 'bubble' + (m.useridfrom === uid ? ' mine' : '') }, rich(m.text), h('small', {}, hhmm(d))),
+            m.useridfrom === uid && m.id ? mine(m, d) : h('div', { class: 'bubble' + (m.useridfrom === uid ? ' mine' : '') }, rich(m.text), h('small', {}, hhmm(d))),
           ];
+        };
+        // Own message: hover (or tap on a phone) shows Удалить. Moodle 3.7 deletes "for me" only (deleting for
+        // everyone needs a site-admin capability) and can't edit sent messages.
+        const mine = (m, d) => {
+          const el = h('div', { class: 'bubble mine', tabindex: 0 }, rich(m.text),
+            h('small', {}, h('button', { class: 'bubble-del', title: T('Удалить сообщение'), onclick: async (e) => {
+              e.stopPropagation();
+              if (!await confirmBox(T('Удалить сообщение?'), T('Сообщение удалится только у вас. Собеседник его по-прежнему увидит.'), T('Удалить'))) return;
+              try {
+                await pajax('core_message_delete_message', { messageid: m.id, userid: uid, read: true });
+                el.remove();
+              } catch (x) { err.textContent = T('Не удалено: {0}', errText(x)); }
+            } }, T('Удалить')), hhmm(d)));
+          return el;
         };
 
         async function send() {
@@ -878,7 +935,12 @@ const MOD_NAMES = {
   h5pactivity: 'H5P', questionnaire: T('Анкета'), chat: T('Чат'), data: T('База данных'),
 };
 
+// Recent = last opened first, at most 3. The portal records the visit itself (the course page is read);
+// the list here follows at once instead of on the next Курсы reload.
+const RECENT_MAX = 3;
 function openCourse(c) {
+  const recent = cache.courses?.recent;
+  if (Array.isArray(recent)) cache.courses.recent = [c, ...recent.filter((r) => r.id !== c.id)].slice(0, RECENT_MAX);
   if (ui.course.id !== c.id) { delete cache.course; Object.assign(ui.course, { closed: new Set(), tab: 'content', q: '' }); }
   ui.course.id = c.id;
   ui.course.info = c;
@@ -1064,6 +1126,54 @@ function parsePeople(doc) {
   }).filter((p) => p.id);
 }
 
+// Small menu at the pointer (right click, or long press on a phone). items: [label, icon, run, danger].
+function ctxMenu(e, items) {
+  document.getElementById('ctx')?.remove();
+  const menu = h('div', { id: 'ctx', popover: 'auto', role: 'menu' }, items.map(([label, ic, run, danger]) =>
+    h('button', { role: 'menuitem', class: danger ? 'danger' : null, onclick: () => { menu.hidePopover(); run(); } }, icon(ic), label)));
+  document.body.append(menu);
+  menu.showPopover();
+  const r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(e.clientX, innerWidth - r.width - 8)}px`;
+  menu.style.top = `${Math.min(e.clientY, innerHeight - r.height - 8)}px`;
+  menu.addEventListener('toggle', (ev) => { if (ev.newState === 'closed') setTimeout(() => menu.remove(), 200); });
+  menu.querySelector('button')?.focus();
+}
+
+const archivedChats = (uid) => new Set(JSON.parse(pref(`chat-archive-${uid}`) || '[]'));
+
+// Новый диалог: find a person on the portal, then open (or draft) the chat with them.
+// Group chats can't be started here: Moodle 3.7 only makes them from course groups.
+async function newChat(uid) {
+  const input = h('input', { class: 'box-input', type: 'search', placeholder: T('Имя или фамилия'), 'aria-label': T('Имя или фамилия'),
+    onkeydown: (e) => { if (e.key === 'Enter') e.preventDefault(); } }); // nothing to confirm until a person is picked
+  const list = h('div', { class: 'people-pick' });
+  let timer;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { list.replaceChildren(); return; }
+    timer = setTimeout(async () => {
+      list.replaceChildren(h('div', { class: 'sub' }, T('Поиск…')));
+      try {
+        const r = await pajax('core_message_message_search_users', { userid: uid, search: q, limitfrom: 0, limitnum: 20 });
+        if (input.value.trim() !== q) return;
+        const people = [...r.contacts, ...r.noncontacts].filter((p) => p.id !== uid);
+        list.replaceChildren(...(people.length ? people.map((p) => h('button', { type: 'button', class: 'inbox-item conv', onclick: () => {
+          $('#confirm').close('cancel');
+          writeTo(p.id, p.fullname, p.profileimageurlsmall);
+        } }, avatarOf(p, p.fullname), h('div', { class: 'main' }, h('div', { class: 't' }, p.fullname))))
+          : [h('div', { class: 'sub' }, T('Никого не нашлось'))]));
+      } catch (e) { list.replaceChildren(h('div', { class: 'send-err' }, errText(e))); }
+    }, 300);
+  });
+  setTimeout(() => input.focus(), 50);
+  const ok = $('#confirm-ok');
+  ok.hidden = true;
+  await formBox(T('Новый диалог'), [input, list, h('p', { class: 'sub' }, T('Групповые беседы на портале создаются только из групп курса.'))]);
+  setTimeout(() => { ok.hidden = false; }, 300); // after the close animation
+}
+
 // Opens the chat with that person in Сообщения; without one yet, a draft chat there.
 async function writeTo(userid, name, picture) {
   try {
@@ -1071,10 +1181,13 @@ async function writeTo(userid, name, picture) {
       { userid: await myId(), otheruserid: userid, includecontactrequests: false, includeprivacyinfo: false });
     ui.chat.open = conv.id;
     ui.chat.draft = null;
+    const set = archivedChats(myUserid);
+    if (set.delete(conv.id)) { pref(`chat-archive-${myUserid}`, JSON.stringify([...set])); syncSoon(); } // writing brings it back
   } catch {
     ui.chat.draft = { id: userid, name, picture };
     ui.chat.open = 'draft';
   }
+  ui.chat.box = 'inbox';
   show('messages', true);
 }
 
@@ -1539,13 +1652,86 @@ async function listFiles(fs, filepath) {
   return r.list || [];
 }
 
+// Saving /user/files.php replaces all personal files with the draft it was given, so drafts are committed
+// one at a time, and a draft opened before the latest commit is swapped for a fresh one first.
+let filesQueue = Promise.resolve();
+let filesGen = 0; // bumped by every commit made outside the Личные файлы screen
+const filesExclusive = (fn) => (filesQueue = filesQueue.then(fn, fn));
+async function freshFs(fs) {
+  if (fs.gen === filesGen) return fs;
+  return (ui.svc.fs = { ...await loadFiles(), gen: filesGen });
+}
+
+// ---- sync across devices: chat archive and Курсы sort/filter, in a small file in Личные файлы ----
+// The portal keeps no custom per-user settings (it drops preference names Moodle doesn't know), so the
+// app's own file is the shared copy. Newest wins by its "at" time; the local copy works offline.
+const SYNC_DIR = '/ulportal-sync/'; // no leading dot: the portal's nginx refuses dot-paths (403)
+const SYNC_FILE = 'sync.json';
+const COURSE_SORTS = ['name', 'progress-asc', 'progress-desc', 'category'];
+const COURSE_FILTERS = ['all', 'fav', 'active'];
+let syncTimer;
+let pulledAt = 0;
+
+function syncSoon() {
+  pref('sync-at', String(Date.now()));
+  pref('sync-dirty', '1');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncPush().catch(() => {}), 2000); // offline: stays dirty, sent on the next start
+}
+
+async function syncPush() {
+  const uid = await myId();
+  const data = {
+    v: 1, at: Number(pref('sync-at')) || Date.now(),
+    archive: [...archivedChats(uid)], courses: { sort: ui.courses.sort, only: ui.courses.only },
+  };
+  await filesExclusive(async () => {
+    const fs = await loadFiles();
+    const root = await listFiles(fs, '/');
+    if (!root.some((f) => f.type === 'folder' && f.fullname === SYNC_DIR.slice(1, -1))) {
+      await portal.post('/repository/draftfiles_ajax.php?action=mkdir', { client_id: fs.client, itemid: fs.itemid, filepath: '/', newdirname: SYNC_DIR.slice(1, -1) });
+    } else if ((await listFiles(fs, SYNC_DIR)).some((f) => f.filename === SYNC_FILE)) {
+      await portal.post('/repository/draftfiles_ajax.php?action=delete', { client_id: fs.client, itemid: fs.itemid, filepath: SYNC_DIR, filename: SYNC_FILE });
+    }
+    await portal.upload({ itemid: fs.itemid, filepath: SYNC_DIR, name: SYNC_FILE, bytes: new TextEncoder().encode(JSON.stringify(data)) });
+    await portal.post('/user/files.php', fs.save);
+    filesGen++;
+  });
+  pref('sync-dirty', '');
+  ui.svc.fs = null;
+}
+
+// Reads the shared copy and takes it when it's newer than what this device has.
+async function syncPull() {
+  pulledAt = Date.now();
+  if (pref('sync-dirty')) return syncPush(); // a change made here never reached the portal: it is the newest
+  const uid = await myId();
+  const fs = await loadFiles();
+  const file = (await listFiles(fs, SYNC_DIR)).find((f) => f.filename === SYNC_FILE);
+  if (!file) return;
+  const d = JSON.parse(new TextDecoder().decode((await portal.file(file.url)).bytes));
+  if (!(d.at > (Number(pref('sync-at')) || 0)) || pref('sync-dirty')) return;
+  if (Array.isArray(d.archive)) pref(`chat-archive-${uid}`, JSON.stringify(d.archive.filter(Number.isInteger)));
+  if (COURSE_SORTS.includes(d.courses?.sort)) pref('sort-courses', (ui.courses.sort = d.courses.sort));
+  if (COURSE_FILTERS.includes(d.courses?.only)) pref('only-courses', (ui.courses.only = d.courses.only));
+  pref('sync-at', String(d.at));
+  if (current === 'messages' && cache.messages) paint('messages', 'silent');
+  if (current === 'courses' && cache.courses) paint('courses', 'silent');
+}
+// On start, and when the app comes back after a while (changes from another device).
+setTimeout(() => syncPull().catch(() => {}), 5000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - pulledAt > 10 * 60_000) syncPull().catch(() => {});
+});
+
 function filesTab() {
   const box = h('div', { class: 'svc' });
   const draw = async () => {
     try {
-      ui.svc.fs ||= await loadFiles();
+      ui.svc.fs ||= { ...await loadFiles(), gen: filesGen };
       const fs = ui.svc.fs;
-      const list = await listFiles(fs, ui.svc.path);
+      // The sync file's folder (see syncPush) is the app's own: not shown here.
+      const list = (await listFiles(fs, ui.svc.path)).filter((f) => !(ui.svc.path === '/' && f.type === 'folder' && f.fullname === SYNC_DIR.slice(1, -1)));
       const crumbs = ui.svc.path.split('/').filter(Boolean);
       const go = (p) => { ui.svc.path = p; draw(); };
       const picker = h('input', { type: 'file', multiple: '', hidden: '', onchange: async () => {
@@ -1555,8 +1741,11 @@ function filesTab() {
         if (big) { alertLine(T('«{0}» больше {1}', big.name, fmtSize(fs.maxbytes))); return; }
         if (!await confirmBox(T('Загрузить в Личные файлы?'), files.map((f) => `${f.name} (${fmtSize(f.size)})`).join(', '), T('Загрузить'))) return;
         try {
-          for (const f of files) await portal.upload({ itemid: fs.itemid, filepath: ui.svc.path, name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
-          await portal.post('/user/files.php', fs.save); // commit the draft area
+          await filesExclusive(async () => {
+            const cur = await freshFs(fs);
+            for (const f of files) await portal.upload({ itemid: cur.itemid, filepath: ui.svc.path, name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+            await portal.post('/user/files.php', cur.save); // commit the draft area
+          });
           ui.svc.fs = null; // new draft itemid after saving
           draw();
         } catch (e) { alertLine(T('Не загружено: {0}', errText(e))); }
@@ -1565,7 +1754,7 @@ function filesTab() {
       // Every change commits the draft, which gives the area a new itemid: reload it, then redraw.
       const change = async (run) => {
         try {
-          await run();
+          await filesExclusive(async () => run(await freshFs(fs)));
           ui.svc.fs = null;
           draw();
         } catch (e) { alertLine(T('Не сохранено: {0}', errText(e))); }
@@ -1583,7 +1772,7 @@ function filesTab() {
             const input = boxInput('', T('Название папки'));
             setTimeout(() => input.focus(), 50);
             if (await formBox(T('Новая папка'), [input], T('Создать')) !== 'ok' || !input.value.trim()) return;
-            change(() => fileAction(fs, 'mkdir', { filepath: ui.svc.path, newdirname: input.value.trim() }));
+            change((fs) => fileAction(fs, 'mkdir', { filepath: ui.svc.path, newdirname: input.value.trim() }));
           } }, T('Новая папка')),
           h('button', { class: 'btn', onclick: () => picker.click() }, T('Загрузить файлы'))),
         h('div', { class: 'send-err' }),
@@ -1593,7 +1782,7 @@ function filesTab() {
           const pdf = /pdf/.test(f.mimetype || f.type);
           const remove = async () => {
             if (!await confirmBox(T('Удалить «{0}»?', name), folder ? T('Папка будет удалена вместе со всем содержимым.') : T('Файл будет удалён из личных файлов на портале.'), T('Удалить'))) return;
-            change(() => fileAction(fs, 'delete', { filepath: f.filepath, filename: folder ? '.' : f.filename }));
+            change((fs) => fileAction(fs, 'delete', { filepath: f.filepath, filename: folder ? '.' : f.filename }));
           };
           // Details and renaming: a file's name opens it, a folder's Edit button too (its name opens the folder).
           const when = (s) => s && new Date(s * 1000).toLocaleString(LOCALE, { dateStyle: 'long', timeStyle: 'short' });
@@ -1613,7 +1802,7 @@ function filesTab() {
             if (how === 'open') return pdf ? openFile({ name, url: f.url }, 'pdf') : portal.download(f.url, name);
             if (how === 'delete') return remove();
             if (how !== 'ok' || !to || to === name) return;
-            change(() => (folder
+            change((fs) => (folder
               ? fileAction(fs, 'updatedir', { filepath: f.filepath, newdirname: to, newfilepath: ui.svc.path })
               : fileAction(fs, 'updatefile', { filepath: f.filepath, filename: f.filename, newfilename: to })));
           };
@@ -1788,7 +1977,7 @@ Object.assign(views, {
 
         h('div', { class: 'card pane' },
           paneHead('plan', T('Правовая информация')),
-          h('p', { class: 'sub' }, T('Неофициальный проект. Не связан с УлГУ и не одобрен университетом. Данные хранятся только на вашем компьютере.')),
+          h('p', { class: 'sub' }, T('Неофициальный проект. Не связан с УлГУ и не одобрен университетом. Данные хранятся только на вашем устройстве и на самом портале.')),
           h('div', { class: 'about-btns' },
             docBtn(T('Политика конфиденциальности'), 'PRIVACY.md'),
             docBtn(T('Лицензия MIT'), 'LICENSE'),
@@ -1898,6 +2087,129 @@ function planRow(r) {
     all.length ? h('details', { class: 'mats' },
       h('summary', {}, T('Материалы ({0})', all.length)),
       h('ul', {}, all.map((m) => h('li', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); portal.open(m.url); } }, m.title))))) : null);
+}
+
+// ---- Сегодня: blocks on a grid the user can rearrange (rules in layout.js) ----
+
+const TILE_NAMES = {
+  hero: T('Текущая пара'), pairs: T('Пары'), deadlines: T('Дедлайны'), notes: T('Уведомления'), debts: T('Задолженности'),
+};
+// Phones get their own layout: 2 columns instead of 4. Rows are 40 px (+16 px gap).
+const DASH = {
+  wide: { cols: 4, items: [
+    { id: 'hero', x: 0, y: 0, w: 4, h: 3 }, { id: 'pairs', x: 0, y: 3, w: 2, h: 10 }, { id: 'deadlines', x: 2, y: 3, w: 2, h: 6 },
+    { id: 'notes', x: 2, y: 9, w: 2, h: 6 }, { id: 'debts', x: 2, y: 15, w: 2, h: 3 }] },
+  narrow: { cols: 2, items: [
+    { id: 'hero', x: 0, y: 0, w: 2, h: 4 }, { id: 'pairs', x: 0, y: 4, w: 2, h: 9 }, { id: 'deadlines', x: 0, y: 13, w: 2, h: 6 },
+    { id: 'notes', x: 0, y: 19, w: 2, h: 6 }, { id: 'debts', x: 0, y: 25, w: 2, h: 3 }] },
+};
+const DASH_ROWS = 40;
+const DASH_ROW = 40;
+const DASH_GAP = 16;
+const phoneMq = matchMedia('(max-width: 759px)');
+const dashBp = () => (phoneMq.matches ? 'narrow' : 'wide');
+phoneMq.addEventListener('change', () => { if (current === 'today' && cache.today) paint('today', true); });
+ui.today = { edit: false };
+
+// Per user (the account signed in) and per layout size, kept across sessions.
+const dashKey = (uid) => `today-layout-${uid || 0}-${dashBp()}`;
+function dashLayout(uid) {
+  const { cols, items } = DASH[dashBp()];
+  let saved = null;
+  try { saved = JSON.parse(pref(dashKey(uid))); } catch {}
+  return (saved && Grid.clean(saved, Object.keys(TILE_NAMES), cols, DASH_ROWS)) || items.map((it) => ({ ...it }));
+}
+const saveDash = (uid, layout) => pref(dashKey(uid), JSON.stringify(layout));
+const gridArea = (it) => `${it.y + 1} / ${it.x + 1} / span ${it.h} / span ${it.w}`;
+
+function dashTools(uid) {
+  if (!ui.today.edit) return h('button', { class: 'tool-btn', onclick: () => { ui.today.edit = true; paint('today', true); } }, T('Настроить'));
+  const layout = dashLayout(uid);
+  const missing = Object.keys(TILE_NAMES).filter((id) => !layout.some((it) => it.id === id));
+  const { cols, items } = DASH[dashBp()];
+  return [
+    missing.length ? select([['', T('Добавить блок…')], ...missing.map((id) => [id, TILE_NAMES[id]])], '', (id) => {
+      const def = items.find((it) => it.id === id);
+      const next = id && Grid.add(layout, id, def.w, def.h, cols, DASH_ROWS);
+      if (next) saveDash(uid, next);
+      paint('today', true);
+    }) : null,
+    h('button', { class: 'tool-btn', onclick: async () => {
+      if (!await confirmBox(T('Вернуть исходный вид?'), T('Блоки встанут на свои места по умолчанию.'), T('Сбросить'))) return;
+      pref(dashKey(uid), '');
+      paint('today', true);
+    } }, T('Сбросить')),
+    h('button', { class: 'btn', onclick: () => { ui.today.edit = false; paint('today', true); } }, T('Готово')),
+  ];
+}
+
+function dashGrid(uid, tiles) {
+  const { cols } = DASH[dashBp()];
+  let layout = dashLayout(uid);
+  const edit = ui.today.edit;
+  const grid = h('div', { class: 'dash-grid' + (edit ? ' editing' : ''), style: `--cols:${cols};--row:${DASH_ROW}px;--gap:${DASH_GAP}px` });
+  const els = {};
+  const apply = (l) => l.forEach((it) => { els[it.id].style.gridArea = gridArea(it); });
+  const commit = (l) => { layout = l; saveDash(uid, l); };
+
+  // Pointer drag of the bar (move) or the corner (resize): snaps to whole cells as it goes; a step that
+  // would break the rules (off the canvas, pushing something out) is simply not taken.
+  const drag = (e, it, mode) => {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const scroller = $('#content');
+    const colW = (grid.clientWidth - DASH_GAP * (cols - 1)) / cols + DASH_GAP;
+    const rowH = DASH_ROW + DASH_GAP;
+    const base = layout;
+    const start = { x: e.clientX, y: e.clientY, top: scroller.scrollTop };
+    let cur = layout;
+    els[it.id].classList.add('dragging');
+    const move = (ev) => {
+      if (ev.clientY > innerHeight - 60) scroller.scrollBy(0, 12); // near the bottom edge: scroll along
+      else if (ev.clientY < scroller.getBoundingClientRect().top + 40) scroller.scrollBy(0, -12);
+      const dx = Math.round((ev.clientX - start.x) / colW);
+      const dy = Math.round((ev.clientY - start.y + scroller.scrollTop - start.top) / rowH);
+      const want = mode === 'move' ? { ...it, x: it.x + dx, y: it.y + dy }
+        : { ...it, w: Math.min(it.w + dx, cols - it.x), h: Math.min(it.h + dy, DASH_ROWS - it.y) };
+      const next = Grid.place(base, want, cols, DASH_ROWS);
+      if (next) { cur = next; apply(cur); }
+    };
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      els[it.id].classList.remove('dragging');
+      commit(cur);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end, { once: true });
+    handle.addEventListener('pointercancel', end, { once: true });
+  };
+  // Keyboard: arrows move the focused block, Shift+arrows resize it.
+  const keys = (e, it) => {
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const now = layout.find((x) => x.id === it.id);
+    const want = e.shiftKey ? { ...now, w: Math.min(now.w + step[0], cols - now.x), h: Math.min(now.h + step[1], DASH_ROWS - now.y) }
+      : { ...now, x: now.x + step[0], y: now.y + step[1] };
+    const next = Grid.place(layout, want, cols, DASH_ROWS);
+    if (next) { commit(next); apply(next); }
+  };
+
+  for (const it of layout) {
+    els[it.id] = h('div', { class: 'tile', style: `grid-area:${gridArea(it)}` },
+      edit ? [
+        h('div', { class: 'tile-bar' },
+          h('button', { class: 'tile-move', title: T('Перетащите или двигайте стрелками; Shift+стрелки — размер'),
+            onpointerdown: (e) => drag(e, layout.find((x) => x.id === it.id), 'move'), onkeydown: (e) => keys(e, it) }, '⠿ ', TILE_NAMES[it.id]),
+          h('button', { class: 'tile-x', title: T('Убрать блок'), onclick: () => { commit(layout.filter((x) => x.id !== it.id)); paint('today', true); } }, '×')),
+        h('span', { class: 'tile-size', title: T('Изменить размер'), onpointerdown: (e) => drag(e, layout.find((x) => x.id === it.id), 'size') }),
+      ] : null,
+      tiles[it.id]());
+    grid.append(els[it.id]);
+  }
+  if (!layout.length) return msg(T('Все блоки убраны. Нажмите «Настроить», чтобы вернуть их.'));
+  return edit ? grid : stagger(grid);
 }
 
 // ---- view switching ----
@@ -2111,7 +2423,13 @@ function renderProfile(p) {
   profileData = p;
   const [last = '', first = ''] = p.name.split(/\s+/);
   const sub = [p.group, p.year && T('{0} курс', p.year)].filter(Boolean).join(' · ');
-  for (const el of document.querySelectorAll('#me .avatar, #profile .avatar')) el.textContent = (first[0] || '') + (last[0] || '');
+  for (const el of document.querySelectorAll('#me .avatar, #profile .avatar')) {
+    if (el.dataset.pic === (p.picture || '') && el.textContent) continue; // same picture: no reload flicker
+    el.dataset.pic = p.picture || '';
+    el.replaceChildren((first[0] || '') + (last[0] || ''));
+    if (p.picture) { const img = portalImg(p.picture); img.onerror = () => img.remove(); el.append(img); } // covers the initials once loaded
+  }
+  $('#pp-pic-del').hidden = !p.picture;
   $('#me-name').textContent = `${first} ${last}`;
   $('#me-sub').textContent = sub;
   $('#pp-name').textContent = p.name;
@@ -2120,6 +2438,113 @@ function renderProfile(p) {
   $('#me').hidden = false;
 }
 $('#pp-open').addEventListener('click', () => { $('#profile').hidePopover(); portal.open(`${BASE}/user/profile.php`); });
+
+// ---- profile picture: pick (gallery/camera/file), crop to a square here, save through the portal's profile form ----
+
+const PIC_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PIC_MAX = 5 * 1024 * 1024;
+const PIC_SIDE = 512; // the portal keeps its largest copy at 512 px and makes the small ones itself
+
+function pickPicture(camera) {
+  $('#profile').hidePopover();
+  const input = h('input', { type: 'file', accept: PIC_TYPES.join(','), capture: camera ? 'user' : null });
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    if (!PIC_TYPES.includes(file.type)) return confirmBox(T('Не подходит'), T('Нужна картинка JPG, PNG или WebP.'), T('Понятно'));
+    if (file.size > PIC_MAX) return confirmBox(T('Слишком большой файл'), T('Фото должно быть не больше 5 МБ.'), T('Понятно'));
+    const blob = await cropSquare(file).catch(() => null);
+    if (blob) changePicture(blob);
+  });
+  input.click();
+}
+
+// Square crop: drag to move, slider or wheel to zoom; the image always covers the frame.
+async function cropSquare(file) {
+  const img = await createImageBitmap(file);
+  const S = 280;
+  const dpr = window.devicePixelRatio || 1;
+  const cv = h('canvas', { class: 'crop', width: S * dpr, height: S * dpr });
+  const base = Math.max(S / img.width, S / img.height);
+  let zoom = 1, cx = img.width / 2, cy = img.height / 2; // frame centre, in image pixels
+  const side = () => S / (base * zoom); // frame side, in image pixels
+  const draw = (canvas) => {
+    const k = side();
+    cx = Math.min(Math.max(cx, k / 2), img.width - k / 2);
+    cy = Math.min(Math.max(cy, k / 2), img.height - k / 2);
+    canvas.getContext('2d').drawImage(img, cx - k / 2, cy - k / 2, k, k, 0, 0, canvas.width, canvas.height);
+  };
+  const range = h('input', { type: 'range', class: 'crop-zoom', min: 1, max: 4, step: 0.01, value: 1, 'aria-label': T('Масштаб'),
+    oninput: () => { zoom = Number(range.value); draw(cv); } });
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const k = side() / S;
+    cx -= (e.clientX - drag[0]) * k;
+    cy -= (e.clientY - drag[1]) * k;
+    drag = [e.clientX, e.clientY];
+    draw(cv);
+  });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    range.value = zoom = Math.min(4, Math.max(1, zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    draw(cv);
+  }, { passive: false });
+  draw(cv);
+  if (await formBox(T('Фото профиля'), [cv, range, h('p', { class: 'sub' }, T('Перетащите фото, чтобы выбрать область.'))], T('Сохранить')) !== 'ok') return null;
+  const out = h('canvas', { width: Math.min(PIC_SIDE, Math.round(side())), height: Math.min(PIC_SIDE, Math.round(side())) });
+  draw(out);
+  return new Promise((ok) => out.toBlob(ok, 'image/jpeg', 0.9));
+}
+
+// The portal's own "edit profile" form: the new image goes into its picture draft area, or "delete
+// picture" is ticked, and the whole form is sent back unchanged otherwise.
+async function savePicture(blob) {
+  const doc = html(await portal.get('/user/edit.php', 'live'));
+  const form = [...doc.querySelectorAll('form')].find((f) => f.querySelector('[name=imagefile], [name=deletepicture]'));
+  if (!form) throw new Error(T('Портал не разрешает менять фото профиля'));
+  const fields = Object.fromEntries([...form.elements]
+    .filter((el) => el.name && !el.disabled && !/^(submit|button|reset|file)$/.test(el.type) && (!/^(checkbox|radio)$/.test(el.type) || el.checked))
+    .flatMap((el) => (el.type === 'select-multiple' // interests[]: every pick, as interests[0], interests[1]…
+      ? [...el.selectedOptions].map((o, i) => [`${el.name.replace(/\[\]$/, '')}[${i}]`, o.value])
+      : [[el.name, el.value]])));
+  if (blob) {
+    const itemid = fields.imagefile;
+    if (!itemid) throw new Error(T('Портал не разрешает менять фото профиля'));
+    const { list = [] } = JSON.parse(await portal.post('/repository/draftfiles_ajax.php?action=list', { itemid, filepath: '/' }));
+    for (const f of list) await portal.post('/repository/draftfiles_ajax.php?action=delete', { itemid, filepath: f.filepath, filename: f.filename });
+    await portal.upload({ itemid, filepath: '/', name: 'picture.jpg', bytes: new Uint8Array(await blob.arrayBuffer()) });
+    delete fields.deletepicture;
+  } else {
+    fields.deletepicture = '1';
+  }
+  const res = html(await portal.post('/user/edit.php', { ...fields, submitbutton: form.querySelector('[name=submitbutton]')?.value || 'Обновить профиль' }));
+  const problem = [...res.querySelectorAll('form .error, form .invalid-feedback, form .form-control-feedback')].map((e) => e.textContent.trim()).find(Boolean);
+  if (problem) throw new Error(problem);
+}
+
+async function changePicture(blob) {
+  const avatar = $('#me .avatar');
+  avatar.classList.add('busy');
+  try {
+    await savePicture(blob);
+    await loadMy(); // new picture URL from /my/
+  } catch (e) {
+    confirmBox(T('Фото не сохранено'), errText(e), T('Понятно'));
+  } finally {
+    avatar.classList.remove('busy');
+  }
+}
+
+$('#pp-pic').addEventListener('click', () => pickPicture(false));
+$('#pp-cam').hidden = portal.platform !== 'android';
+$('#pp-cam').addEventListener('click', () => pickPicture(true));
+$('#pp-pic-del').addEventListener('click', async () => {
+  $('#profile').hidePopover();
+  if (await confirmBox(T('Удалить фото профиля?'), T('На портале вместо фото будут инициалы.'), T('Удалить'))) changePicture(null);
+});
 
 // ---- settings: theme, accent, sidebar ----
 
