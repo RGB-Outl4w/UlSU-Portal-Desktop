@@ -221,9 +221,15 @@ async function loadMy() {
   const [my, sched] = await Promise.all([pget('/my/'), pget('/blocks/schedule/ajax_schedule.php')]);
   const doc = html(my + JSON.parse(sched).html);
   const data = { weeks: parseSchedule(doc), profile: parseProfile(doc), userid: Number(doc.querySelector('[data-userid]')?.dataset.userid) };
-  const pic = doc.querySelector('.usermenu img.userpicture, .userbutton img.userpicture');
-  data.profile.picture = pic && !pic.classList.contains('defaultuserpic') ? new URL(pic.getAttribute('src'), BASE).href : null;
   renderProfile(data.profile);
+  // Own picture from the database, as in chats: the portal's page header shows the picture this session
+  // started with, so a change made on another device didn't appear until signing in again.
+  if (data.userid) {
+    pajax('core_message_get_member_info', { referenceuserid: data.userid, userids: [data.userid] }).then(([m]) => {
+      const url = m?.profileimageurl;
+      renderProfile({ ...data.profile, picture: url && !url.includes('/theme/image.php') ? url : null });
+    }).catch(() => {});
+  }
   mySesskey = my.match(/"sesskey":"(\w+)"/)?.[1] || mySesskey;
   myUserid = data.userid || myUserid;
   return data;
@@ -2420,6 +2426,7 @@ $('#palette-btn').addEventListener('click', openPalette);
 let profileData;
 function renderProfile(p) {
   if (!p.name) return;
+  if (p.picture === undefined) p = { ...p, picture: profileData?.picture }; // /my/ alone: keep the picture already shown
   profileData = p;
   const [last = '', first = ''] = p.name.split(/\s+/);
   const sub = [p.group, p.year && T('{0} курс', p.year)].filter(Boolean).join(' · ');
