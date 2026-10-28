@@ -73,7 +73,7 @@ Pages open in a reader dialog (images and embeds sanitized). PDFs and videos are
 - Polling every few minutes from main process; Windows toast (`Notification`) for new items; unread badge on tray icon.
 - `userid` comes from `[data-userid]` on `/my/`.
 
-**Status (2026-10-25):** done. Уведомления tab (Ctrl+5): list + reading pane, filters Все/Непрочитанные/Объявления, "Прочитать все", item marked read on open. The notice center's items already come through `message_popup_get_popup_notifications` (`component: block_cdo_notif_center`), so `api.php` isn't needed. Сообщения tab (Ctrl+6): conversations with search, chat bubbles, conversation marked read on open, sending via `core_message_send_messages_to_conversation` (plain text) — **sending not tested yet**. Portal HTML is shown through a tag whitelist (`rich()`). Main process `poll()` every 3 min replaces the old ping: unread counts go to sidebar badges and the tray tooltip, toasts appear for new items (not on the first run), and the taskbar flashes when the window isn't focused. Still open: starting a new conversation (`core_message_message_search_users`), live chat refresh.
+**Status (2026-10-25):** done. Уведомления tab (Ctrl+5): list + reading pane, filters Все/Непрочитанные/Объявления, "Прочитать все", item marked read on open. The notice center's items already come through `message_popup_get_popup_notifications` (`component: block_cdo_notif_center`), so `api.php` isn't needed. Сообщения tab (Ctrl+6): conversations with search, chat bubbles, conversation marked read on open, sending via `core_message_send_messages_to_conversation` (plain text) — **sending not tested yet**. Portal HTML is shown through a tag whitelist (`rich()`). Main process `poll()` every 3 min replaces the old ping: unread counts go to sidebar badges and the tray tooltip, toasts appear for new items (not on the first run), and the taskbar flashes when the window isn't focused. Starting a new conversation done in 1.2.2 (see below). Still open: live chat refresh.
 
 ## M7. Services and files
 
@@ -257,3 +257,13 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
   - After beta.1: the app's own launcher icon and launch screen, a sign-in overlay that opens before the app draws (spinner, fades, the portal page hidden after sign-in), no tap highlight or sticky hover on touch, and a stacked course header on phones.
   - **1.2.0 released (2026-10-27)** with Windows, macOS and Android assets. README/site describe the Android install.
   - Next: Google Play listing (optional, $25 one-time); more real-phone feedback.
+
+## 1.2.2 round (2026-10-28)
+
+- **Android back:** one `OnBackPressedCallback` in `UlPortalPlugin` routes Back to the top portal overlay, else to app.js. Per-overlay callbacks lost priority after an activity restart, so Back minimized the app under an open page. A portal page closes on one Back; the sign-in page still steps back first. Pages left 5+ min in the background close on return.
+- **Page width:** `FIT_WIDTH` script on every overlay page (viewport meta + `overflow-x: clip`, media/tables max-width). Checked in the emulator with 2000 px content.
+- **Messages:** new chat (`core_message_message_search_users`), delete own message and delete chat (`core_message_delete_message`, `core_message_delete_conversations_by_id`, for me only), archive, right-click / long-press menu. Not possible on 3.7: editing messages, delete for everyone (needs `moodle/site:deleteanymessage`), creating group chats.
+- **Profile picture:** `core_user_update_picture` is not AJAX-enabled, so the image goes into the `imagefile` draft of `/user/edit.php` and the whole form is posted back. Crop to a square in the app, max 512 px JPEG. Tested on a real account.
+- **Today:** grid in `layout.js` (4 columns desktop, 2 phone, 40 rows of 40 px). Min 1x2, inside the canvas, push-down on collision, reset. Layout per user and size, local only. `node layout.test.js` checks the rules.
+- **Recent courses:** at most 3.
+- **Sync:** custom user preferences are silently dropped by the portal (only names Moodle defines are saved), so the chat archive and Courses sort/filter live in `ulportal-sync/sync.json` in personal files. nginx returns 403 for dot-paths, hence no leading dot. Newest `at` wins. Draft commits are serialized (`filesExclusive`), because saving `/user/files.php` replaces all personal files with that draft.

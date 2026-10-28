@@ -27,16 +27,16 @@ The portal logs you out every time you close the browser, and signing back in me
 
 | | |
 |---|---|
-| **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts |
+| **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts. Blocks can be moved, resized, added and removed |
 | **Schedule** | Current and next week with the I/II week parity, the class in progress highlighted |
 | **Calendar** | Month view with classes and course events; later weeks estimated from the I/II alternation |
-| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites |
+| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites, the 3 most recent courses |
 | **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters |
 | **Academic record** | Exam marks per semester with your average, and the full study plan with hours and syllabi |
-| **Notifications & messages** | Reading pane, chats with bubbles, sending, unread badges, system notifications |
+| **Notifications & messages** | Reading pane, chats with bubbles, sending, new chats, deleting messages and chats, an archive synced between your devices, unread badges, system notifications |
 | **Services** | Certificate orders, questions to the university, personal files (upload/download), e-library sign-in links |
 | **Offline** | Every section is saved after you open it, so it still works without a connection |
-| **Comfort** | Light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support |
+| **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support |
 
 ## Install
 
