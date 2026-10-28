@@ -1,5 +1,29 @@
 # Changelog / История изменений
 
+## 1.2.2 — 2026-10-28
+
+**Fixes and features.** / **Исправления и новые возможности.**
+
+**English**
+- Android: one Back press closes a portal page opened from the app and returns to the screen you came from. Back no longer leaves the app while a portal page is open. A page left open for 5+ minutes in the background doesn't come back when you reopen the app.
+- Android: portal pages fit the screen width, so they scroll vertically only.
+- Messages: New chat (search for people on the portal), delete your own messages and delete chats (for you only, as the portal allows), and an Archive for chats you want out of the way (reversible). Archive and Delete are also in a menu on right-click, or a long press on Android.
+- Profile picture: change it (gallery or camera on Android, a file on desktop) with a square crop, or remove it. JPG, PNG or WebP up to 5 MB.
+- Today: Customize lets you add, remove, move and resize blocks on a grid, with Reset. The layout is saved per account.
+- Courses: Recent shows at most 3 courses, newest first, on one line.
+- Sync between your devices: the chat archive and the Courses sort and filter are kept in a small `ulportal-sync` folder in your personal files on the portal (hidden in the app). Today layout, theme and other visual settings stay per device.
+- Not possible on the portal (Moodle 3.7): editing sent messages, deleting messages for everyone, and starting group chats (they come only from course groups).
+
+**Русский**
+- Android: одно нажатие «Назад» закрывает открытую из приложения страницу портала и возвращает на прежний экран. «Назад» больше не сворачивает приложение, пока открыта страница портала. Страница, оставленная в фоне на 5+ минут, не возвращается при повторном открытии приложения.
+- Android: страницы портала умещаются по ширине экрана, прокрутка только вертикальная.
+- Сообщения: «Новый диалог» (поиск людей на портале), удаление своих сообщений и диалогов (только у себя, как позволяет портал) и «Архив» для диалогов, которые хочется убрать с глаз (можно вернуть). «В архив» и «Удалить» есть и в меню по правому клику, на Android — по долгому нажатию.
+- Фото профиля: смена (галерея или камера на Android, файл на компьютере) с квадратной обрезкой и удаление. JPG, PNG или WebP до 5 МБ.
+- Сегодня: «Настроить» — добавление, удаление, перемещение и изменение размера блоков по сетке, есть «Сбросить». Раскладка сохраняется для каждой учётной записи.
+- Курсы: в «Недавних» не больше 3 курсов, сначала последние, в одну строку.
+- Синхронизация между устройствами: архив диалогов, сортировка и фильтр курсов хранятся в небольшой папке `ulportal-sync` в ваших личных файлах на портале (в приложении она скрыта). Вид «Сегодня», тема и прочие настройки внешнего вида остаются на каждом устройстве свои.
+- Невозможно на портале (Moodle 3.7): редактирование отправленных сообщений, удаление сообщений у всех и создание групповых бесед (они появляются только из групп курса).
+
 ## 1.2.1 — 2026-10-28
 
 **Personal files and small fixes.** / **Личные файлы и мелкие исправления.**
