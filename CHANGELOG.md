@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## 1.2.3 — 2026-10-29
+
+**Profile picture fix.** / **Исправление фото профиля.**
+
+**English**
+- A profile picture changed on one device now shows on your other devices too. Before, the picture only appeared after signing in again there.
+
+**Русский**
+- Фото профиля, изменённое на одном устройстве, теперь видно и на других. Раньше оно появлялось там только после повторного входа.
+
 ## 1.2.2 — 2026-10-28
 
 **Fixes and features.** / **Исправления и новые возможности.**
