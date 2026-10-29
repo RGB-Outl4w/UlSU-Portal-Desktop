@@ -417,6 +417,17 @@ app.whenReady().then(() => {
   ipcMain.handle('clearCache', () => fs.promises.rm(CACHE_DIR(), { recursive: true, force: true }));
   ipcMain.handle('openData', () => shell.openPath(app.getPath('userData')));
   ipcMain.handle('checkUpdate', () => checkUpdate());
+  // UI prefs mirror (preload.js / app.js pref()): written at once and atomically, read before the UI starts.
+  const PREFS_FILE = path.join(app.getPath('userData'), 'prefs.json');
+  ipcMain.on('prefs-load', (e) => { e.returnValue = fs.existsSync(PREFS_FILE) ? fs.readFileSync(PREFS_FILE, 'utf8') : '{}'; });
+  ipcMain.on('prefs-save', (_e, json) => {
+    try {
+      fs.writeFileSync(`${PREFS_FILE}.tmp`, json);
+      fs.renameSync(`${PREFS_FILE}.tmp`, PREFS_FILE);
+    } catch (err) {
+      log(`prefs write failed: ${err.message}`);
+    }
+  });
   ipcMain.handle('lang', async (_e, l) => {
     if (l === lang) return;
     lang = l;

@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// UI prefs from prefs.json (main.js) go into localStorage before app.js runs: the file is written at once
+// on every change, localStorage only eventually, so after a forced quit the file is the newer copy.
+try {
+  for (const [k, v] of Object.entries(JSON.parse(ipcRenderer.sendSync('prefs-load') || '{}'))) localStorage.setItem(k, v);
+} catch {}
+
 contextBridge.exposeInMainWorld('portal', {
   platform: process.platform, // 'win32' | 'darwin' — for ⌘ vs Ctrl and window chrome
   // mode 'cache': answer from the disk copy only, as { at, data }
@@ -19,6 +25,7 @@ contextBridge.exposeInMainWorld('portal', {
   openData: () => ipcRenderer.invoke('openData'),
   checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
   poll: () => ipcRenderer.invoke('poll'),
+  savePrefs: (json) => ipcRenderer.send('prefs-save', json),
   // Only these main->renderer events are exposed.
   onUnread: (cb) => ipcRenderer.on('unread', (_e, counts) => cb(counts)),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, view) => cb(view)),

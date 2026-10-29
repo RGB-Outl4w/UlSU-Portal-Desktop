@@ -81,10 +81,13 @@ function icon(name) {
 }
 
 // Per-viewer UI prefs only; storage may be unavailable.
+// Desktop also mirrors them to a file at once (portal.savePrefs): Chromium writes localStorage to disk
+// later, so a forced quit (the update installer, a task kill) lost recent changes, e.g. the Сегодня layout.
 function pref(key, value) {
   try {
     if (value === undefined) return localStorage.getItem(key);
     localStorage.setItem(key, value);
+    portal.savePrefs?.(JSON.stringify({ ...localStorage }));
   } catch {}
 }
 
@@ -1894,58 +1897,82 @@ const archivedChats = (uid) => new Set(chatState(uid).archive.ids);
 
 let syncTimer;
 let syncing = null;
+let syncAgain = false;
 let pulledAt = 0;
 const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow().catch(() => {}), 2000); }; // a burst of changes = one write
 
-// The shared copy, read straight from the private files area (one request, no draft area). ?t= skips the
-// HTTP cache, which otherwise kept answering with an old copy.
+// Newer part wins, part by part. took: some part came from `other`; behind: `other` lacks something newer here.
+function mergeParts(mine, other) {
+  const merged = { ...mine };
+  let took = false;
+  let behind = false;
+  for (const k of Object.keys(CHAT_PARTS)) {
+    const o = other?.[k];
+    if (o && o.at > mine[k].at && validPart[k](o)) { merged[k] = o; took = true; } else if (!o || mine[k].at > o.at) behind = true;
+  }
+  return { merged, took, behind };
+}
+const parseSync = (text) => {
+  const d = JSON.parse(text);
+  return d.v === 1 ? { archive: { at: d.at, ids: d.archive } } : d; // 1.2.2–1.2.3 file
+};
+
+// The shared copy, read straight from the private files area (one request, no draft area). Read as text:
+// on Android, CapacitorHttp hands a JSON reply back already parsed, whatever was asked for, which made the
+// old byte-based read fail there every time, so phones never saw the file and overwrote it with their own
+// copy. null = no file yet (the portal answers with its HTML "not found" page); any other failure throws,
+// so a failed read can never lead to a write. ?t= skips the HTTP cache, which answered with old copies.
 async function readRemote() {
   if (!myContext) await loadMy();
-  let d;
-  try {
-    d = JSON.parse(new TextDecoder().decode((await portal.file(`${BASE}/pluginfile.php/${myContext}/user/private${SYNC_DIR}${SYNC_FILE}?t=${Date.now()}`)).bytes));
-  } catch (e) {
-    if (isOffline(e)) throw e;
-    return {}; // no file yet (the portal answers with its "not found" page)
-  }
-  return d.v === 1 ? { archive: { at: d.at, ids: d.archive } } : d; // 1.2.2–1.2.3 file
+  const text = await portal.get(`/pluginfile.php/${myContext}/user/private${SYNC_DIR}${SYNC_FILE}?t=${Date.now()}`, 'live');
+  return /^\s*\{/.test(text) ? parseSync(text) : null;
 }
 
-async function writeRemote(data) {
+// Writes `local` merged with what the file holds right now (read again inside the lock), so an older copy
+// never replaces newer parts written meanwhile by another device. Returns what was written.
+async function writeRemote(local) {
+  let written;
   await filesExclusive(async () => {
     const fs = await loadFiles();
     const root = await listFiles(fs, '/');
+    let data = local;
     if (!root.some((f) => f.type === 'folder' && f.fullname === SYNC_DIR.slice(1, -1))) {
       await portal.post('/repository/draftfiles_ajax.php?action=mkdir', { client_id: fs.client, itemid: fs.itemid, filepath: '/', newdirname: SYNC_DIR.slice(1, -1) });
-    } else if ((await listFiles(fs, SYNC_DIR)).some((f) => f.filename === SYNC_FILE)) {
-      await portal.post('/repository/draftfiles_ajax.php?action=delete', { client_id: fs.client, itemid: fs.itemid, filepath: SYNC_DIR, filename: SYNC_FILE });
+    } else {
+      const f = (await listFiles(fs, SYNC_DIR)).find((x) => x.filename === SYNC_FILE);
+      if (f) {
+        data = mergeParts(local, parseSync(await portal.get(f.url.replace(BASE, ''), 'live'))).merged; // throws if unreadable: no write
+        await portal.post('/repository/draftfiles_ajax.php?action=delete', { client_id: fs.client, itemid: fs.itemid, filepath: SYNC_DIR, filename: SYNC_FILE });
+      }
     }
-    await portal.upload({ itemid: fs.itemid, filepath: SYNC_DIR, name: SYNC_FILE, bytes: new TextEncoder().encode(JSON.stringify(data)) });
+    await portal.upload({ itemid: fs.itemid, filepath: SYNC_DIR, name: SYNC_FILE, bytes: new TextEncoder().encode(JSON.stringify({ v: 2, ...data })) });
     await portal.post('/user/files.php', fs.save);
     filesGen++;
+    written = data;
   });
   ui.svc.fs = null;
+  return written;
 }
 
-// Read, merge part by part, then write back only if this device had something newer.
+// Read, take newer parts, write back only if this device had something newer. A call that arrives while one
+// runs (a change made during a sync) runs again afterwards, so no change waits for the next check.
 function syncNow() {
-  syncing ||= (async () => {
+  if (syncing) { syncAgain = true; return syncing; }
+  syncing = (async () => {
     pulledAt = Date.now();
     const uid = await myId();
     const local = chatState(uid);
-    const remote = await readRemote();
-    let changed = false;
-    let stale = false;
-    for (const k of Object.keys(CHAT_PARTS)) {
-      const r = remote[k];
-      if (r && r.at > local[k].at && validPart[k](r)) { local[k] = r; changed = true; } else if (!r || local[k].at > r.at) stale = true;
-    }
-    if (changed) {
-      pref(`chat-state-${uid}`, JSON.stringify(local));
+    const { merged, took, behind } = mergeParts(local, await readRemote());
+    let result = merged;
+    if (behind && Object.values(merged).some((p) => p.at)) result = await writeRemote(merged);
+    if (took || JSON.stringify(result) !== JSON.stringify(local)) {
+      pref(`chat-state-${uid}`, JSON.stringify(result));
       if (current === 'messages') chatLive?.redraw();
     }
-    if (stale && Object.values(local).some((p) => p.at)) await writeRemote({ v: 2, ...local });
-  })().finally(() => { syncing = null; });
+  })().finally(() => {
+    syncing = null;
+    if (syncAgain) { syncAgain = false; syncNow().catch(() => {}); }
+  });
   return syncing;
 }
 // On start, on every unread check (portal.onUnread), and when the app comes back.

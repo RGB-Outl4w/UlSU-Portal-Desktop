@@ -89,6 +89,8 @@
     if (!url.startsWith(`${BASE}/`)) throw new Error('not a portal file');
     const res = await net(url, { responseType: 'arraybuffer' });
     const type = header(res, 'content-type');
+    // CapacitorHttp parses an application/json reply whatever responseType asked for: give its bytes back.
+    if (typeof res.data !== 'string') return { type, bytes: new TextEncoder().encode(JSON.stringify(res.data)) };
     if (type.startsWith('text/html')) {
       const html = new TextDecoder().decode(fromB64(res.data));
       if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return file(url); }

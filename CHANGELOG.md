@@ -1,5 +1,23 @@
 # Changelog / История изменений
 
+## 1.2.5 — 2026-10-29
+
+**Sync fixes.** / **Исправления синхронизации.**
+
+**English**
+- Android: synced pins, archive and unread marks now actually reach the phone. The phone couldn't read the shared sync file, took it as missing and overwrote it with its own copy; this also broke archive sync in earlier versions.
+- Sync never overwrites newer data: before writing, the app reads the shared file again and keeps the newer copy of each part.
+- A change made while a sync is running is sent right after it instead of at the next check.
+- Desktop: settings (Today layout, theme, filters, chat state) are also saved to a file at once, so an update or a forced quit no longer resets them.
+- Phones: the chat and notification lists use the full width again.
+
+**Русский**
+- Android: закрепление, архив и отметки «непрочитано» теперь действительно доходят до телефона. Телефон не мог прочитать общий файл синхронизации, считал, что его нет, и перезаписывал своей копией; из-за этого в прошлых версиях не синхронизировался и архив.
+- Синхронизация больше не затирает более новые данные: перед записью приложение заново читает общий файл и оставляет более свежую версию каждой части.
+- Изменение, сделанное во время синхронизации, отправляется сразу после неё, а не при следующей проверке.
+- Компьютер: настройки (вид «Сегодня», тема, фильтры, состояние диалогов) сразу сохраняются и в файл, поэтому обновление или принудительное закрытие их больше не сбрасывает.
+- Телефон: списки диалогов и уведомлений снова занимают всю ширину.
+
 ## 1.2.4 — 2026-10-29
 
 **Messages, sync and Android polish.** / **Сообщения, синхронизация и доработка Android.**

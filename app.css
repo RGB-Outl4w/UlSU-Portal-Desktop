@@ -556,10 +556,14 @@ canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; ali
 .month-name { min-width: 130px; text-align: center; font-weight: 650; }
 .cal-split { grid-template-columns: 1fr minmax(300px, 380px); }
 /* Narrow content (a tablet held upright, a small window): the day panel goes under the month instead of
-   squeezing it, and the chat list gets less room. */
+   squeezing it. */
 @container (max-width: 860px) {
   .cal-split { grid-template-columns: minmax(0, 1fr); height: auto; }
-  .split:not(.cal-split) { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); }
+}
+/* Tablets and small windows only: phones show list or chat one at a time (.split.detail), and two columns
+   there left the visible one at 280 px with an empty strip beside it. */
+@media (min-width: 760px) {
+  @container (max-width: 860px) { .split:not(.cal-split) { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); } }
 }
 .cal { display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
 .cal-head { display: grid; grid-template-columns: repeat(7, 1fr); padding: 2px 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; text-align: center; }
