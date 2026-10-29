@@ -1,0 +1,84 @@
+/* The portal's own sign-in pages (password, then the MAX code), dressed in the app's look. Injected by
+   main.js (desktop sign-in window) and UlPortalPlugin.java (Android) on sign-in paths only. Only colours,
+   sizes and the header change: the form, its fields and where they are sent stay the portal's own.
+   The logo is logo.svg with its text as outlines (no font needed). */
+:root {
+  --ulp-accent: #0d45ca; --ulp-page: #f4f6fa; --ulp-card: #ffffff; --ulp-text: #18202e; --ulp-muted: #677086;
+  --ulp-line: rgba(20, 30, 60, .12); --ulp-field: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ulp-accent: #5b7ff0; --ulp-page: #16181d; --ulp-card: #1f2229; --ulp-text: #e7eaf1; --ulp-muted: #9099ad; --ulp-line: rgba(255, 255, 255, .1); --ulp-field: #16181d; }
+}
+html, body, #page-wrapper, #page, #page-content, #region-main-box, #region-main, .s-login-box {
+  background: var(--ulp-page) !important; color: var(--ulp-text) !important;
+}
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important; }
+/* one centred column; the decorative half of the desktop layout goes */
+html body .s-login-box { display: flex !important; justify-content: center !important; align-items: flex-start !important; min-height: 100vh; padding: 20px 16px 40px !important; }
+.s-login-box > :not(.login-box), .login-box ~ * { display: none !important; }
+/* the portal's language menu as an RU | EN switch at the header's right (it reloads the page in that language) */
+html body #region-main { position: relative !important; }
+html body .c-lang-menu--login { display: block !important; position: absolute !important; top: 30px !important; right: max(16px, calc(50% - 220px)) !important; left: auto !important; bottom: auto !important; width: auto !important; z-index: 5; }
+html body .c-lang-menu--login .dropdown-toggle { display: none !important; }
+html body .c-lang-menu--login .dropdown-menu {
+  display: flex !important; position: static !important; transform: none !important; float: none; min-width: 0; gap: 2px; margin: 0; padding: 3px;
+  border-radius: 12px; border: 1px solid var(--ulp-line); background: var(--ulp-card) !important; box-shadow: none;
+}
+html body .c-lang-menu--login .dropdown-item { width: auto; font-size: 0 !important; padding: 6px 12px !important; border-radius: 9px; color: var(--ulp-muted) !important; background: none !important; }
+.c-lang-menu--login .dropdown-item::after { font-size: 13px; font-weight: 700; }
+.c-lang-menu--login .dropdown-item[href*="lang=ru"]::after { content: "RU"; }
+.c-lang-menu--login .dropdown-item[href*="lang=en"]::after { content: "EN"; }
+html body.lang-ru .c-lang-menu--login .dropdown-item[href*="lang=ru"], html body.lang-en .c-lang-menu--login .dropdown-item[href*="lang=en"] { background: var(--ulp-accent) !important; color: #fff !important; }
+html body .login-box { width: 100% !important; max-width: 440px !important; flex: none !important; padding: 0 !important; margin: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }
+.login-box-block { width: 100% !important; padding: 0 !important; }
+/* app header instead of the long site title */
+.login-box-block > a:first-child { display: none !important; }
+.login-box-block::before {
+  content: "Вход в портал УлГУ"; display: flex; align-items: center; gap: 12px; margin: 8px 0 22px;
+  font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: var(--ulp-text);
+  padding-left: 56px; padding-right: 104px; min-height: 44px; line-height: 1.2; background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMmY3YmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMGQ0NWNhIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9InVybCgjZykiLz48cGF0aCBkPSJNMTQgNDRjNi0zIDEyLTMgMTggMCA2LTMgMTItMyAxOCAwdjZjLTYtMy0xMi0zLTE4IDAtNi0zLTEyLTMtMTggMHoiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii4zNSIvPjxwYXRoIGQ9Ik0xMS42NiAzNi4yM1ExMC42IDM2LjIzIDEwLjAxIDM1LjkzVjMyLjM3UTEwLjMxIDMyLjU4IDEwLjcyIDMyLjcxUTExLjEyIDMyLjg1IDExLjUyIDMyLjg1UTEyLjA5IDMyLjg1IDEyLjQ0IDMyLjU3UTEyLjc5IDMyLjMgMTMuMTggMzEuNTlMOC45OCAyMi43SDEzLjU4TDE0Ljk4IDI2LjU5UTE1LjIxIDI3LjE2IDE1LjI5IDI4SDE1LjMzUTE1LjQ1IDI3LjEzIDE1LjYzIDI2LjY3TDE3LjA5IDIyLjdIMjEuMzNMMTcuMDkgMzEuODZRMTYuMjkgMzMuNTcgMTUuNTYgMzQuNVExNC44MyAzNS40MiAxMy45NSAzNS44M1ExMy4wOCAzNi4yMyAxMS42NiAzNi4yM1pNMjguNDggMzZWMjkuMTZIMjYuOTdRMjYuNjkgMzEuMyAyNi4zNCAzMi42M1EyNS45OSAzMy45NyAyNS41MSAzNC43MVEyNS4wNCAzNS40NSAyNC4zNCAzNS43OFEyMy42MyAzNi4xMSAyMi4zNSAzNi4xMVEyMS41IDM2LjExIDIxLjAyIDM1Ljk0VjMzLjVRMjEuMjcgMzMuNTkgMjEuNjEgMzMuNTlRMjIuMjYgMzMuNTkgMjIuNjUgMzIuOVEyMy4wNCAzMi4yMSAyMy4zNiAzMC42NlEyMy42OSAyOS4xMiAyNC4wMSAyNi41SDMyLjQ0VjM2Wk0zOC4yMSAyNS44M1YzNkgzNC4yVjIyLjdINDIuNzlWMjUuODNaTTQ1LjM1IDM2LjIzUTQ0LjI5IDM2LjIzIDQzLjcgMzUuOTNWMzIuMzdRNDQgMzIuNTggNDQuNDEgMzIuNzFRNDQuODEgMzIuODUgNDUuMjEgMzIuODVRNDUuNzggMzIuODUgNDYuMTMgMzIuNTdRNDYuNDggMzIuMyA0Ni44NyAzMS41OUw0Mi42NyAyMi43SDQ3LjI3TDQ4LjY3IDI2LjU5UTQ4LjkgMjcuMTYgNDguOTggMjhINDkuMDJRNDkuMTQgMjcuMTMgNDkuMzIgMjYuNjdMNTAuNzggMjIuN0g1NS4wMkw1MC43OCAzMS44NlE0OS45OCAzMy41NyA0OS4yNSAzNC41UTQ4LjUyIDM1LjQyIDQ3LjY0IDM1LjgzUTQ2Ljc3IDM2LjIzIDQ1LjM1IDM2LjIzWiIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjUxIiBjeT0iMTMiIHI9IjMuNSIgZmlsbD0iI2ZmZDQzYiIvPjwvc3ZnPg==") left center / 44px 44px no-repeat;
+}
+.lang-en .login-box-block::before { content: "Sign in to ULSU portal"; }
+.login-box-body, .login-box-body .row { margin: 0 !important; }
+.login-box-body .col-12 { padding: 0 !important; }
+/* the portal's notice (e.g. the changed address) as a calm card */
+html body #loginnotice-banner-root .loginnotice-banner { background: var(--ulp-card) !important; border: 1px solid var(--ulp-line) !important; border-radius: 16px !important; margin-bottom: 18px !important; }
+@media (prefers-color-scheme: dark) {
+  html body .loginnotice-banner [class*="tw-text-slate"] { color: var(--ulp-text) !important; }
+  html body .loginnotice-banner [class*="tw-text-amber"] { color: #f0b44a !important; }
+  html body .loginnotice-banner .loginnotice-browser, html body .loginnotice-banner .loginnotice-addr { background: rgba(255, 255, 255, .04) !important; border-color: var(--ulp-line) !important; }
+  html body .loginnotice-addr-old * { color: #ff8a8a !important; }
+  html body .loginnotice-addr-new * { color: #5fd6a0 !important; }
+}
+/* the form: a card with large fields */
+form#login, .login-box-body form, #region-main form {
+  background: var(--ulp-card); border: 1px solid var(--ulp-line); border-radius: 18px; padding: 20px 18px 16px !important;
+  box-shadow: 0 18px 40px -24px rgba(10, 20, 50, .35);
+}
+.form-control, input[type=text], input[type=password], input[type=number], input[type=tel], input[type=email] {
+  height: 52px !important; padding: 0 16px !important; border-radius: 12px !important; font-size: 16px !important;
+  background: var(--ulp-field) !important; color: var(--ulp-text) !important; border: 1px solid var(--ulp-line) !important; box-shadow: none !important;
+}
+.form-control:focus, input:focus { border-color: var(--ulp-accent) !important; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ulp-accent) 22%, transparent) !important; outline: none !important; }
+.form-group { margin-bottom: 12px !important; }
+#toggle-pwd { filter: none; opacity: .7; }
+@media (prefers-color-scheme: dark) { #toggle-pwd { filter: invert(1); } }
+html body .btn-primary, html body #loginbtn, html body button[type=submit], html body input[type=submit] {
+  height: 50px !important; border-radius: 12px !important; border: 0 !important; font-weight: 650 !important; font-size: 16px !important;
+  background: var(--ulp-accent) !important; color: #fff !important; box-shadow: none !important;
+}
+html body .btn-secondary {
+  height: 46px !important; border-radius: 12px !important; background: transparent !important;
+  border: 1px solid var(--ulp-line) !important; color: var(--ulp-text) !important; font-weight: 600 !important;
+}
+/* Tech support: a warm amber that reads in both themes (the portal's own orange is harsher); dark label on it.
+   The label carries an inline color:#000 !important, which only text-fill-color can override. */
+html body .support-button {
+  height: 46px !important; border-radius: 12px !important; border: 0 !important; font-weight: 600 !important;
+  background: #f0a83c !important; color: #2b1d08 !important;
+}
+html body #login .support-button * { -webkit-text-fill-color: #2b1d08; fill: #2b1d08 !important; }
+a, a.small, a.dimmed { color: var(--ulp-accent) !important; }
+html body .forgetpass a { color: var(--ulp-muted) !important; -webkit-text-fill-color: var(--ulp-muted); opacity: 1 !important; }
+.badge { background: none !important; color: var(--ulp-muted) !important; white-space: normal !important; }
+.alert, .loginerrors { border-radius: 12px !important; }

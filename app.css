@@ -145,13 +145,19 @@ header {
 main::before { content: ""; position: fixed; top: 0; left: var(--side-w); right: 140px; height: 44px; -webkit-app-region: drag; transition: left var(--t) var(--ease); }
 header h1 { font-size: 24px; font-weight: 650; margin: 0; flex: 1; letter-spacing: -.01em; }
 #tools { display: flex; gap: 8px; align-items: center; }
+/* A tablet held upright or a small window: the tools get their own row under the title, wrapping as needed. */
+@media (min-width: 760px) and (max-width: 1099px) {
+  header { flex-wrap: wrap; row-gap: 10px; }
+  #tools { order: 3; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; }
+  #tools:empty { display: none; }
+}
 .icon-btn {
   width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r);
   color: var(--muted); transition: background var(--t-fast), color var(--t-fast);
 }
 @media (hover: hover) { .icon-btn:hover { background: var(--side-hover); color: var(--text); } }
 .icon-btn.spin .i { animation: spin .8s linear infinite; }
-#content { flex: 1; overflow: auto; padding: 4px 28px 28px; view-transition-name: content; }
+#content { flex: 1; overflow: auto; padding: 4px 28px 28px; view-transition-name: content; container-type: inline-size; }
 
 input[type=search] {
   height: 36px; width: 240px; padding: 0 12px; border-radius: var(--r);
@@ -500,7 +506,15 @@ canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; ali
 .chat-actions { display: flex; gap: 4px; flex: none; }
 .icon-btn.danger { color: var(--danger); }
 @media (hover: hover) { .icon-btn.danger:hover { background: color-mix(in oklab, var(--danger) 12%, transparent); color: var(--danger); } }
-#tools .btn { margin-top: 0; height: 36px; }
+.action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+:is(#tools, .action-row) .btn { margin-top: 0; height: 36px; }
+#shield { display: none; position: fixed; inset: 0; z-index: 1000; }
+#shield.on { display: block; }
+.inbox-item.conv { position: relative; }
+.inbox-item .t .i { width: 13px; height: 13px; margin-right: 4px; vertical-align: -1px; color: var(--accent); }
+.conv-side .count.dot { min-width: 10px; width: 10px; height: 10px; padding: 0; }
+.pin-drag { align-self: center; padding: 6px 2px 6px 8px; color: var(--muted); cursor: grab; touch-action: none; font-size: 15px; }
+.inbox-item.dragging { opacity: .7; background: var(--side-hover); }
 #ctx { position: fixed; inset: auto; margin: 0; min-width: 190px; padding: 5px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--text); box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .4); transition: opacity .12s; }
 @media (prefers-color-scheme: dark) { #ctx { background: #1f2229; } }
 #ctx:not(:popover-open) { opacity: 0; }
@@ -541,6 +555,12 @@ canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; ali
 .month-nav .icon-btn { font-size: 22px; line-height: 1; }
 .month-name { min-width: 130px; text-align: center; font-weight: 650; }
 .cal-split { grid-template-columns: 1fr minmax(300px, 380px); }
+/* Narrow content (a tablet held upright, a small window): the day panel goes under the month instead of
+   squeezing it, and the chat list gets less room. */
+@container (max-width: 860px) {
+  .cal-split { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .split:not(.cal-split) { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); }
+}
 .cal { display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
 .cal-head { display: grid; grid-template-columns: repeat(7, 1fr); padding: 2px 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; text-align: center; }
 .cal-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(84px, 1fr); gap: 4px; }
@@ -742,6 +762,7 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .more.danger { color: var(--danger); }
 @media (hover: hover) { .more.danger:hover { background: color-mix(in oklab, var(--danger) 12%, transparent); } }
 
+.welcome-agree { font-size: 12.5px; }
 #confirm { width: min(440px, 92vw); padding: 22px 24px 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .45); }
 @media (prefers-color-scheme: dark) { #confirm { background: #1f2229; } }
 #confirm::backdrop { background: rgba(10, 14, 25, .35); }

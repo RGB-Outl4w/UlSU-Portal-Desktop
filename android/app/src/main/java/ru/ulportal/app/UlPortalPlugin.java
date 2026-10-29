@@ -25,8 +25,12 @@ import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.view.View;
+import android.webkit.WebChromeClient;
 import android.widget.FrameLayout;
-import android.widget.ProgressBar;
+import android.widget.ImageView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -40,6 +44,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,12 +121,23 @@ public class UlPortalPlugin extends Plugin {
     }
 
     private void loginDone(boolean ok) {
-        if (ok) PortalCheck.prefs(getContext()).edit().putString("state", "ok").apply();
-        for (PluginCall c : loginCalls) {
-            if (ok) c.resolve();
-            else c.reject("Вход отменён");
-        }
+        List<PluginCall> calls = new ArrayList<>(loginCalls);
         loginCalls.clear();
+        if (!ok) {
+            for (PluginCall c : calls) c.reject("Вход отменён");
+            return;
+        }
+        PortalCheck.prefs(getContext()).edit().putString("state", "ok").apply();
+        // The sign-in page's RU | EN switch sets the language of the whole portal session; the app reads the
+        // portal's pages in Russian, so its session goes back to Russian before anything is loaded.
+        new Thread(() -> {
+            try {
+                PortalCheck.http(BASE + "/my/?lang=ru", null);
+            } catch (Exception ignored) {
+                // offline: the next page load still works if the language wasn't switched
+            }
+            for (PluginCall c : calls) c.resolve();
+        }).start();
     }
 
     // Portal pages open in an in-app WebView with the session; anything else in the system browser.
@@ -162,9 +178,34 @@ public class UlPortalPlugin extends Plugin {
             s.setDisplayZoomControls(false);
             web.setBackgroundColor(Color.WHITE);
             web.setAlpha(0f);
-            // Shows while nothing is drawn yet, and after sign-in until the app takes over.
-            cover.addView(new ProgressBar(activity), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+            // Loader in the app's look: the logo, softly pulsing, shows while nothing is drawn yet (and after
+            // sign-in until the app takes over); a thin bar on top follows the page's real load progress.
+            float dp = activity.getResources().getDisplayMetrics().density;
+            ImageView logo = new ImageView(activity);
+            logo.setImageResource(R.drawable.splash_logo);
+            ObjectAnimator pulse = ObjectAnimator.ofFloat(logo, "alpha", 1f, 0.45f);
+            pulse.setDuration(700);
+            pulse.setRepeatMode(ValueAnimator.REVERSE);
+            pulse.setRepeatCount(ValueAnimator.INFINITE);
+            pulse.start();
+            View bar = new View(activity);
+            bar.setBackgroundColor(Color.parseColor("#0D45CA"));
+            bar.setPivotX(0);
+            bar.setScaleX(0.05f);
+            cover.addView(logo, new FrameLayout.LayoutParams((int) (64 * dp), (int) (64 * dp), Gravity.CENTER));
             cover.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            cover.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) (3 * dp), Gravity.TOP));
+            web.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public void onProgressChanged(WebView view, int progress) {
+                    bar.animate().cancel();
+                    if (progress >= 100) bar.animate().scaleX(1f).alpha(0f).setDuration(200);
+                    else {
+                        if (bar.getAlpha() == 0f) { bar.setScaleX(0.05f); bar.setAlpha(1f); } // a new page starts loading
+                        bar.animate().scaleX(Math.max(0.05f, progress / 100f)).setDuration(150);
+                    }
+                }
+            });
             // Edge-to-edge (targetSdk 35+): keep the page clear of the system bars and the keyboard.
             ViewCompat.setOnApplyWindowInsetsListener(cover, (v, insets) -> {
                 Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
@@ -188,6 +229,7 @@ public class UlPortalPlugin extends Plugin {
                     closeLogin = null;
                     if (!done[0]) loginDone(false);
                 }
+                pulse.cancel();
                 cover.animate().alpha(0f).setDuration(220).withEndAction(() -> {
                     ((ViewGroup) cover.getParent()).removeView(cover);
                     web.destroy();
@@ -204,11 +246,13 @@ public class UlPortalPlugin extends Plugin {
                 @Override
                 public void onPageCommitVisible(WebView view, String page) {
                     fitWidth(view);
+                    if (isLoginPage(page)) loginStyle(view);
                 }
 
                 @Override
                 public void onPageFinished(WebView view, String page) {
                     fitWidth(view);
+                    if (isLoginPage(page)) loginStyle(view);
                     if (closing[0]) return;
                     if (!login || isLoginPage(page) || !page.startsWith(BASE + "/")) {
                         view.animate().alpha(1f).setDuration(180);
@@ -251,17 +295,45 @@ public class UlPortalPlugin extends Plugin {
     }
 
     // Portal pages are desktop-width in places (wide tables, fixed-width blocks, big images): make them fit
-    // the screen so only vertical scrolling is left. Pinch zoom still works.
-    private static final String FIT_WIDTH = "(function(){if(document.getElementById('ulp-fit'))return;"
+    // the screen so the page only scrolls vertically. Words wrap only when they don't fit (overflow-wrap:
+    // break-word; "anywhere" squeezed table cells to one letter per line). A table still wider than the
+    // screen scrolls sideways inside itself. Pinch zoom still works.
+    private static final String FIT_WIDTH = "(function(){"
+        + "if(!document.getElementById('ulp-fit')){"
         + "var m=document.querySelector('meta[name=viewport]');"
         + "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}"
         + "m.content='width=device-width, initial-scale=1';"
         + "var s=document.createElement('style');s.id='ulp-fit';"
         + "s.textContent='html,body{max-width:100%!important;overflow-x:hidden!important;overflow-x:clip!important}"
-        + "img,video,iframe,embed,object,canvas,table,pre,.container,.container-fluid{max-width:100%!important}"
+        + "img,video,iframe,embed,object,canvas,pre,div,section,form,fieldset,header,footer,nav,main,article,.container,.container-fluid{max-width:100%!important}"
         + "img,video{height:auto!important}pre{white-space:pre-wrap!important}"
-        + "td,th,p,li,a,span,div{overflow-wrap:anywhere}';"
-        + "document.head.appendChild(s);})()";
+        + "p,li,td,th,a,span,div,h1,h2,h3,h4,h5,h6{overflow-wrap:break-word}"
+        + ".ulp-wide{display:block!important;overflow-x:auto!important;max-width:100%!important}';"
+        + "document.head.appendChild(s);}"
+        + "var w=document.documentElement.clientWidth;"
+        + "document.querySelectorAll('table').forEach(function(t){if(t.scrollWidth>w&&!t.closest('.ulp-wide'))t.classList.add('ulp-wide');});"
+        + "})()";
+
+    // The real sign-in pages in the app's look: login.css (shared with the desktop sign-in window, copied into
+    // the web assets by build-www.js). Only styling; the form and where it sends stay the portal's own.
+    private String loginCss;
+
+    private void loginStyle(WebView view) {
+        try {
+            if (loginCss == null) {
+                try (InputStream in = getContext().getAssets().open("public/login.css")) {
+                    java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+                    byte[] chunk = new byte[8192];
+                    for (int n; (n = in.read(chunk)) > 0; ) buf.write(chunk, 0, n); // readAllBytes needs API 33
+                    loginCss = buf.toString("UTF-8");
+                }
+            }
+            view.evaluateJavascript("(function(c){if(document.getElementById('ulp-login'))return;var s=document.createElement('style');"
+                + "s.id='ulp-login';s.textContent=c;document.head.appendChild(s);})(" + org.json.JSONObject.quote(loginCss) + ")", null);
+        } catch (Exception ignored) {
+            // no styling: the portal's own look still works
+        }
+    }
 
     private static void fitWidth(WebView view) {
         view.evaluateJavascript(FIT_WIDTH, null);

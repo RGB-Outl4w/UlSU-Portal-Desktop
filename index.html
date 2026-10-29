@@ -22,6 +22,8 @@
     <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
     <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></symbol>
+    <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.82a15 15 0 0 1 4.17-2.65M10.66 5c4.01-.36 8.14.9 11.34 3.76M16.85 11.25a10 10 0 0 1 2.22 1.68M5 12.86a10 10 0 0 1 5.17-2.69M12 20h.01"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
@@ -106,12 +108,13 @@
     <img src="logo.svg" alt="">
     <h3>Добро пожаловать</h3>
     <p>Это неофициальное приложение для portal.ulsu.ru. Оно не связано с УлГУ и не одобрено университетом.</p>
-    <p>Вход выполняется на настоящей странице портала — пароль и код MAX приложение не видит. Все данные хранятся только на вашем компьютере.</p>
+    <p>Вход выполняется на настоящей странице портала — пароль и код MAX приложение не видит. Данные хранятся на вашем устройстве и на самом портале.</p>
     <div class="welcome-links">
       <button class="chip-btn" data-doc="PRIVACY.md">Политика конфиденциальности</button>
       <button class="chip-btn" data-doc="NOTICE.md">Отказ от ответственности</button>
     </div>
-    <form method="dialog"><button class="btn">Понятно</button></form>
+    <p class="welcome-agree">Нажимая «Принимаю», вы соглашаетесь с политикой конфиденциальности и отказом от ответственности.</p>
+    <form method="dialog"><button class="btn" value="accept">Принимаю</button></form>
   </dialog>
 
   <!-- yes/no for actions that change data on the portal (confirmBox in app.js) -->

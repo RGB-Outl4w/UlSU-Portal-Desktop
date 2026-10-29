@@ -84,11 +84,21 @@ function login() {
       webPreferences: { partition: PARTITION },
     });
     let done = false;
+    // The real sign-in pages in the app's look (login.css): only styling, the form stays the portal's.
+    win.webContents.on('dom-ready', () => {
+      const url = win.webContents.getURL();
+      if (url.startsWith(`${BASE}/`) && /login|auth|mfa/i.test(new URL(url).pathname)) {
+        win.webContents.insertCSS(fs.readFileSync(path.join(__dirname, 'login.css'), 'utf8')).catch(() => {});
+      }
+    });
     win.webContents.on('did-finish-load', async () => {
       const url = win.webContents.getURL();
       if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
       if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
-      done = true; lastOk = Date.now(); log('logged in'); setSession('ok'); win.close(); resolve();
+      done = true; lastOk = Date.now(); log('logged in'); setSession('ok'); win.close();
+      // The sign-in page's RU | EN switch sets the whole session's language; the app reads pages in Russian.
+      await net(`${BASE}/my/?lang=ru`).catch(() => {});
+      resolve();
     });
     win.on('closed', () => { loginPromise = null; if (!done) reject(new Error(t('Вход отменён'))); });
     guardOffline(win);

@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="64dp" android:height="64dp"
+    android:viewportWidth="64" android:viewportHeight="64">
+    <group android:translateX="0" android:translateY="0" android:scaleX="1" android:scaleY="1">
+        <group android:name="logo" android:pivotX="32" android:pivotY="32" android:scaleX="1" android:scaleY="1">
+            <path android:pathData="M16,0 H48 A16,16 0 0 1 64,16 V48 A16,16 0 0 1 48,64 H16 A16,16 0 0 1 0,48 V16 A16,16 0 0 1 16,0 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="64" android:endY="64">
+                        <item android:offset="0" android:color="#FF2F7BFF"/>
+                        <item android:offset="1" android:color="#FF0D45CA"/>
+                    </gradient>
+                </aapt:attr>
+            </path>
+            <path android:name="book" android:pathData="M14,44 c6,-3 12,-3 18,0 6,-3 12,-3 18,0 v6 c-6,-3 -12,-3 -18,0 -6,-3 -12,-3 -18,0 z" android:fillColor="#FFFFFFFF" android:fillAlpha="0.35"/>
+            <path android:pathData="M11.66 36.23Q10.6 36.23 10.01 35.93V32.37Q10.31 32.58 10.72 32.71Q11.12 32.85 11.52 32.85Q12.09 32.85 12.44 32.57Q12.79 32.3 13.18 31.59L8.98 22.7H13.58L14.98 26.59Q15.21 27.16 15.29 28H15.33Q15.45 27.13 15.63 26.67L17.09 22.7H21.33L17.09 31.86Q16.29 33.57 15.56 34.5Q14.83 35.42 13.95 35.83Q13.08 36.23 11.66 36.23ZM28.48 36V29.16H26.97Q26.69 31.3 26.34 32.63Q25.99 33.97 25.51 34.71Q25.04 35.45 24.34 35.78Q23.63 36.11 22.35 36.11Q21.5 36.11 21.02 35.94V33.5Q21.27 33.59 21.61 33.59Q22.26 33.59 22.65 32.9Q23.04 32.21 23.36 30.66Q23.69 29.12 24.01 26.5H32.44V36ZM38.21 25.83V36H34.2V22.7H42.79V25.83ZM45.35 36.23Q44.29 36.23 43.7 35.93V32.37Q44 32.58 44.41 32.71Q44.81 32.85 45.21 32.85Q45.78 32.85 46.13 32.57Q46.48 32.3 46.87 31.59L42.67 22.7H47.27L48.67 26.59Q48.9 27.16 48.98 28H49.02Q49.14 27.13 49.32 26.67L50.78 22.7H55.02L50.78 31.86Q49.98 33.57 49.25 34.5Q48.52 35.42 47.64 35.83Q46.77 36.23 45.35 36.23Z" android:fillColor="#FFFFFFFF"/>
+            <group android:name="dot" android:pivotX="51" android:pivotY="13" android:scaleX="1" android:scaleY="1">
+                <path android:pathData="M47.5,13 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0 Z" android:fillColor="#FFFFD43B"/>
+            </group>
+        </group>
+    </group>
+</vector>

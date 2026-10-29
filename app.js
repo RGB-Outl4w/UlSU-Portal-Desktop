@@ -231,6 +231,7 @@ async function loadMy() {
     }).catch(() => {});
   }
   mySesskey = my.match(/"sesskey":"(\w+)"/)?.[1] || mySesskey;
+  myContext = my.match(/"contextid":(\d+)/)?.[1] || myContext; // /my/ is in the user's own context
   myUserid = data.userid || myUserid;
   return data;
 }
@@ -277,7 +278,7 @@ function typeClass(t) {
 
 // Toolbar state for the list views; sort/filter choices are remembered.
 const ui = {
-  courses: { q: '', sort: pref('sort-courses') || 'name', only: pref('only-courses') || 'all' },
+  courses: { q: '', grouping: null, sort: null }, // null until loaded: the portal's saved choice
   course: { id: null, info: null, closed: new Set(), tab: 'content', q: '' }, // course opened inside the app; closed = collapsed section ids
   grades: { q: '', sort: pref('sort-grades') || 'name', only: pref('only-graded') || 'all' },
   progress: { sem: 'all' },
@@ -288,6 +289,17 @@ const ui = {
   svc: { tab: 'orders', path: '/', fs: null, flash: null }, // Сервисы: sub-tab, files folder, files draft area
 };
 const byName = (a = '', b = '') => a.localeCompare(b, 'ru');
+
+// The portal's course overview: groupings and sorts exactly as on /my/ (key, label, API sort).
+const COURSE_GROUPINGS = [['all', T('Все')], ['inprogress', T('Текущие')], ['future', T('Предстоящие')], ['past', T('Прошедшие')],
+  ['favourites', T('Помеченные')], ['hidden', T('Скрытые')]];
+const COURSE_SORTS = [['title', T('Название курса'), 'fullname'], ['lastaccessed', T('Последнее посещение'), 'ul.timeaccess desc']];
+// Saved in the portal's own preferences (the website reads the same ones), then the list reloads.
+function setCourseView(what, value) {
+  ui.courses[what] = value;
+  pajax('core_user_update_user_preferences', { userid: myUserid, preferences: [{ type: `block_myoverview_user_${what}_preference`, value }] }).catch(() => {});
+  show('courses', true);
+}
 const matches = (text, q) => text.toLowerCase().includes(q.toLowerCase());
 
 // Search hides cards in place (no re-render, so no replayed animation per keystroke).
@@ -438,36 +450,33 @@ const views = {
   courses: {
     title: T('Курсы'),
     sk: 'grid',
+    // Same filter and sort as the portal's "Обзор курсов" (block_myoverview), kept in the same Moodle
+    // preferences, so the choice is shared with the website and every device.
     async load() {
+      const uid = await myId();
+      const prefs = await pajax('core_user_get_user_preferences', { userid: uid }).then((r) => r.preferences, () => []);
+      const saved = (name) => prefs.find((p) => p.name === `block_myoverview_user_${name}_preference`)?.value;
+      const grouping = ui.courses.grouping || (COURSE_GROUPINGS.some(([k]) => k === saved('grouping')) ? saved('grouping') : 'all');
+      const sort = ui.courses.sort || (COURSE_SORTS.some(([k]) => k === saved('sort')) ? saved('sort') : 'title');
       const [{ courses }, recent] = await Promise.all([
-        pajax('core_course_get_enrolled_courses_by_timeline_classification', { classification: 'inprogress', limit: 0, offset: 0, sort: 'fullname' }),
-        pajax('core_course_get_recent_courses', { userid: await myId(), limit: RECENT_MAX }).catch(() => []),
+        pajax('core_course_get_enrolled_courses_by_timeline_classification',
+          { classification: grouping, limit: 0, offset: 0, sort: COURSE_SORTS.find(([k]) => k === sort)[2] }),
+        pajax('core_course_get_recent_courses', { userid: uid, limit: RECENT_MAX }).catch(() => []),
       ]);
-      return { courses, recent };
+      return { courses, recent, grouping, sort };
     },
-    tools: () => [
+    tools: (d) => [
       search(T('Поиск курса'), ui.courses),
-      select([['all', T('Все курсы')], ['fav', T('Избранные')], ['active', T('Незавершённые')]],
-        ui.courses.only, (v) => { ui.courses.only = v; pref('only-courses', v); syncSoon(); swap(views.courses.render(cache.courses), true); }),
-      select([['name', T('По названию')], ['progress-asc', T('Меньше пройдено')], ['progress-desc', T('Больше пройдено')], ['category', T('По категории')]],
-        ui.courses.sort, (v) => { ui.courses.sort = v; pref('sort-courses', v); syncSoon(); swap(views.courses.render(cache.courses), true); }),
+      select(COURSE_GROUPINGS, d.grouping, (v) => setCourseView('grouping', v)),
+      select(COURSE_SORTS.map(([k, label]) => [k, label]), d.sort, (v) => setCourseView('sort', v)),
     ],
-    render({ courses, recent }) {
-      const pct = (c) => (c.hasprogress ? c.progress : -1); // courses without progress tracking go last
-      const list = courses.filter((c) => !c.hidden && {
-        all: true, fav: c.isfavourite, active: !c.hasprogress || c.progress < 100,
-      }[ui.courses.only]).sort((a, b) => b.isfavourite - a.isfavourite || {
-        name: (a, b) => byName(a.fullname, b.fullname),
-        'progress-asc': (a, b) => (pct(a) < 0) - (pct(b) < 0) || pct(a) - pct(b),
-        'progress-desc': (a, b) => pct(b) - pct(a),
-        category: (a, b) => byName(a.coursecategory, b.coursecategory) || byName(a.fullname, b.fullname),
-      }[ui.courses.sort](a, b)); // favourites always first
+    render({ courses, recent, grouping }) {
       const byId = Object.fromEntries(courses.map((c) => [c.id, c]));
-      const recentRow = recent?.length && ui.courses.only === 'all' ? h('div', { class: 'recent' },
+      const recentRow = recent?.length ? h('div', { class: 'recent' },
         h('span', { class: 'tool-label' }, T('Недавние')),
         recent.slice(0, RECENT_MAX).map((r) => h('button', { class: 'chip-btn', title: r.fullname, onclick: () => openCourse(byId[r.id] || r) }, r.fullname))) : null;
-      if (!list.length) return [recentRow, msg(ui.courses.only === 'fav' ? T('Нет избранных курсов: отметьте звёздочкой') : T('Нет курсов'))];
-      return [recentRow, stagger(h('div', { class: 'courses' }, list.map((c) =>
+      if (!courses.length) return [recentRow, msg(grouping === 'favourites' ? T('Нет помеченных курсов: отметьте звёздочкой') : T('Нет курсов'))];
+      return [recentRow, stagger(h('div', { class: 'courses' }, courses.map((c) =>
         h('div', { class: 'card course lift', role: 'button', tabindex: 0, 'data-name': c.fullname.toLowerCase(), hidden: !matches(c.fullname, ui.courses.q),
           onclick: () => openCourse(c), onkeydown: (e) => { if (e.key === 'Enter') openCourse(c); } },
           h('div', { class: 'img', style: `background-image:url("${c.courseimage}")` },
@@ -606,6 +615,7 @@ const views = {
 
 let myUserid;
 let mySesskey; // from /my/; some portal forms want it in the URL
+let myContext; // user context id: the private files area (sync file)
 const myId = async () => myUserid || (await loadMy()).userid;
 const textOf = (src) => html(src || '').body.textContent.replace(/\s+/g, ' ').trim();
 
@@ -647,15 +657,38 @@ function rich(src, media = false) {
 
 // Session-protected images (pluginfile.php) load through the main process like files: the app
 // page is cross-site to the portal, so the browser won't send the session cookie itself.
+// One cache for every image URL (chat list, chat, profile): each loads once per session, at most 4 at a
+// time, and a failed load is retried twice, then again the next time it's drawn.
+const imgCache = new Map();
+let imgActive = 0;
+const imgWaiting = [];
+const imgSlot = () => (imgActive < 4 ? (imgActive++, Promise.resolve()) : new Promise((r) => imgWaiting.push(r)));
+const imgFree = () => { const next = imgWaiting.shift(); if (next) next(); else imgActive--; };
+function loadImg(url) {
+  if (!url.includes('/pluginfile.php/')) return Promise.resolve(url); // theme images are public
+  if (!imgCache.has(url)) {
+    const p = (async () => {
+      for (let i = 0; ; i++) {
+        await imgSlot();
+        try {
+          const { type, bytes } = await portal.file(url);
+          return URL.createObjectURL(new Blob([bytes], { type }));
+        } catch (e) {
+          if (i >= 2) throw e;
+        } finally {
+          imgFree();
+        }
+        await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+    })();
+    p.catch(() => imgCache.delete(url));
+    imgCache.set(url, p);
+  }
+  return imgCache.get(url);
+}
 function portalImg(url, attrs = {}) {
   const img = h('img', { alt: '', ...attrs });
-  if (!url.includes('/pluginfile.php/')) { img.src = url; return img; } // theme images are public
-  portal.file(url)
-    .then(({ type, bytes }) => {
-      img.onload = () => URL.revokeObjectURL(img.src);
-      img.src = URL.createObjectURL(new Blob([bytes], { type }));
-    })
-    .catch(() => img.remove());
+  loadImg(url).then((src) => { img.src = src; }, () => img.remove());
   return img;
 }
 
@@ -668,7 +701,14 @@ function setBadge(view, count) {
     if (count) b.append(h('span', { class: 'count' }, count > 99 ? '99+' : String(count)));
   }
 }
-portal.onUnread((c) => { setBadge('notifications', c.notifications); setBadge('messages', c.messages); });
+portal.onUnread((c) => {
+  setBadge('notifications', c.notifications);
+  // ponytail: adds the app's own "unread" marks to the portal's count; a marked chat that also got new
+  // messages counts twice until it's opened.
+  setBadge('messages', c.messages + (myUserid ? Object.keys(chatState(myUserid).unread.marks).length : 0));
+  if (current === 'messages') chatLive?.refresh();
+  syncNow().catch(() => {}); // pins/archive/marks changed on another device show up within one check
+});
 portal.onNavigate((view) => show(view, true));
 
 const NEWS = 'block_cdo_notif_center'; // university notice center ("Мои уведомления") items
@@ -740,165 +780,313 @@ Object.assign(views, {
       return [
         search(T('Поиск диалога'), ui.chat),
         seg([['inbox', T('Диалоги')], ['archive', n ? T('Архив · {0}', n) : T('Архив')]], ui.chat.box,
-          (k) => { ui.chat.box = k; swap(views.messages.render(d), true); }),
+          (k) => { ui.chat.box = k; chatLive?.redraw(); }),
         h('button', { class: 'btn', onclick: () => newChat(d.uid) }, T('Новый диалог')),
       ];
     },
-    render(data) {
-      const { uid } = data;
-      const archived = archivedChats(uid);
-      const inArchive = ui.chat.box === 'archive';
-      const loaded = data.conversations.filter((c) => archived.has(c.id) === inArchive);
-      // New contact (from Участники): a draft chat until the first message creates the conversation.
-      const d = ui.chat.draft;
-      const existing = d && loaded.find((c) => c.type === 1 && c.members[0]?.id === d.id);
-      if (existing) { ui.chat.open = existing.id; ui.chat.draft = null; }
-      const conversations = d && !existing && !inArchive
-        ? [{ id: 'draft', type: 1, draft: true, messages: [], members: [{ id: d.id, fullname: d.name, profileimageurlsmall: d.picture, canmessage: true }] }, ...loaded]
-        : loaded;
-      if (!conversations.length) return msg(inArchive ? T('В архиве пусто') : T('Диалогов нет'));
-      const chat = h('div', { class: 'card chat' });
-      const nameOf = (c) => c.name || c.members.map((m) => m.fullname).join(', ') || T('Диалог');
-      const items = conversations.map((c) => {
-        const last = c.messages[0];
-        const item = h('button', { class: 'inbox-item conv' + (c.unreadcount ? ' unread' : ''), 'data-name': nameOf(c).toLowerCase(),
-          hidden: !matches(nameOf(c), ui.chat.q), onclick: () => openChat(c, item),
-          oncontextmenu: (e) => { if (!c.draft) { e.preventDefault(); chatMenu(e, c); } } },
-        avatarOf(c.members[0], nameOf(c)),
-        h('div', { class: 'main' },
-          h('div', { class: 't' }, nameOf(c)),
-          h('div', { class: 'sub' }, last ? `${last.useridfrom === uid ? T('Вы: ') : ''}${textOf(last.text)}` : '')),
-        h('div', { class: 'conv-side' },
-          last ? h('small', {}, relTime(last.timecreated)) : null,
-          c.unreadcount ? h('span', { class: 'count' }, String(c.unreadcount)) : null));
-        return item;
-      });
-
-      // Archive is this app's own list (the portal has none); deleting a chat removes it only for you.
-      const archive = (c) => {
-        const set = archivedChats(uid);
-        if (set.has(c.id)) set.delete(c.id); else set.add(c.id);
-        pref(`chat-archive-${uid}`, JSON.stringify([...set]));
-        syncSoon();
-        if (ui.chat.open === c.id) ui.chat.open = null;
-        paint('messages', true);
-      };
-      const removeChat = async (c) => {
-        if (!await confirmBox(T('Удалить диалог?'), T('Переписка удалится только у вас. У собеседника она останется.'), T('Удалить'))) return;
-        try {
-          await pajax('core_message_delete_conversations_by_id', { userid: uid, conversationids: [c.id] });
-          data.conversations = data.conversations.filter((x) => x !== c);
-          if (ui.chat.open === c.id) ui.chat.open = null;
-          paint('messages', true);
-        } catch (e) { confirmBox(T('Не удалено: {0}', errText(e)), '', T('Понятно')); }
-      };
-      const chatMenu = (e, c) => ctxMenu(e, [
-        [archived.has(c.id) ? T('Из архива') : T('В архив'), 'archive', () => archive(c)],
-        [T('Удалить диалог'), 'trash', () => removeChat(c), true],
-      ]);
-
-      async function openChat(c, item) {
-        ui.chat.open = c.id;
-        item.parentNode.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
-        item.classList.add('sel');
-        const other = c.members[0];
-        const feed = h('div', { class: 'feed' }, h('div', { class: 'msg' }, T('Загрузка…')));
-        const input = h('textarea', { rows: 1, placeholder: T('Сообщение…'), onkeydown: (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-        }, oninput: () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 160)}px`; } });
-        const sendBtn = h('button', { class: 'send', title: T('Отправить (Enter)'), onclick: () => send() }, icon('send'));
-        const err = h('div', { class: 'send-err' });
-        const canSend = c.type === 2 || other?.canmessage !== false;
-        chat.replaceChildren(
-          h('div', { class: 'chat-head' }, splitBack(), avatarOf(other, nameOf(c)),
-            h('div', { class: 'chat-who' }, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : '')),
-            c.draft ? null : h('div', { class: 'chat-actions' },
-              h('button', { class: 'icon-btn', title: archived.has(c.id) ? T('Из архива') : T('В архив'), onclick: () => archive(c) }, icon('archive')),
-              h('button', { class: 'icon-btn danger', title: T('Удалить диалог'), onclick: () => removeChat(c) }, icon('trash')))),
-          feed,
-          canSend ? h('div', { class: 'composer' }, input, sendBtn) : h('div', { class: 'note composer-off' }, T('Этому собеседнику нельзя написать')),
-          err);
-
-        let lastDay;
-        const bubble = (m) => {
-          const d = new Date(m.timecreated * 1000);
-          const day = d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
-          return [
-            day !== lastDay ? h('div', { class: 'day-sep' }, (lastDay = day)) : null,
-            m.useridfrom === uid && m.id ? mine(m, d) : h('div', { class: 'bubble' + (m.useridfrom === uid ? ' mine' : '') }, rich(m.text), h('small', {}, hhmm(d))),
-          ];
-        };
-        // Own message: hover (or tap on a phone) shows Удалить. Moodle 3.7 deletes "for me" only (deleting for
-        // everyone needs a site-admin capability) and can't edit sent messages.
-        const mine = (m, d) => {
-          const el = h('div', { class: 'bubble mine', tabindex: 0 }, rich(m.text),
-            h('small', {}, h('button', { class: 'bubble-del', title: T('Удалить сообщение'), onclick: async (e) => {
-              e.stopPropagation();
-              if (!await confirmBox(T('Удалить сообщение?'), T('Сообщение удалится только у вас. Собеседник его по-прежнему увидит.'), T('Удалить'))) return;
-              try {
-                await pajax('core_message_delete_message', { messageid: m.id, userid: uid, read: true });
-                el.remove();
-              } catch (x) { err.textContent = T('Не удалено: {0}', errText(x)); }
-            } }, T('Удалить')), hhmm(d)));
-          return el;
-        };
-
-        async function send() {
-          const text = input.value.trim();
-          if (!text || sendBtn.disabled) return;
-          sendBtn.disabled = true;
-          err.textContent = '';
-          try {
-            if (c.draft) {
-              const [r] = await pajax('core_message_send_instant_messages', { messages: [{ touserid: other.id, text, textformat: 2 }] });
-              if (r.errormessage) throw new Error(r.errormessage);
-              ui.chat.draft = null;
-              ui.chat.open = r.conversationid;
-              show('messages', true); // reload: the new conversation now exists on the portal
-              return;
-            }
-            const sent = await pajax('core_message_send_messages_to_conversation', { conversationid: c.id, messages: [{ text, textformat: 2 }] });
-            feed.append(...sent.map(bubble).flat().filter(Boolean));
-            input.value = '';
-            input.style.height = 'auto';
-            feed.scrollTop = feed.scrollHeight;
-          } catch (e) {
-            err.textContent = T('Не отправлено: {0}', errText(e));
-          } finally {
-            sendBtn.disabled = false;
-            input.focus();
-          }
-        }
-
-        if (c.draft) {
-          feed.replaceChildren(h('div', { class: 'msg' }, T('Напишите первое сообщение — диалог появится после отправки')));
-          input.focus();
-          return;
-        }
-        try {
-          const { messages } = await pajax('core_message_get_conversation_messages',
-            { currentuserid: uid, convid: c.id, limitfrom: 0, limitnum: 50, newest: true });
-          if (ui.chat.open !== c.id) return; // user already switched to another chat
-          feed.replaceChildren(...messages.reverse().flatMap(bubble).filter(Boolean));
-          feed.scrollTop = feed.scrollHeight;
-        } catch (e) {
-          feed.replaceChildren(errorBox(e));
-        }
-        if (c.unreadcount) {
-          c.unreadcount = 0;
-          item.classList.remove('unread');
-          item.querySelector('.count')?.remove();
-          await pajax('core_message_mark_all_conversation_messages_as_read', { userid: uid, conversationid: c.id });
-          portal.poll();
-        }
-      }
-
-      const first = Math.max(conversations.findIndex((c) => c.id === ui.chat.open), 0);
-      requestAnimationFrame(() => openChat(conversations[first], items[first]));
-      return h('div', { class: 'split' }, stagger(h('div', { class: 'card inbox' }, items)), chat);
-    },
+    render: (data) => messagesScreen(data),
   },
 });
+
+// ---- Сообщения screen ----
+// The list redraws on its own (pins, unread, archive, live refresh) without touching the open chat, and the
+// open chat is bound to its conversation object: a draft that becomes a real conversation on the first send
+// stays open (a full re-render used to drop the phone back to the list).
+
+let chatLive = null; // the screen on show: { data, redraw(), refresh() }
+const nameOf = (c) => c.name || c.members.map((m) => m.fullname).join(', ') || T('Диалог');
+// Group chats use the group's picture (or initials), not some member's.
+const convAvatar = (c) => avatarOf(c.type === 2 ? { profileimageurlsmall: c.imageurl } : c.members[0], nameOf(c));
+const PIN_MAX = 5;
+let pinDragged = false;
+
+function messagesScreen(data) {
+  const { uid } = data;
+  const inbox = h('div', { class: 'card inbox' });
+  const chat = h('div', { class: 'card chat' });
+  const split = h('div', { class: 'split' + (ui.chat.focus ? ' detail moved' : '') }, inbox, chat);
+  ui.chat.focus = false;
+  let open = null; // { c, feed, lastId, lastTime, append(messages) }
+
+  const marks = () => chatState(uid).unread.marks;
+  const isUnread = (c) => c.unreadcount > 0 || c.isread === false || marks()[c.id] != null;
+  // Read receipts only for a chat that is really on screen: the app in front, and on a phone the chat
+  // itself (not the list) showing.
+  const onScreen = (c) => open?.c === c && current === 'messages' && document.visibilityState === 'visible'
+    && (!phoneMq.matches || split.classList.contains('detail'));
+
+  // Conversations of the current box: pinned first in their order, then the portal's order (newest first).
+  function list() {
+    const s = chatState(uid);
+    const arch = new Set(s.archive.ids);
+    const inArchive = ui.chat.box === 'archive';
+    const d = ui.chat.draft;
+    const existing = d && data.conversations.find((c) => c.type === 1 && c.members[0]?.id === d.members[0].id);
+    if (existing) { ui.chat.open = existing.id; ui.chat.draft = null; }
+    let cs = data.conversations.filter((c) => arch.has(c.id) === inArchive);
+    const pins = s.pins.ids.filter((id) => cs.some((c) => c.id === id));
+    cs = [...pins.map((id) => cs.find((c) => c.id === id)), ...cs.filter((c) => !pins.includes(c.id))];
+    return ui.chat.draft && !inArchive ? [ui.chat.draft, ...cs] : cs;
+  }
+
+  function itemFor(c) {
+    const last = c.messages[0];
+    const pinned = chatState(uid).pins.ids.includes(c.id);
+    const unread = isUnread(c);
+    const item = h('button', { class: 'inbox-item conv' + (unread ? ' unread' : '') + (pinned ? ' pinned' : '') + (open?.c === c ? ' sel' : ''),
+      'data-id': c.id, 'data-name': nameOf(c).toLowerCase(), hidden: !matches(nameOf(c), ui.chat.q),
+      onclick: () => { if (!pinDragged) openChat(c); },
+      oncontextmenu: (e) => { if (!c.draft) { e.preventDefault(); chatMenu(e, c); } } },
+    convAvatar(c),
+    h('div', { class: 'main' },
+      h('div', { class: 't' }, pinned ? icon('pin') : null, nameOf(c)),
+      h('div', { class: 'sub' }, last ? `${last.useridfrom === uid ? T('Вы: ') : ''}${textOf(last.text)}` : '')),
+    h('div', { class: 'conv-side' },
+      last ? h('small', {}, relTime(last.timecreated)) : null,
+      c.unreadcount ? h('span', { class: 'count' }, String(c.unreadcount)) : unread ? h('span', { class: 'count dot' }) : null),
+    pinned ? h('span', { class: 'pin-drag', title: T('Перетащите, чтобы изменить порядок'), onpointerdown: (e) => dragPin(e, item) }, '⠿') : null);
+    return item;
+  }
+
+  function redraw() {
+    const cs = list();
+    inbox.replaceChildren(...(cs.length ? cs.map(itemFor) : [msg(ui.chat.box === 'archive' ? T('В архиве пусто') : T('Диалогов нет'))]));
+    setBadge('messages', data.conversations.filter(isUnread).length);
+    if (!open && cs.length) openChat(cs.find((c) => c.id === ui.chat.open) || cs[0]);
+  }
+
+  // Pinned chats reorder by dragging their handle (mouse or finger); the order syncs.
+  function dragPin(e, el) {
+    e.preventDefault();
+    e.stopPropagation();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+    const move = (ev) => {
+      const pinned = [...inbox.querySelectorAll('.inbox-item.pinned')];
+      const over = pinned.find((p) => p !== el && ev.clientY < p.getBoundingClientRect().top + p.offsetHeight / 2);
+      if (over) { if (over !== el.nextElementSibling) inbox.insertBefore(el, over); } else if (pinned.at(-1) !== el) pinned.at(-1).after(el);
+    };
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      el.classList.remove('dragging');
+      pinDragged = true;
+      setTimeout(() => { pinDragged = false; }, 0); // the click that ends a drag doesn't open the chat
+      const shown = [...inbox.querySelectorAll('.inbox-item.pinned')].map((x) => Number(x.dataset.id));
+      const ids = chatState(uid).pins.ids;
+      setChat(uid, 'pins', { ids: [...shown, ...ids.filter((id) => !shown.includes(id))] }); // archived pins keep their place after
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end, { once: true });
+    handle.addEventListener('pointercancel', end, { once: true });
+  }
+
+  // Archive, pins and "marked unread" are this app's own (the portal has none) and sync through the sync file.
+  const archive = (c) => {
+    const ids = chatState(uid).archive.ids;
+    setChat(uid, 'archive', { ids: ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id] });
+    if (open?.c === c) { open = null; ui.chat.open = null; }
+    paint('messages', true); // the archive count in the toolbar changes too
+  };
+  const pin = (c) => {
+    const ids = chatState(uid).pins.ids;
+    if (ids.includes(c.id)) return (setChat(uid, 'pins', { ids: ids.filter((x) => x !== c.id) }), redraw());
+    if (ids.length >= PIN_MAX) return confirmBox(T('Можно закрепить до {0} диалогов', PIN_MAX), T('Открепите другой диалог, чтобы закрепить этот.'), T('Понятно'));
+    setChat(uid, 'pins', { ids: [...ids, c.id] });
+    redraw();
+  };
+  // Moodle 3.7 can't mark a conversation unread, so "unread" is a mark kept by the app until the chat is opened.
+  const markUnread = (c) => {
+    setChat(uid, 'unread', { marks: { ...marks(), [c.id]: c.messages[0]?.id || 0 } });
+    redraw();
+  };
+  async function markRead(c) {
+    if (!isUnread(c) || !onScreen(c)) return;
+    const wasUnread = c.unreadcount > 0 || c.isread === false;
+    c.unreadcount = 0;
+    c.isread = true;
+    if (marks()[c.id] != null) { const m = { ...marks() }; delete m[c.id]; setChat(uid, 'unread', { marks: m }); }
+    redraw();
+    if (!wasUnread) return;
+    try {
+      await pajax('core_message_mark_all_conversation_messages_as_read', { userid: uid, conversationid: c.id });
+      portal.poll(); // other devices see it read on their next refresh
+    } catch {
+      c.isread = false; // try again on the next refresh
+    }
+  }
+  const removeChat = async (c) => {
+    if (!await confirmBox(T('Удалить диалог?'), T('Переписка удалится только у вас. У собеседника она останется.'), T('Удалить'))) return;
+    try {
+      await pajax('core_message_delete_conversations_by_id', { userid: uid, conversationids: [c.id] });
+      data.conversations = data.conversations.filter((x) => x !== c);
+      if (open?.c === c) { open = null; ui.chat.open = null; chat.replaceChildren(); }
+      redraw();
+    } catch (e) { confirmBox(T('Не удалено: {0}', errText(e)), '', T('Понятно')); }
+  };
+  const chatMenu = (e, c) => {
+    const s = chatState(uid);
+    ctxMenu(e, [
+      isUnread(c) ? [T('Прочитано'), 'check', () => forceRead(c)]
+        : [T('Непрочитано'), 'dot', () => markUnread(c)],
+      [s.pins.ids.includes(c.id) ? T('Открепить') : T('Закрепить'), 'pin', () => pin(c)],
+      [s.archive.ids.includes(c.id) ? T('Из архива') : T('В архив'), 'archive', () => archive(c)],
+      [T('Удалить диалог'), 'trash', () => removeChat(c), true],
+    ]);
+  };
+  // "Прочитано" from the menu: read on the portal even when the chat isn't open.
+  async function forceRead(c) {
+    c.unreadcount = 0;
+    c.isread = true;
+    if (marks()[c.id] != null) { const m = { ...marks() }; delete m[c.id]; setChat(uid, 'unread', { marks: m }); }
+    redraw();
+    await pajax('core_message_mark_all_conversation_messages_as_read', { userid: uid, conversationid: c.id }).catch(() => {});
+    portal.poll();
+  }
+
+  function openChat(c) {
+    ui.chat.open = c.id;
+    inbox.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
+    inbox.querySelector(`[data-id="${c.id}"]`)?.classList.add('sel');
+    const other = c.members[0];
+    const feed = h('div', { class: 'feed' }, h('div', { class: 'msg' }, T('Загрузка…')));
+    const input = h('textarea', { rows: 1, placeholder: T('Сообщение…'), onkeydown: (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    }, oninput: () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 160)}px`; } });
+    const sendBtn = h('button', { class: 'send', title: T('Отправить (Enter)'), onclick: () => send() }, icon('send'));
+    const err = h('div', { class: 'send-err' });
+    const canSend = c.type === 2 || other?.canmessage !== false;
+    const actions = h('div', { class: 'chat-actions' });
+    const drawActions = () => actions.replaceChildren(...(c.draft ? [] : [
+      h('button', { class: 'icon-btn', title: archivedChats(uid).has(c.id) ? T('Из архива') : T('В архив'), onclick: () => archive(c) }, icon('archive')),
+      h('button', { class: 'icon-btn danger', title: T('Удалить диалог'), onclick: () => removeChat(c) }, icon('trash'))]));
+    drawActions();
+    chat.replaceChildren(
+      h('div', { class: 'chat-head' }, splitBack(), convAvatar(c),
+        h('div', { class: 'chat-who' }, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : '')),
+        actions),
+      feed,
+      canSend ? h('div', { class: 'composer' }, input, sendBtn) : h('div', { class: 'note composer-off' }, T('Этому собеседнику нельзя написать')),
+      err);
+
+    let lastDay;
+    const bubble = (m) => {
+      const d = new Date(m.timecreated * 1000);
+      const day = d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
+      return [
+        day !== lastDay ? h('div', { class: 'day-sep' }, (lastDay = day)) : null,
+        m.useridfrom === uid && m.id ? mine(m, d) : h('div', { class: 'bubble' + (m.useridfrom === uid ? ' mine' : '') }, rich(m.text), h('small', {}, hhmm(d))),
+      ];
+    };
+    // Own message: hover (or tap on a phone) shows Удалить. Moodle 3.7 deletes "for me" only (deleting for
+    // everyone needs a site-admin capability) and can't edit sent messages.
+    const mine = (m, d) => {
+      const el = h('div', { class: 'bubble mine', tabindex: 0 }, rich(m.text),
+        h('small', {}, h('button', { class: 'bubble-del', title: T('Удалить сообщение'), onclick: async (e) => {
+          e.stopPropagation();
+          if (!await confirmBox(T('Удалить сообщение?'), T('Сообщение удалится только у вас. Собеседник его по-прежнему увидит.'), T('Удалить'))) return;
+          try {
+            await pajax('core_message_delete_message', { messageid: m.id, userid: uid, read: true });
+            el.remove();
+          } catch (x) { err.textContent = T('Не удалено: {0}', errText(x)); }
+        } }, T('Удалить')), hhmm(d)));
+      return el;
+    };
+    const state = open = { c, feed, lastId: 0, lastTime: 0 };
+    // Oldest first; ids already shown are skipped, so a refresh can overlap what's on screen.
+    state.append = (messages) => {
+      const fresh = messages.filter((m) => m.id > state.lastId).sort((a, b) => a.id - b.id);
+      if (!fresh.length) return;
+      const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+      feed.append(...fresh.flatMap(bubble).filter(Boolean));
+      state.lastId = fresh.at(-1).id;
+      state.lastTime = Math.max(state.lastTime, fresh.at(-1).timecreated);
+      if (atBottom || fresh.at(-1).useridfrom === uid) feed.scrollTop = feed.scrollHeight;
+    };
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text || sendBtn.disabled) return;
+      sendBtn.disabled = true;
+      err.textContent = '';
+      try {
+        if (c.draft) {
+          const [r] = await pajax('core_message_send_instant_messages', { messages: [{ touserid: other.id, text, textformat: 2 }] });
+          if (r.errormessage) throw new Error(r.errormessage);
+          // The draft becomes the real conversation in place: same object, same open chat.
+          const m = { id: r.msgid, useridfrom: uid, text: r.text, timecreated: r.timecreated };
+          delete c.draft;
+          Object.assign(c, { id: r.conversationid, messages: [m], unreadcount: 0, isread: true, membercount: 2 });
+          if (!data.conversations.some((x) => x.id === c.id)) data.conversations.unshift(c);
+          ui.chat.draft = null;
+          ui.chat.open = c.id;
+          feed.replaceChildren();
+          state.append([m]);
+          drawActions();
+          redraw();
+          refresh(); // reconcile with the portal (by id)
+        } else {
+          const sent = await pajax('core_message_send_messages_to_conversation', { conversationid: c.id, messages: [{ text, textformat: 2 }] });
+          state.append(sent);
+          c.messages = [sent.at(-1), ...c.messages.slice(1)];
+          if (sent.length) { data.conversations = [c, ...data.conversations.filter((x) => x !== c)]; redraw(); }
+        }
+        input.value = '';
+        input.style.height = 'auto';
+      } catch (e) {
+        err.textContent = T('Не отправлено: {0}', errText(e));
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    if (c.draft) {
+      feed.replaceChildren(h('div', { class: 'msg' }, T('Напишите первое сообщение — диалог появится после отправки')));
+      input.focus();
+      return;
+    }
+    pajax('core_message_get_conversation_messages', { currentuserid: uid, convid: c.id, limitfrom: 0, limitnum: 50, newest: true })
+      .then(({ messages }) => {
+        if (open !== state) return; // user already switched to another chat
+        feed.replaceChildren();
+        state.append(messages);
+        feed.scrollTop = feed.scrollHeight;
+        markRead(c);
+      }, (e) => { if (open === state) feed.replaceChildren(errorBox(e)); });
+  }
+
+  // Live refresh (every 20 s while Сообщения is on screen, and on each unread check): the list from the
+  // portal, reconciled by id; the open chat gets only messages newer than the last one shown.
+  async function refresh() {
+    let fresh;
+    try {
+      fresh = (await portal.ajax('core_message_get_conversations', { userid: uid, limitfrom: 0, limitnum: 50 })).conversations;
+    } catch { return; } // offline: keep what's shown
+    if (chatLive?.data !== data) return;
+    const before = JSON.stringify(data.conversations);
+    const keep = new Map(data.conversations.map((c) => [c.id, c]));
+    data.conversations = fresh.map((f) => (keep.has(f.id) ? Object.assign(keep.get(f.id), f) : f));
+    if (open && !open.c.draft && !data.conversations.includes(open.c)) data.conversations.unshift(open.c); // just created: not listed yet
+    if (JSON.stringify(data.conversations) !== before) redraw();
+    const c = open?.c;
+    if (!c || c.draft || !(c.messages[0]?.id > open.lastId)) return markRead(c || {});
+    const state = open;
+    try {
+      const { messages } = await pajax('core_message_get_conversation_messages',
+        { currentuserid: uid, convid: c.id, limitfrom: 0, limitnum: 50, newest: true, timefrom: state.lastTime });
+      if (open === state) { state.append(messages); markRead(c); }
+    } catch {}
+  }
+
+  chatLive = { data, redraw, refresh, markOpen: () => open && markRead(open.c) };
+  redraw();
+  return split;
+}
+
+setInterval(() => { if (current === 'messages' && !document.hidden) chatLive?.refresh(); }, 20_000);
+// Coming back to the app, or the phone switching from the list to the chat: read what's now on screen.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && current === 'messages') { chatLive?.refresh(); chatLive?.markOpen(); } });
 
 // ---- course inside the app ----
 
@@ -1146,7 +1334,6 @@ function ctxMenu(e, items) {
   menu.querySelector('button')?.focus();
 }
 
-const archivedChats = (uid) => new Set(JSON.parse(pref(`chat-archive-${uid}`) || '[]'));
 
 // Новый диалог: find a person on the portal, then open (or draft) the chat with them.
 // Group chats can't be started here: Moodle 3.7 only makes them from course groups.
@@ -1187,14 +1374,16 @@ async function writeTo(userid, name, picture) {
       { userid: await myId(), otheruserid: userid, includecontactrequests: false, includeprivacyinfo: false });
     ui.chat.open = conv.id;
     ui.chat.draft = null;
-    const set = archivedChats(myUserid);
-    if (set.delete(conv.id)) { pref(`chat-archive-${myUserid}`, JSON.stringify([...set])); syncSoon(); } // writing brings it back
+    const ids = chatState(myUserid).archive.ids;
+    if (ids.includes(conv.id)) setChat(myUserid, 'archive', { ids: ids.filter((x) => x !== conv.id) }); // writing brings it back
+    if (cache.messages && !cache.messages.conversations.some((c) => c.id === conv.id)) cache.messages.conversations.unshift(conv); // listed at once
   } catch {
-    ui.chat.draft = { id: userid, name, picture };
+    ui.chat.draft = { id: 'draft', type: 1, draft: true, messages: [], members: [{ id: userid, fullname: name, profileimageurlsmall: picture, canmessage: true }] };
     ui.chat.open = 'draft';
   }
   ui.chat.box = 'inbox';
-  show('messages', true);
+  ui.chat.focus = true; // phones open the chat itself, not the list
+  if (current === 'messages' && cache.messages) { paint('messages', true); chatLive?.refresh(); } else show('messages', true);
 }
 
 function peopleTab(c) {
@@ -1434,12 +1623,13 @@ function plural(n, forms) {
   return f[2];
 }
 
+// Initials first; the picture covers them once loaded (Moodle's default picture is a theme image: initials only).
 function avatarOf(member, name) {
-  // Moodle's default picture is a theme image; show initials instead.
-  const img = member?.profileimageurlsmall;
-  if (img && !img.includes('/theme/image.php')) return portalImg(img, { class: 'avatar' });
   const [a = '', b = ''] = name.split(/\s+/);
-  return h('span', { class: 'avatar' }, (b[0] || '') + (a[0] || ''));
+  const el = h('span', { class: 'avatar' }, (b[0] || '') + (a[0] || ''));
+  const url = member?.profileimageurlsmall;
+  if (url && !url.includes('/theme/image.php')) loadImg(url).then((src) => el.append(h('img', { alt: '', src })), () => {});
+  return el;
 }
 
 // ---- services: справки, вопрос, личные файлы, библиотеки ----
@@ -1668,29 +1858,60 @@ async function freshFs(fs) {
   return (ui.svc.fs = { ...await loadFiles(), gen: filesGen });
 }
 
-// ---- sync across devices: chat archive and Курсы sort/filter, in a small file in Личные файлы ----
-// The portal keeps no custom per-user settings (it drops preference names Moodle doesn't know), so the
-// app's own file is the shared copy. Newest wins by its "at" time; the local copy works offline.
+// ---- sync across devices ----
+// What syncs, and how (see ROADMAP "Sync"):
+// - On the portal itself, so on every device and the website: messages, read state, chat list, deleted
+//   chats and messages, favourite courses, profile picture, Курсы filter and sort (Moodle's own preferences).
+// - In the app's file ulportal-sync/sync.json in Личные файлы (the portal keeps no custom settings): the
+//   chat archive, pinned chats and their order, chats marked unread.
+// - Local on purpose: Сегодня layout, theme, accent, language, sidebar.
+// Each part of the file has its own time and the newer part wins on every read and write (last write wins
+// per part), so changes to different parts on two devices both survive. The local copy works offline.
 const SYNC_DIR = '/ulportal-sync/'; // no leading dot: the portal's nginx refuses dot-paths (403)
 const SYNC_FILE = 'sync.json';
-const COURSE_SORTS = ['name', 'progress-asc', 'progress-desc', 'category'];
-const COURSE_FILTERS = ['all', 'fav', 'active'];
-let syncTimer;
-let pulledAt = 0;
+const CHAT_PARTS = { archive: () => ({ ids: [] }), pins: () => ({ ids: [] }), unread: () => ({ marks: {} }) };
+const validPart = {
+  archive: (p) => Array.isArray(p.ids) && p.ids.every(Number.isInteger),
+  pins: (p) => Array.isArray(p.ids) && p.ids.length <= PIN_MAX && p.ids.every(Number.isInteger),
+  unread: (p) => p.marks && typeof p.marks === 'object' && !Array.isArray(p.marks),
+};
 
-function syncSoon() {
-  pref('sync-at', String(Date.now()));
-  pref('sync-dirty', '1');
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => syncPush().catch(() => {}), 2000); // offline: stays dirty, sent on the next start
+function chatState(uid) {
+  let s = {};
+  try { s = JSON.parse(pref(`chat-state-${uid}`)) || {}; } catch {}
+  const old = pref(`chat-archive-${uid}`); // 1.2.2–1.2.3 kept only the archive
+  if (!s.archive && old) s.archive = { at: Number(pref('sync-at')) || 1, ids: JSON.parse(old) };
+  for (const [k, make] of Object.entries(CHAT_PARTS)) s[k] ||= { at: 0, ...make() };
+  return s;
+}
+function setChat(uid, part, value) {
+  const s = chatState(uid);
+  s[part] = { ...value, at: Date.now() };
+  pref(`chat-state-${uid}`, JSON.stringify(s));
+  syncSoon();
+}
+const archivedChats = (uid) => new Set(chatState(uid).archive.ids);
+
+let syncTimer;
+let syncing = null;
+let pulledAt = 0;
+const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow().catch(() => {}), 2000); }; // a burst of changes = one write
+
+// The shared copy, read straight from the private files area (one request, no draft area). ?t= skips the
+// HTTP cache, which otherwise kept answering with an old copy.
+async function readRemote() {
+  if (!myContext) await loadMy();
+  let d;
+  try {
+    d = JSON.parse(new TextDecoder().decode((await portal.file(`${BASE}/pluginfile.php/${myContext}/user/private${SYNC_DIR}${SYNC_FILE}?t=${Date.now()}`)).bytes));
+  } catch (e) {
+    if (isOffline(e)) throw e;
+    return {}; // no file yet (the portal answers with its "not found" page)
+  }
+  return d.v === 1 ? { archive: { at: d.at, ids: d.archive } } : d; // 1.2.2–1.2.3 file
 }
 
-async function syncPush() {
-  const uid = await myId();
-  const data = {
-    v: 1, at: Number(pref('sync-at')) || Date.now(),
-    archive: [...archivedChats(uid)], courses: { sort: ui.courses.sort, only: ui.courses.only },
-  };
+async function writeRemote(data) {
   await filesExclusive(async () => {
     const fs = await loadFiles();
     const root = await listFiles(fs, '/');
@@ -1703,31 +1924,34 @@ async function syncPush() {
     await portal.post('/user/files.php', fs.save);
     filesGen++;
   });
-  pref('sync-dirty', '');
   ui.svc.fs = null;
 }
 
-// Reads the shared copy and takes it when it's newer than what this device has.
-async function syncPull() {
-  pulledAt = Date.now();
-  if (pref('sync-dirty')) return syncPush(); // a change made here never reached the portal: it is the newest
-  const uid = await myId();
-  const fs = await loadFiles();
-  const file = (await listFiles(fs, SYNC_DIR)).find((f) => f.filename === SYNC_FILE);
-  if (!file) return;
-  const d = JSON.parse(new TextDecoder().decode((await portal.file(file.url)).bytes));
-  if (!(d.at > (Number(pref('sync-at')) || 0)) || pref('sync-dirty')) return;
-  if (Array.isArray(d.archive)) pref(`chat-archive-${uid}`, JSON.stringify(d.archive.filter(Number.isInteger)));
-  if (COURSE_SORTS.includes(d.courses?.sort)) pref('sort-courses', (ui.courses.sort = d.courses.sort));
-  if (COURSE_FILTERS.includes(d.courses?.only)) pref('only-courses', (ui.courses.only = d.courses.only));
-  pref('sync-at', String(d.at));
-  if (current === 'messages' && cache.messages) paint('messages', 'silent');
-  if (current === 'courses' && cache.courses) paint('courses', 'silent');
+// Read, merge part by part, then write back only if this device had something newer.
+function syncNow() {
+  syncing ||= (async () => {
+    pulledAt = Date.now();
+    const uid = await myId();
+    const local = chatState(uid);
+    const remote = await readRemote();
+    let changed = false;
+    let stale = false;
+    for (const k of Object.keys(CHAT_PARTS)) {
+      const r = remote[k];
+      if (r && r.at > local[k].at && validPart[k](r)) { local[k] = r; changed = true; } else if (!r || local[k].at > r.at) stale = true;
+    }
+    if (changed) {
+      pref(`chat-state-${uid}`, JSON.stringify(local));
+      if (current === 'messages') chatLive?.redraw();
+    }
+    if (stale && Object.values(local).some((p) => p.at)) await writeRemote({ v: 2, ...local });
+  })().finally(() => { syncing = null; });
+  return syncing;
 }
-// On start, and when the app comes back after a while (changes from another device).
-setTimeout(() => syncPull().catch(() => {}), 5000);
+// On start, on every unread check (portal.onUnread), and when the app comes back.
+setTimeout(() => syncNow().catch(() => {}), 5000);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && Date.now() - pulledAt > 10 * 60_000) syncPull().catch(() => {});
+  if (!document.hidden && Date.now() - pulledAt > 60_000) syncNow().catch(() => {});
 });
 
 function filesTab() {
@@ -1736,7 +1960,7 @@ function filesTab() {
     try {
       ui.svc.fs ||= { ...await loadFiles(), gen: filesGen };
       const fs = ui.svc.fs;
-      // The sync file's folder (see syncPush) is the app's own: not shown here.
+      // The sync file's folder (see writeRemote) is the app's own: not shown here.
       const list = (await listFiles(fs, ui.svc.path)).filter((f) => !(ui.svc.path === '/' && f.type === 'folder' && f.fullname === SYNC_DIR.slice(1, -1)));
       const crumbs = ui.svc.path.split('/').filter(Boolean);
       const go = (p) => { ui.svc.path = p; draw(); };
@@ -2014,8 +2238,8 @@ Object.assign(views, {
 // Asks GitHub for the latest release only when the button is pressed (see PRIVACY.md).
 function updateCard() {
   const status = h('p', { class: 'sub' }, T('Обновления проверяются только по кнопке.'));
-  const actions = h('div', { class: 'about-btns' });
-  const check = h('button', { class: 'chip-btn', onclick: async () => {
+  const actions = h('div', { class: 'action-row' });
+  const check = h('button', { class: 'tool-btn', onclick: async () => {
     check.disabled = true;
     status.textContent = T('Проверка…');
     try {
@@ -2037,13 +2261,16 @@ function updateCard() {
 }
 
 // Shown once: what the app is and isn't, before anything else.
+// Stays until "Принимаю": the documents open on top of it, and Esc / Back / a click outside don't close it.
 function firstRunNotice() {
   if (pref('notice-v1')) return;
   const dlg = $('#welcome');
-  dlg.querySelectorAll('[data-doc]').forEach((b) => {
-    b.onclick = () => { dlg.close(); openDoc(b.dataset.doc); };
+  dlg.querySelectorAll('[data-doc]').forEach((b) => { b.onclick = () => openDoc(b.dataset.doc); });
+  dlg.addEventListener('cancel', (e) => e.preventDefault());
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue === 'accept') pref('notice-v1', '1');
+    else dlg.showModal();
   });
-  dlg.addEventListener('close', () => pref('notice-v1', '1'), { once: true });
   dlg.showModal();
 }
 
@@ -2434,7 +2661,7 @@ function renderProfile(p) {
     if (el.dataset.pic === (p.picture || '') && el.textContent) continue; // same picture: no reload flicker
     el.dataset.pic = p.picture || '';
     el.replaceChildren((first[0] || '') + (last[0] || ''));
-    if (p.picture) { const img = portalImg(p.picture); img.onerror = () => img.remove(); el.append(img); } // covers the initials once loaded
+    if (p.picture) loadImg(p.picture).then((src) => { if (el.dataset.pic === p.picture) el.append(h('img', { alt: '', src })); }, () => {}); // covers the initials
   }
   $('#pp-pic-del').hidden = !p.picture;
   $('#me-name').textContent = `${first} ${last}`;
@@ -2607,9 +2834,14 @@ function setAccent(color) {
   document.querySelectorAll('#accents button').forEach((b) => b.classList.toggle('active', b.dataset.c === color));
 }
 
+// Below 1100 px (a tablet held upright, a small window) the sidebar starts collapsed to icons, so the
+// content keeps its width; toggling there doesn't change the saved choice for wide screens.
+const narrowMq = matchMedia('(min-width: 760px) and (max-width: 1099px)');
 function toggleCollapse() {
-  pref('collapsed', document.body.classList.toggle('collapsed') ? '1' : '');
+  const on = document.body.classList.toggle('collapsed');
+  if (!narrowMq.matches) pref('collapsed', on ? '1' : '');
 }
+narrowMq.addEventListener('change', () => document.body.classList.toggle('collapsed', narrowMq.matches || !!pref('collapsed')));
 
 $('#accents').append(...ACCENTS.map((c) => h('button', { 'data-c': c, style: `--c:${c}`, title: c, onclick: () => setAccent(c) })));
 // Android recreates the app on a light/dark change, which reloads the page.
@@ -2654,14 +2886,64 @@ document.querySelectorAll('#nav [data-view], #tabbar [data-view]').forEach((b) =
 // Phones: Ещё opens the sidebar as a sheet; any button in it or a tap outside closes it.
 $('#more').addEventListener('click', () => { document.body.classList.toggle('sheet'); slide($('#nav')); });
 $('#side-backdrop').addEventListener('click', () => document.body.classList.remove('sheet'));
+
+// Popovers (Settings, profile, menus) close on a tap outside, and the browser then also delivers that tap to
+// whatever is under it (a chat, a course). While one is open, and until its close has settled, a clear
+// layer takes those taps instead. Same for the Ещё sheet while it slides away.
+const shield = h('div', { id: 'shield' });
+document.body.append(shield);
+let unshield;
+const shieldOn = () => { clearTimeout(unshield); shield.classList.add('on'); };
+const shieldOff = () => { clearTimeout(unshield); unshield = setTimeout(() => { if (!document.querySelector(':popover-open')) shield.classList.remove('on'); }, 400); };
+document.addEventListener('toggle', (e) => { if (e.target.popover) (e.newState === 'open' ? shieldOn : shieldOff)(); }, true);
+shield.addEventListener('click', () => document.querySelector(':popover-open')?.hidePopover());
+let sheetOpen = false;
+new MutationObserver(() => {
+  const now = document.body.classList.contains('sheet');
+  if (sheetOpen && !now) { shieldOn(); shieldOff(); } // the sheet just closed
+  sheetOpen = now;
+})
+  .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+// Phones: drag the Ещё sheet down to close it (far or fast enough); otherwise it springs back.
+(() => {
+  const side = $('#side');
+  let start = null;
+  side.addEventListener('touchstart', (e) => {
+    if (!document.body.classList.contains('sheet') || side.scrollTop > 0) return;
+    start = { y: e.touches[0].clientY, t: e.timeStamp, dy: 0 };
+  }, { passive: true });
+  side.addEventListener('touchmove', (e) => {
+    if (!start) return;
+    start.dy = Math.max(0, e.touches[0].clientY - start.y);
+    if (!start.dy) return;
+    e.preventDefault(); // pulling down at the top drags the sheet, not the page
+    side.style.transition = 'none';
+    side.style.transform = `translateY(${start.dy}px)`;
+  }, { passive: false });
+  side.addEventListener('touchend', (e) => {
+    if (!start) return;
+    const { dy, t } = start;
+    start = null;
+    side.style.transition = '';
+    side.style.transform = '';
+    if (dy > 110 || dy / Math.max(1, e.timeStamp - t) > 0.6) document.body.classList.remove('sheet');
+  });
+})();
 $('#side').addEventListener('click', (e) => { if (e.target.closest('button')) document.body.classList.remove('sheet'); });
 // Phones show list or detail (app.css): tapping a notification/conversation switches to the detail.
 // .moved: from now on the switch slides (app.css), but not the list's first appearance.
-$('#content').addEventListener('click', (e) => e.target.closest('.split .inbox-item')?.closest('.split').classList.add('detail', 'moved'));
+$('#content').addEventListener('click', (e) => {
+  const split = e.target.closest('.split .inbox-item:not(.dragging)')?.closest('.split');
+  if (!split) return;
+  split.classList.add('detail', 'moved');
+  if (current === 'messages') chatLive?.markOpen();
+});
 
 // Android back: close the top layer (dialog, popover, sheet), then go up a level, then leave the app.
 portal.onBack?.(() => {
   const dlg = [...document.querySelectorAll('dialog[open]')].pop();
+  if (dlg?.id === 'welcome') return; // only "Принимаю" closes it
   if (dlg) return dlg.close();
   const pop = document.querySelector(':popover-open');
   if (pop) return pop.hidePopover();
@@ -2674,7 +2956,7 @@ portal.onBack?.(() => {
 });
 $('#refresh').addEventListener('click', () => show(current, true));
 
-if (pref('collapsed')) document.body.classList.add('collapsed');
+if (pref('collapsed') || narrowMq.matches) document.body.classList.add('collapsed');
 setAccent(ACCENTS.includes(pref('accent')) ? pref('accent') : ACCENTS[0]);
 translateStatic();
 macLabels();
