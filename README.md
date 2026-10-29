@@ -7,7 +7,7 @@
 **An unofficial app for [portal.ulsu.ru](https://portal.ulsu.ru), the student portal of Ulyanovsk State University, on Windows, macOS and Android.**
 Stay signed in, see your day at a glance, and keep courses, deadlines, grades and messages one click away.
 
-[![Version](https://img.shields.io/badge/version-1.2.3-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
+[![Version](https://img.shields.io/badge/version-1.2.4-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-12a06a)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#install)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
@@ -30,13 +30,14 @@ The portal logs you out every time you close the browser, and signing back in me
 | **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts. Blocks can be moved, resized, added and removed |
 | **Schedule** | Current and next week with the I/II week parity, the class in progress highlighted |
 | **Calendar** | Month view with classes and course events; later weeks estimated from the I/II alternation |
-| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites, the 3 most recent courses |
+| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites, the 3 most recent courses; the same filter and sort as the portal's Course overview, shared with the website |
 | **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters |
 | **Academic record** | Exam marks per semester with your average, and the full study plan with hours and syllabi |
-| **Notifications & messages** | Reading pane, chats with bubbles, sending, new chats, deleting messages and chats, an archive synced between your devices, unread badges, system notifications |
+| **Notifications & messages** | Reading pane, chats with bubbles, sending, new chats, live refresh, deleting messages and chats, mark read/unread, up to 5 pinned chats, an archive; pins, archive and unread marks sync between your devices; unread badges, system notifications |
 | **Services** | Certificate orders, questions to the university, personal files (upload/download), e-library sign-in links |
 | **Offline** | Every section is saved after you open it, so it still works without a connection |
-| **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support |
+| **Sign-in** | The real portal page (password, then the MAX code) in the app's look, with an RU / EN switch; the app never sees your password or code |
+| **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support; a layout for tablets held upright |
 
 ## Install
 

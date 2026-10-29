@@ -267,3 +267,29 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - **Today:** grid in `layout.js` (4 columns desktop, 2 phone, 40 rows of 40 px). Min 1x2, inside the canvas, push-down on collision, reset. Layout per user and size, local only. `node layout.test.js` checks the rules.
 - **Recent courses:** at most 3.
 - **Sync:** custom user preferences are silently dropped by the portal (only names Moodle defines are saved), so the chat archive and Courses sort/filter live in `ulportal-sync/sync.json` in personal files. nginx returns 403 for dot-paths, hence no leading dot. Newest `at` wins. Draft commits are serialized (`filesExclusive`), because saving `/user/files.php` replaces all personal files with that draft.
+
+## 1.2.4 round (2026-10-29)
+
+**Sync audit.** What each thing is and where it lives:
+
+| Entity | Status | Where / how | Conflicts |
+|---|---|---|---|
+| Messages, chat list | Synced | Portal. Live refresh every 20 s while Сообщения is open; the open chat loads only newer messages (`timefrom`) | Portal is the truth |
+| Read state | Synced | Portal (`core_message_mark_all_conversation_messages_as_read`), sent only when the chat is on screen | Portal |
+| "Marked unread" | Synced | `ulportal-sync/sync.json` part `unread` (3.7 has no mark-unread API); cleared when the chat is opened | Last write wins per part |
+| Pins (max 5) and order | Synced | sync.json part `pins` | Last write wins per part |
+| Archive | Synced | sync.json part `archive` | Last write wins per part |
+| Deleted chats/messages | Synced | Portal ("for me") | Portal |
+| Profile picture | Synced | Portal; own picture read via `core_message_get_member_info` (the page header keeps the session's old one) | Portal |
+| Courses filter/sort | Synced | Portal preferences `block_myoverview_user_{grouping,sort}_preference`, shared with the website | Portal (last write) |
+| Favourite courses | Synced | Portal | Portal |
+| Сегодня layout, theme, accent, language, sidebar | Local by choice | localStorage | — |
+
+- sync.json is read straight from `/pluginfile.php/<user ctx>/user/private/ulportal-sync/sync.json?t=…` (one request; `?t` skips the HTTP cache, which served stale copies). Writes go through a draft area (`writeRemote`) and only when this device has a newer part. Sync runs at start, on every unread check (≈3 min), on return to the app, and 2 s after a change.
+- Phase 1 causes: the first send re-rendered the whole screen (phone fell back to the list); the list only re-rendered on a reload; read receipts went out for the auto-opened first chat even when hidden on phones. Now the chat view is bound to its conversation object and the list redraws separately.
+- Avatars: one cached loader (4 at a time, 2 retries); a failed load used to remove the avatar element entirely.
+- Overlays: `#shield` catches the tap that closes a popover (light dismiss passed it through).
+- Android: vector splash (`drawable/splash_icon.xml`, animated in `drawable-v31`, generated from logo.svg with Segoe UI Black outlines), `installSplashScreen` with a fade-out; the portal overlay loader is the logo + a progress bar from `onProgressChanged`.
+- Not done: Moodle has no delta API for the conversation list, so the list is fetched whole (50) per refresh.
+- Also in 1.2.4: `login.css` restyles the real sign-in pages (desktop `insertCSS` on dom-ready, Android injects it from the web assets) — colours, sizes, header only; the form and its target stay the portal's. Its logo is logo.svg with the text as outlines (Segoe UI Black via fontTools). The support button's label has an inline `color:#000 !important`, overridden with `-webkit-text-fill-color`. Narrow layout (760–1099 px): sidebar auto-collapses, tools wrap under the title, `#content` is a size container and the calendar stacks below 860 px. Portal-page width fix uses `overflow-wrap: break-word` (not `anywhere`) and makes only too-wide tables scroll inside themselves.
+- Sign-in page language: the portal's own RU | EN menu, restyled as a switch in the header. `?lang=` sets the whole session's language, and the app's parsers read Russian pages, so after sign-in both platforms request `/my/?lang=ru` before resolving.

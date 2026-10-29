@@ -1,8 +1,8 @@
 # Privacy Policy
 
-**ULSU Portal Desktop** · Effective 28 October 2026 · [Русская версия](PRIVACY.ru.md)
+**ULSU Portal Desktop** · Effective 29 October 2026 · [Русская версия](PRIVACY.ru.md)
 
-The short version: **everything stays on your computer.** The app has no server of its own. It talks only to portal.ulsu.ru and to sites you choose to open. The developer receives no data from you.
+The short version: **everything stays on your device and on the portal itself.** The app has no server of its own. It talks only to portal.ulsu.ru and to sites you choose to open. The developer receives no data from you.
 
 ## Who is responsible
 
@@ -17,7 +17,8 @@ ULSU Portal Desktop is an open-source app made by an individual student (see [NO
 | Copies of portal pages and data (schedule, courses, grades, messages, profile…) | portal.ulsu.ru | Your computer, app data folder (`cache`) | To open instantly and work offline |
 | Session log (time of sign-in, sign-out, lost sessions; no personal content) | The app | Your computer (`session.log`) | To understand how long portal sessions last |
 | Settings (theme, language, accent, collapsed sidebar, sort order, Today layout) | You | Your computer | To remember your choices |
-| Archived chats list, Courses sort and filter | You | Your computer, plus a small file `ulportal-sync/sync.json` in your personal files on the portal | So these choices are the same on all your devices. Deleting that folder on the portal stops sharing them; each device keeps its own copy |
+| Courses filter and sort | You | The portal's own settings for your account (the same ones its Course overview uses) | So the app and the website show the same choice on every device |
+| Archived chats, pinned chats and their order, chats you marked unread | You | Your computer, plus a small file `ulportal-sync/sync.json` in your personal files on the portal | So these choices are the same on all your devices. Deleting that folder on the portal stops sharing them; each device keeps its own copy |
 | Files you upload or download | You / the portal | Your chosen folder; uploads go to your personal files on the portal | Only when you ask |
 
 The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Application Support/ulportal` on macOS. On Android everything stays in the app's private storage, which other apps can't read; uninstalling the app deletes it. The Android background check (about every 15 minutes) talks only to portal.ulsu.ru, and its notifications are created on the phone itself.

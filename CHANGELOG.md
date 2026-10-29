@@ -1,5 +1,43 @@
 # Changelog / История изменений
 
+## 1.2.4 — 2026-10-29
+
+**Messages, sync and Android polish.** / **Сообщения, синхронизация и доработка Android.**
+
+**English**
+- Messages: a new chat appears in the list at once, and sending the first message keeps it open (on phones it used to jump back to the list).
+- Messages: a chat is marked read only when you actually see it (the app in front, and on phones the chat itself, not the list). The unread mark clears at once and on your other devices.
+- Messages: the list and the open chat refresh by themselves every 20 seconds while Messages is open, loading only new messages.
+- Messages: Mark as read / Mark as unread and Pin / Unpin in the menu (right-click, or long press on Android). Up to 5 pinned chats stay at the top in your order; drag the handle to reorder.
+- Sync: archived and pinned chats (with their order) and chats marked unread sync between devices; changes show up within a few minutes without reloading. Each part syncs on its own, so changes on two devices don't overwrite each other.
+- Avatars in the chat list load reliably: initials show until the picture arrives, and failed loads are retried.
+- Courses: the filter and sort now match the portal's Course overview (All, In progress, Future, Past, Starred, Removed from view; Course name or Last accessed) and are shared with the website.
+- Tapping outside Settings, the profile card or a menu closes it without also opening what's underneath.
+- About: the update buttons are aligned.
+- Android: drag the More sheet down to close it.
+- Android: a new launch screen with a sharp, animated logo that fades into the app, and a branded loader with a progress bar on portal pages instead of the system spinner.
+- Sign-in: the portal's own sign-in page (password, then the MAX code) now looks like the app, in light and dark. It is still the real page: what you type goes only to the portal. An RU | EN switch in its header changes the page language.
+- Tablets held upright and narrow windows: the sidebar collapses to icons, the toolbar moves under the title, and the calendar's day panel goes under the month instead of squeezing it.
+- Android: text on portal pages no longer breaks into one letter per line; a table too wide for the screen scrolls sideways inside itself.
+- The welcome notice now waits for "I agree": reading the privacy policy or the disclaimer no longer closes it, and neither do Back or a tap outside.
+
+**Русский**
+- Сообщения: новый диалог сразу появляется в списке, а после первого сообщения остаётся открытым (на телефоне раньше возвращался к списку).
+- Сообщения: диалог отмечается прочитанным, только когда вы его действительно видите (приложение на экране, а на телефоне — сам диалог, а не список). Отметка о непрочитанном исчезает сразу и на других устройствах.
+- Сообщения: пока открыт раздел, список и открытый диалог обновляются сами каждые 20 секунд, подгружая только новые сообщения.
+- Сообщения: в меню (правый клик, на Android — долгое нажатие) есть «Прочитано» / «Непрочитано» и «Закрепить» / «Открепить». До 5 закреплённых диалогов стоят наверху в вашем порядке; порядок меняется перетаскиванием за ручку.
+- Синхронизация: архивные и закреплённые диалоги (с порядком) и отметки «непрочитано» синхронизируются между устройствами; изменения появляются за несколько минут без перезагрузки. Каждая часть синхронизируется отдельно, поэтому изменения с двух устройств не затирают друг друга.
+- Аватары в списке диалогов загружаются надёжно: до загрузки видны инициалы, неудачные загрузки повторяются.
+- Курсы: фильтр и сортировка теперь как в «Обзоре курсов» портала (Все, Текущие, Предстоящие, Прошедшие, Помеченные, Скрытые; Название курса или Последнее посещение) и общие с сайтом.
+- Нажатие мимо «Настроек», карточки профиля или меню закрывает их и больше не открывает то, что под ними.
+- «О приложении»: кнопки обновления выровнены.
+- Android: лист «Ещё» закрывается движением вниз.
+- Android: новый экран запуска с чётким анимированным логотипом, плавно переходящим в приложение, и фирменный загрузчик с полосой прогресса на страницах портала вместо системного индикатора.
+- Вход: собственная страница входа портала (пароль, затем код MAX) теперь выглядит как приложение, в светлой и тёмной теме. Это по-прежнему настоящая страница: то, что вы вводите, уходит только на портал. Переключатель RU | EN в её шапке меняет язык страницы.
+- Планшет в вертикальном положении и узкие окна: боковая панель сворачивается до значков, инструменты переносятся под заголовок, а панель дня в календаре встаёт под месяц, а не сжимает его.
+- Android: текст на страницах портала больше не разбивается по одной букве в строке; слишком широкая таблица прокручивается вбок внутри себя.
+- Приветствие теперь ждёт «Принимаю»: чтение политики конфиденциальности или отказа от ответственности больше его не закрывает, как и «Назад» или нажатие мимо.
+
 ## 1.2.3 — 2026-10-29
 
 **Profile picture fix.** / **Исправление фото профиля.**
