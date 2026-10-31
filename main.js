@@ -46,6 +46,20 @@ const t = (key, ...args) => ((lang === 'en' && MAIN_EN[key]) || key).replace(/\{
 
 const log = (msg) => fs.appendFileSync(path.join(app.getPath('userData'), 'session.log'), `${new Date().toISOString()} ${msg}\n`);
 
+// Last moment the portal answered as logged in, kept on disk so a session found dead after a
+// restart or a long sleep still logs how long it went unpinged.
+const LAST_OK_FILE = () => path.join(app.getPath('userData'), 'last-ok');
+function alive() {
+  lastOk = Date.now();
+  fs.promises.writeFile(LAST_OK_FILE(), String(lastOk)).catch(() => {});
+}
+const minsSinceOk = () => Math.round((Date.now() - lastOk) / 60000);
+// Logs a dead session once (poll and page loads can both notice it), before the login window opens.
+function lost(how) {
+  if (loginPromise || sessionState === 'expired') return;
+  log(`session lost (${how}), ${minsSinceOk()} min after last ok`);
+}
+
 // Network failures (no connection, DNS, portal down) become one recognisable error for the renderer.
 async function net(url, opts) {
   try {
@@ -95,7 +109,7 @@ function login() {
       const url = win.webContents.getURL();
       if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
       if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
-      done = true; lastOk = Date.now(); log('logged in'); setSession('ok'); win.close();
+      done = true; alive(); log('logged in'); setSession('ok'); win.close();
       // The sign-in page's RU | EN switch sets the whole session's language; the app reads pages in Russian.
       await net(`${BASE}/my/?lang=ru`).catch(() => {});
       resolve();
@@ -116,8 +130,9 @@ async function get(p) {
   const res = await net(BASE + p);
   const html = await res.text();
   if (isMaintenance(res.status, html)) throw new Error('MAINTENANCE');
-  if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return get(p); }
-  sesskey = html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
+  if (/<body[^>]*\bnotloggedin\b/.test(html)) { lost(`page ${p}`); await login(); return get(p); }
+  alive();
+  sesskey =html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
   const id = Number(html.match(/data-userid="(\d+)"/)?.[1]);
   if (id && !userid) setTimeout(poll, 2000); // first unread counts right after login/startup
   userid = id || userid;
@@ -133,7 +148,7 @@ async function file(url) {
   const type = res.headers.get('content-type') || '';
   if (type.startsWith('text/html')) {
     const html = await res.text();
-    if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return file(url); }
+    if (/<body[^>]*\bnotloggedin\b/.test(html)) { lost('file'); await login(); return file(url); }
     throw new Error(t('Портал вернул страницу вместо файла'));
   }
   return { type, bytes: new Uint8Array(await res.arrayBuffer()) };
@@ -265,12 +280,12 @@ async function poll() {
     if (dead) {
       const code = dead.exception?.errorcode;
       if (code === 'sitemaintenance') { setSession('maintenance'); return null; }
-      log(`session lost (${code}), ${Math.round((Date.now() - lastOk) / 60000)} min after last ok poll`);
+      lost(code);
       sesskey = null;
       setSession('expired');
       return null;
     }
-    lastOk = Date.now();
+    alive();
     setSession('ok');
     const list = notes.data.notifications;
     const conversations = convs.data.conversations;
@@ -394,6 +409,8 @@ app.on('activate', () => mainWin && showMain()); // macOS: Dock icon click bring
 app.whenReady().then(() => {
   ses = session.fromPartition(PARTITION);
   try { lang = JSON.parse(fs.readFileSync(LANG_FILE(), 'utf8')); } catch { lang = app.getLocale().startsWith('ru') ? 'ru' : 'en'; }
+  lastOk = Number(fs.existsSync(LAST_OK_FILE()) && fs.readFileSync(LAST_OK_FILE(), 'utf8')) || lastOk;
+  log(`start, last ok ${minsSinceOk()} min ago`);
   persistSessionCookie();
   // mode 'live': no disk copy (portal endpoints that change things over GET, e.g. /CDO/lib.php?API=sendQ)
   ipcMain.handle('get', (_e, p, mode) => (mode === 'live' ? get(p) : cached(['get', p], () => get(p), mode)));
@@ -492,9 +509,10 @@ app.whenReady().then(() => {
 
   createTray();
   setInterval(poll, POLL_MS);
-  powerMonitor.on('resume', () => setTimeout(poll, 10_000)); // give network time to come back
+  powerMonitor.on('suspend', () => log('suspend'));
+  powerMonitor.on('resume', () => { log('resume'); setTimeout(poll, 10_000); }); // give network time to come back
 });
 
-app.on('before-quit', () => { quitting = true; ses?.cookies.flushStore(); });
+app.on('before-quit', () => { quitting = true; log('quit'); ses?.cookies.flushStore(); });
 // Main window only hides, so this fires just on quit; keep it from quitting early otherwise.
 app.on('window-all-closed', () => {});
