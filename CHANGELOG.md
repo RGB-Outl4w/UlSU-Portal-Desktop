@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## 1.2.6-beta.1 — 2026-10-31 (pre-release)
+
+**Session diagnostics.** / **Диагностика сессии.**
+
+**English**
+- Desktop: the session log (`%APPDATA%\ulportal\session.log`) now records app start, quit, sleep and wake, and every ended session, including one found when a page or file opens. Each entry says how long it had been since the portal last answered, even across restarts. This helps find out what ends portal sessions so early.
+
+**Русский**
+- Компьютер: журнал сессии (`%APPDATA%\ulportal\session.log`) теперь записывает запуск, выход, сон и пробуждение, а также каждое завершение сессии, в том числе обнаруженное при открытии страницы или файла. В каждой записи указано, сколько прошло с последнего ответа портала, даже после перезапуска. Это поможет понять, почему сессия на портале заканчивается так рано.
+
 ## 1.2.5 — 2026-10-29
 
 **Sync fixes.** / **Исправления синхронизации.**
