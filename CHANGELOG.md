@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## 1.2.6-beta.2 — 2026-10-31 (pre-release)
+
+**Sign-in fix.** / **Исправление входа.**
+
+**English**
+- Sign-in no longer gets stuck after the MAX code. If the session ended while the app was fetching a file (such as the sync file), the portal sent the sign-in window to that file after you signed in: the desktop app asked where to save `sync.json`, the Android app downloaded it, and the window stayed open. Now the app sees you're signed in and closes the window.
+
+**Русский**
+- Вход больше не зависает после кода из MAX. Если сессия заканчивалась, пока приложение загружало файл (например, файл синхронизации), после входа портал открывал этот файл в окне входа: на компьютере появлялся вопрос, куда сохранить `sync.json`, на Android файл скачивался, а окно оставалось открытым. Теперь приложение понимает, что вход выполнен, и закрывает окно.
+
 ## 1.2.6-beta.1 — 2026-10-31 (pre-release)
 
 **Session diagnostics.** / **Диагностика сессии.**
