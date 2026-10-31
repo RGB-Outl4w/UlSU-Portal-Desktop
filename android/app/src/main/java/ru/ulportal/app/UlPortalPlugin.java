@@ -273,6 +273,16 @@ public class UlPortalPlugin extends Plugin {
             });
             // Files linked from portal pages: system download with the session cookie.
             web.setDownloadListener((link, agent, disposition, mime, length) -> {
+                // After sign-in Moodle opens the URL that asked for it; a file (e.g. sync.json) lands here
+                // instead of onPageFinished. Count it as signed in and skip it; its request retries.
+                if (login) {
+                    if (done[0] || closing[0]) return;
+                    done[0] = true;
+                    persistSession();
+                    loginDone(true);
+                    close[0].run();
+                    return;
+                }
                 DownloadManager.Request req = new DownloadManager.Request(Uri.parse(link));
                 req.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(link));
                 req.addRequestHeader("User-Agent", agent);

@@ -105,16 +105,27 @@ function login() {
         win.webContents.insertCSS(fs.readFileSync(path.join(__dirname, 'login.css'), 'utf8')).catch(() => {});
       }
     });
-    win.webContents.on('did-finish-load', async () => {
-      const url = win.webContents.getURL();
-      if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
-      if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
+    const ok = async () => {
       done = true; alive(); log('logged in'); setSession('ok'); win.close();
       // The sign-in page's RU | EN switch sets the whole session's language; the app reads pages in Russian.
       await net(`${BASE}/my/?lang=ru`).catch(() => {});
       resolve();
+    };
+    win.webContents.on('did-finish-load', async () => {
+      const url = win.webContents.getURL();
+      if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
+      if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
+      ok();
     });
-    win.on('closed', () => { loginPromise = null; if (!done) reject(new Error(t('Вход отменён'))); });
+    // After sign-in Moodle opens the URL that asked for it. A file (e.g. sync.json) comes as a download,
+    // not a page, so no did-finish-load: drop the download and count it as signed in; its request retries.
+    const onDownload = (e, _item, wc) => { if (wc === win.webContents && !done) { e.preventDefault(); ok(); } };
+    ses.on('will-download', onDownload);
+    win.on('closed', () => {
+      ses.off('will-download', onDownload);
+      loginPromise = null;
+      if (!done) reject(new Error(t('Вход отменён')));
+    });
     guardOffline(win);
     win.loadURL(`${BASE}/login/index.php`);
   });
