@@ -115,6 +115,14 @@
     .privacy .big svg { width: 36px; height: 36px; fill: none; stroke: var(--green); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .privacy ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
 
+    /* support band */
+    .support { display: flex; justify-content: space-between; align-items: center; gap: 28px; flex-wrap: wrap; padding: clamp(28px, 5vw, 44px); border-radius: 20px; border: 1px solid rgba(241, 95, 44, .35); background: radial-gradient(80% 140% at 100% 0%, rgba(241, 95, 44, .16), transparent 60%), var(--surface); }
+    .support h2 { margin: 0 0 .35em; }
+    .support p { margin: 0; max-width: 58ch; color: var(--muted); }
+    .btn-boosty { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: var(--r); background: #f15f2c; color: #fff; font-weight: 650; text-decoration: none; transition: background .15s; }
+    .btn-boosty:hover { background: #ff7243; }
+    .btn-boosty svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
     /* faq */
     details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
     summary { cursor: pointer; font-weight: 600; }
@@ -287,6 +295,21 @@
     </div>
   </section>
 
+  <section id="support">
+    <div class="wrap">
+      <div class="support reveal">
+        <div>
+          <h2><span class="ru">Нравится приложение?</span><span class="en">Like the app?</span></h2>
+          <p><span class="ru">Оно бесплатное, и все функции останутся бесплатными. Его делает один студент: если оно экономит вам время, можно поддержать разработку на Boosty. Деньги идут автору, а не университету.</span><span class="en">It's free, and every feature stays free. It's made by one student: if it saves you time, you can support its development on Boosty. Donations go to the author, not to the university.</span></p>
+        </div>
+        <a class="btn-boosty" href="https://boosty.to/rgboutlaw/donate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>
+          <span class="ru">Поддержать на Boosty</span><span class="en">Support on Boosty</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <section id="faq">
     <div class="wrap">
       <h2 class="reveal">FAQ</h2>
@@ -313,10 +336,6 @@
       <div>
         <span class="ru">Неофициальный проект, не связан с Ульяновским государственным университетом. Названия «УлГУ» и «ULSU» принадлежат их правообладателям.</span>
         <span class="en">Unofficial project, not affiliated with Ulyanovsk State University. "УлГУ" and "ULSU" belong to their respective owners.</span>
-      </div>
-      <div>
-        <span class="ru">Приложение бесплатное и делает его один студент. Если оно экономит вам время, можно <a href="https://boosty.to/rgboutlaw/donate">поддержать разработку на Boosty</a>. Это необязательно, все функции остаются бесплатными.</span>
-        <span class="en">The app is free and made by one student. If it saves you time, you can <a href="https://boosty.to/rgboutlaw/donate">support its development on Boosty</a>. It's entirely optional, and every feature stays free.</span>
       </div>
       <div class="links">
         <a href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop">GitHub</a>
