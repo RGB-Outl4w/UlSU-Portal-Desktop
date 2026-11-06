@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## 1.2.6-beta.3 — 2026-11-06 (pre-release)
+## 1.2.6 — 2026-11-06
 
 **Grades in detail, folders, search everywhere.** / **Подробные оценки, папки, поиск по всему.**
 
@@ -11,7 +11,17 @@
 - Courses: presentations (pptx, ppt, odp) now open in your system app in one click. There is no in-app viewer: the portal offers no preview, and sending files to a converter is ruled out by the privacy policy. If a file can't be opened this way, the portal button stays.
 - Search: Ctrl/⌘K now also finds chats, messages, notifications, course materials, personal files, deadlines and grades. It reads only what is saved on your device, so it works offline and finds what you have opened at least once. Phones get a search button in the header.
 - Optional support: a "Support the project" card in About and an entry in search open Boosty (https://boosty.to/rgboutlaw/donate) in your browser. Also on the website, in the README and as GitHub's Sponsor button. Nothing is locked, and the app never asks.
-- Removed the extra session logging from the two previous test builds. The sign-in fix stays.
+- Sign-in no longer gets stuck after the MAX code when the portal answers with a file.
+- Grades: a course with nothing graded no longer shows "Ошибка" as its total.
+- Portal windows: a link that downloads a file no longer leaves a blank window behind.
+- Log out now clears your name, picture and profile details from the app at once, and keeps your settings: the Today layout, theme and other settings used to be wiped.
+- Closing the sign-in window keeps it closed until you press Sign in, Retry or Refresh.
+- After signing in, the open section reloads by itself.
+- The MAX code page now follows the app's theme, including dark.
+- Sign-in: no more black window with raw text after entering the MAX code.
+- Messages and Notifications: nothing opens by itself and an item can be closed with ✕, Esc, Back or a second click. The list then fills the width and squeezes back when an item opens. Phones no longer highlight the last opened item.
+- Dropdowns are drawn by the app instead of the system.
+- Smoother motion: the profile in the sidebar, the status bar, right-click and long-press menus, course sections, and windows whose content arrives later, like course grades, search and new chat.
 
 **Русский**
 - Оценки: курс в разделе «Оценки» теперь открывает в приложении все элементы с оценкой, диапазоном, процентами, весом и отзывом.
@@ -20,7 +30,17 @@
 - Курсы: презентации (pptx, ppt, odp) теперь открываются в системном приложении в один клик. Встроенного просмотра нет: портал не даёт предпросмотра, а отправлять файлы в конвертер запрещает политика конфиденциальности. Если файл так не открыть, остаётся кнопка портала.
 - Поиск: Ctrl/⌘K теперь находит также диалоги, сообщения, уведомления, материалы курсов, личные файлы, дедлайны и оценки. Он читает только то, что сохранено на устройстве, поэтому работает без сети и находит то, что вы открывали хотя бы раз. На телефоне в заголовке появилась кнопка поиска.
 - Поддержка проекта (необязательно): карточка «Поддержать проект» в разделе «О приложении» и пункт в поиске открывают Boosty (https://boosty.to/rgboutlaw/donate) в браузере. Ссылка есть и на сайте, в README и в кнопке Sponsor на GitHub. Ничего не закрыто, и приложение ни о чём не просит.
-- Убрано дополнительное журналирование сессии из двух прошлых тестовых сборок. Исправление входа осталось.
+- Вход больше не зависает после кода MAX, когда портал отвечает файлом.
+- Оценки: у курса без оценок вместо итога больше не показывается «Ошибка».
+- Окна портала: ссылка на скачивание файла больше не оставляет пустое окно.
+- Выход теперь сразу убирает из приложения имя, фото и данные профиля и не трогает настройки: раньше сбрасывались вид «Сегодня», тема и другие настройки.
+- Закрытое окно входа больше не открывается само, пока вы не нажмёте «Войти», «Повторить» или «Обновить».
+- После входа открытый раздел обновляется сам.
+- Страница кода MAX теперь в теме приложения, в том числе в тёмной.
+- Вход: после кода MAX больше не мелькает чёрное окно с текстом.
+- Сообщения и Уведомления: ничего не открывается само, а открытое можно закрыть кнопкой ✕, клавишей Esc, кнопкой «Назад» или повторным нажатием. Список тогда занимает всю ширину и плавно сжимается, когда что-то открывается. На телефоне последний открытый пункт больше не подсвечивается.
+- Выпадающие списки теперь в стиле приложения, а не системные.
+- Плавнее движение: профиль в боковой панели, строка состояния, контекстные меню, разделы курса и окна с подгружаемым содержимым, например оценки курса, поиск и новый диалог.
 
 ## 1.2.6-beta.2 — 2026-10-31 (pre-release)
 
