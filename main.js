@@ -46,20 +46,6 @@ const t = (key, ...args) => ((lang === 'en' && MAIN_EN[key]) || key).replace(/\{
 
 const log = (msg) => fs.appendFileSync(path.join(app.getPath('userData'), 'session.log'), `${new Date().toISOString()} ${msg}\n`);
 
-// Last moment the portal answered as logged in, kept on disk so a session found dead after a
-// restart or a long sleep still logs how long it went unpinged.
-const LAST_OK_FILE = () => path.join(app.getPath('userData'), 'last-ok');
-function alive() {
-  lastOk = Date.now();
-  fs.promises.writeFile(LAST_OK_FILE(), String(lastOk)).catch(() => {});
-}
-const minsSinceOk = () => Math.round((Date.now() - lastOk) / 60000);
-// Logs a dead session once (poll and page loads can both notice it), before the login window opens.
-function lost(how) {
-  if (loginPromise || sessionState === 'expired') return;
-  log(`session lost (${how}), ${minsSinceOk()} min after last ok`);
-}
-
 // Network failures (no connection, DNS, portal down) become one recognisable error for the renderer.
 async function net(url, opts) {
   try {
@@ -72,6 +58,11 @@ async function net(url, opts) {
 // Disk copy of every read (pages and *_get_* AJAX calls), one JSON file per request, so views
 // open instantly and still work offline. mode 'cache' answers from disk only, as { at, data }.
 const CACHE_DIR = () => path.join(app.getPath('userData'), 'cache');
+const OPEN_DIR = () => path.join(app.getPath('userData'), 'opened'); // files handed to the system app; apart, they can be locked
+const clearDisk = async () => {
+  await fs.promises.rm(CACHE_DIR(), { recursive: true, force: true });
+  await fs.promises.rm(OPEN_DIR(), { recursive: true, force: true }).catch(() => {}); // still open in PowerPoint: stays until the next clear
+};
 async function cached(key, fetcher, mode) {
   const file = path.join(CACHE_DIR(), `${crypto.createHash('sha1').update(JSON.stringify(key)).digest('hex')}.json`);
   if (mode === 'cache') {
@@ -106,7 +97,7 @@ function login() {
       }
     });
     const ok = async () => {
-      done = true; alive(); log('logged in'); setSession('ok'); win.close();
+      done = true; lastOk = Date.now(); log('logged in'); setSession('ok'); win.close();
       // The sign-in page's RU | EN switch sets the whole session's language; the app reads pages in Russian.
       await net(`${BASE}/my/?lang=ru`).catch(() => {});
       resolve();
@@ -141,9 +132,8 @@ async function get(p) {
   const res = await net(BASE + p);
   const html = await res.text();
   if (isMaintenance(res.status, html)) throw new Error('MAINTENANCE');
-  if (/<body[^>]*\bnotloggedin\b/.test(html)) { lost(`page ${p}`); await login(); return get(p); }
-  alive();
-  sesskey =html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
+  if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return get(p); }
+  sesskey = html.match(/"sesskey":"(\w+)"/)?.[1] || sesskey;
   const id = Number(html.match(/data-userid="(\d+)"/)?.[1]);
   if (id && !userid) setTimeout(poll, 2000); // first unread counts right after login/startup
   userid = id || userid;
@@ -159,7 +149,7 @@ async function file(url) {
   const type = res.headers.get('content-type') || '';
   if (type.startsWith('text/html')) {
     const html = await res.text();
-    if (/<body[^>]*\bnotloggedin\b/.test(html)) { lost('file'); await login(); return file(url); }
+    if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return file(url); }
     throw new Error(t('Портал вернул страницу вместо файла'));
   }
   return { type, bytes: new Uint8Array(await res.arrayBuffer()) };
@@ -173,6 +163,25 @@ async function download(url, name) {
   await fs.promises.writeFile(filePath, bytes);
   shell.showItemInFolder(filePath);
   return filePath;
+}
+
+// Presentations have no viewer in the app: the file is saved to OPEN_DIR and opened by the system app.
+// Only these types, whatever else the portal serves: the extension decides what Windows runs.
+const SLIDE_TYPES = {
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/vnd.openxmlformats-officedocument.presentationml.slideshow': '.ppsx',
+  'application/vnd.ms-powerpoint': '.ppt',
+  'application/vnd.oasis.opendocument.presentation': '.odp',
+};
+async function openLocal(url, name) {
+  const { type, bytes } = await file(url);
+  const ext = SLIDE_TYPES[type.split(';')[0].trim()];
+  if (!ext) throw new Error('not a presentation');
+  await fs.promises.mkdir(OPEN_DIR(), { recursive: true });
+  const target = path.join(OPEN_DIR(), `${name.replace(/\.\w{2,4}$/, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 100)}${ext}`);
+  await fs.promises.writeFile(target, bytes).catch((e) => { if (!fs.existsSync(target)) throw e; }); // already open: keep that copy
+  const err = await shell.openPath(target);
+  if (err) throw new Error(err);
 }
 
 // Upload into a Moodle draft area (personal files); the caller then saves the files form to commit it.
@@ -291,12 +300,12 @@ async function poll() {
     if (dead) {
       const code = dead.exception?.errorcode;
       if (code === 'sitemaintenance') { setSession('maintenance'); return null; }
-      lost(code);
+      log(`session lost (${code}), ${Math.round((Date.now() - lastOk) / 60000)} min after last ok poll`);
       sesskey = null;
       setSession('expired');
       return null;
     }
-    alive();
+    lastOk = Date.now();
     setSession('ok');
     const list = notes.data.notifications;
     const conversations = convs.data.conversations;
@@ -420,12 +429,13 @@ app.on('activate', () => mainWin && showMain()); // macOS: Dock icon click bring
 app.whenReady().then(() => {
   ses = session.fromPartition(PARTITION);
   try { lang = JSON.parse(fs.readFileSync(LANG_FILE(), 'utf8')); } catch { lang = app.getLocale().startsWith('ru') ? 'ru' : 'en'; }
-  lastOk = Number(fs.existsSync(LAST_OK_FILE()) && fs.readFileSync(LAST_OK_FILE(), 'utf8')) || lastOk;
-  log(`start, last ok ${minsSinceOk()} min ago`);
   persistSessionCookie();
   // mode 'live': no disk copy (portal endpoints that change things over GET, e.g. /CDO/lib.php?API=sendQ)
   ipcMain.handle('get', (_e, p, mode) => (mode === 'live' ? get(p) : cached(['get', p], () => get(p), mode)));
   ipcMain.handle('download', (_e, url, name) => download(url, name));
+  ipcMain.handle('openLocal', (_e, url, name) => openLocal(url, name));
+  // A copy the app makes itself (data from POST reads, which aren't cached): with data saves, without reads.
+  ipcMain.handle('keep', (_e, key, data) => cached(['keep', key], async () => data, data === undefined ? 'cache' : undefined));
   ipcMain.handle('upload', (_e, args) => upload(args));
   ipcMain.handle('post', (_e, p, fields) => post(p, fields));
   ipcMain.handle('file', (_e, url) => file(url));
@@ -442,7 +452,7 @@ app.whenReady().then(() => {
   }));
   const DOCS = ['PRIVACY.md', 'PRIVACY.ru.md', 'NOTICE.md', 'LICENSE', 'LICENSE.ru.md', 'THIRD_PARTY_NOTICES.md'];
   ipcMain.handle('doc', (_e, name) => (DOCS.includes(name) ? fs.promises.readFile(path.join(__dirname, name), 'utf8') : null));
-  ipcMain.handle('clearCache', () => fs.promises.rm(CACHE_DIR(), { recursive: true, force: true }));
+  ipcMain.handle('clearCache', clearDisk);
   ipcMain.handle('openData', () => shell.openPath(app.getPath('userData')));
   ipcMain.handle('checkUpdate', () => checkUpdate());
   // UI prefs mirror (preload.js / app.js pref()): written at once and atomically, read before the UI starts.
@@ -471,7 +481,7 @@ app.whenReady().then(() => {
     userid = null;
     seen = null;
     await ses.clearStorageData();
-    await fs.promises.rm(CACHE_DIR(), { recursive: true, force: true }); // cached pages hold personal data
+    await clearDisk(); // cached pages hold personal data
     log('logged out');
   });
 
@@ -520,10 +530,9 @@ app.whenReady().then(() => {
 
   createTray();
   setInterval(poll, POLL_MS);
-  powerMonitor.on('suspend', () => log('suspend'));
-  powerMonitor.on('resume', () => { log('resume'); setTimeout(poll, 10_000); }); // give network time to come back
+  powerMonitor.on('resume', () => setTimeout(poll, 10_000)); // give network time to come back
 });
 
-app.on('before-quit', () => { quitting = true; log('quit'); ses?.cookies.flushStore(); });
+app.on('before-quit', () => { quitting = true; ses?.cookies.flushStore(); });
 // Main window only hides, so this fires just on quit; keep it from quitting early otherwise.
 app.on('window-all-closed', () => {});

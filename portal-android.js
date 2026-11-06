@@ -221,6 +221,8 @@
     post,
     file,
     download,
+    openLocal: download, // saved to Downloads and opened in the system app
+    keep: (key, data) => cached(['keep', key], async () => data, data === undefined ? 'cache' : undefined),
     upload,
     // Only reads are cached; writes (mark read, send, toggle) always hit the network.
     ajax: (m, a, mode) => (/_get_/.test(m) ? cached(['ajax', m, a], () => ajax(m, a), mode)

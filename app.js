@@ -284,7 +284,7 @@ const ui = {
   courses: { q: '', grouping: null, sort: null }, // null until loaded: the portal's saved choice
   course: { id: null, info: null, closed: new Set(), tab: 'content', q: '' }, // course opened inside the app; closed = collapsed section ids
   grades: { q: '', sort: pref('sort-grades') || 'name', only: pref('only-graded') || 'all' },
-  progress: { sem: 'all' },
+  progress: { sem: 'all', tab: 'marks' },
   plan: { q: '', sem: null }, // null = pick the current semester from the profile
   notes: { filter: 'all', open: null },
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: new Date().toDateString(), show: 'all' },
@@ -292,6 +292,8 @@ const ui = {
   svc: { tab: 'orders', path: '/', fs: null, flash: null }, // Сервисы: sub-tab, files folder, files draft area
 };
 const byName = (a = '', b = '') => a.localeCompare(b, 'ru');
+// start of today (not "now") so the request, and its disk-cache key, is the same all day
+const deadlineArgs = () => ({ timesortfrom: Math.floor(new Date().setHours(0, 0, 0, 0) / 1000) - 14 * 86400, limitnum: 50 });
 
 // The portal's course overview: groupings and sorts exactly as on /my/ (key, label, API sort).
 const COURSE_GROUPINGS = [['all', T('Все')], ['inprogress', T('Текущие')], ['future', T('Предстоящие')], ['past', T('Прошедшие')],
@@ -497,9 +499,7 @@ const views = {
   deadlines: {
     title: T('Дедлайны'),
     sk: 'rows',
-    load: () => pajax('core_calendar_get_action_events_by_timesort',
-      // start of today (not "now") so the request, and its disk-cache key, is the same all day
-      { timesortfrom: Math.floor(new Date().setHours(0, 0, 0, 0) / 1000) - 14 * 86400, limitnum: 50 }),
+    load: () => pajax('core_calendar_get_action_events_by_timesort', deadlineArgs()),
     render({ events }) {
       if (!events.length) return msg(T('Нет предстоящих дедлайнов'));
       const now = Date.now() / 1000;
@@ -542,7 +542,7 @@ const views = {
       if (!list.length) return msg(T('Оценок нет'));
       return stagger(h('div', { class: 'list' }, list.map((g) => {
         const none = isNaN(num(g));
-        return h('button', { class: 'card row lift', 'data-name': g.course.toLowerCase(), hidden: !matches(g.course, ui.grades.q), onclick: () => g.url && portal.open(g.url) },
+        return h('button', { class: 'card row lift', 'data-name': g.course.toLowerCase(), hidden: !matches(g.course, ui.grades.q), onclick: () => g.url && openGrades(g) },
           h('div', { class: 'main' }, g.course),
           h('div', { class: 'right grade' + (none ? ' none' : '') }, none ? '—' : g.grade));
       })));
@@ -552,10 +552,21 @@ const views = {
   progress: {
     title: T('Успеваемость'),
     sk: 'rows',
-    load: async () => parseProgress(html(await pget('/blocks/buttons/academic_progress.php'))),
-    tools: (sems) => seg([['all', T('Все')], ...sems.map((s, i) => [String(i), s.name])], ui.progress.sem,
-      (k) => { ui.progress.sem = k; swap(views.progress.render(sems), true); }),
-    render(sems) {
+    load: async () => {
+      const [sems, now] = await Promise.all([pget('/blocks/buttons/academic_progress.php'), pget('/CDO/academic_progress_inside.php').catch(() => null)]);
+      return { sems: parseProgress(html(sems)), now: now && Parse.currentProgress(html(now)) };
+    },
+    tools: (d) => [
+      seg([['marks', T('Экзамены и зачёты')], ['now', T('Текущая')]], ui.progress.tab, (k) => {
+        ui.progress.tab = k;
+        tools(views.progress.tools(d));
+        swap(views.progress.render(d), true);
+      }),
+      ui.progress.tab === 'marks' ? seg([['all', T('Все')], ...d.sems.map((s, i) => [String(i), s.name])], ui.progress.sem,
+        (k) => { ui.progress.sem = k; swap(views.progress.render(d), true); }) : null,
+    ],
+    render({ sems, now }) {
+      if (ui.progress.tab === 'now') return currentTab(now);
       if (!sems.length) return msg(T('Нет данных об успеваемости'));
       const pick = ui.progress.sem === 'all' ? sems : [sems[ui.progress.sem]].filter(Boolean);
       const rows = pick.flatMap((s) => s.rows);
@@ -765,7 +776,9 @@ Object.assign(views, {
       });
       const first = list.findIndex((n) => n.id === ui.notes.open);
       requestAnimationFrame(() => open(list[Math.max(first, 0)], items[Math.max(first, 0)]));
-      return h('div', { class: 'split' }, stagger(h('div', { class: 'card inbox' }, items)), reader);
+      const split = h('div', { class: 'split' + (ui.notes.focus ? ' detail moved' : '') }, stagger(h('div', { class: 'card inbox' }, items)), reader);
+      ui.notes.focus = false;
+      return split;
     },
   },
 
@@ -1187,13 +1200,17 @@ async function openActivity(a) {
   const kind = kindOf(a);
   if (kind === 'page') return openReader(a);
   if (kind === 'pdf' || kind === 'video') return openFile(a, kind);
-  portal.open(a.url); // tests, assignments, forums, presentations: portal window / download
+  if (kind === 'slides') return openSlides(a);
+  if (a.type === 'folder') return openFolder(a);
+  portal.open(a.url); // tests, assignments, forums: portal window
   if (a.completion && !a.completion.done && !a.completion.manual) setTimeout(refreshCourse, 2000);
 }
 
 function showReader(a, body, media = false) {
   $('#reader-title').textContent = a.name;
   $('#reader-open').onclick = () => portal.open(a.url);
+  $('#reader-back').hidden = !a.back; // a file opened from a folder returns to the folder
+  $('#reader-back').onclick = a.back;
   $('#reader').classList.toggle('media', media);
   $('#reader-body').replaceChildren(body);
   $('#reader').showModal();
@@ -1236,6 +1253,100 @@ async function openFile(a, kind) {
   }
   if (a.completion && !a.completion.done) refreshCourse(); // downloading counts as viewing
 }
+
+// No viewer for presentations in the app: one click fetches the file and opens it in the system app.
+async function openSlides(a) {
+  showReader(a, msg(T('Загрузка файла…')));
+  try {
+    await portal.openLocal(a.url, a.name);
+    if ($('#reader').open && $('#reader-title').textContent === a.name) {
+      if (a.back) a.back(); else $('#reader').close();
+    }
+  } catch (e) {
+    $('#reader-body').replaceChildren(isOffline(e)
+      ? stateBox({ kind: 'offline', title: T('Файл недоступен без подключения'), text: T('Презентации открываются только при связи с порталом.') })
+      : stateBox({ title: T('Не удалось открыть презентацию'), text: T('Откройте её на портале: кнопка вверху окна.') }));
+  }
+  if (a.completion && !a.completion.done) refreshCourse();
+}
+
+// Folder activity: files and subfolders in the reader dialog.
+const fileKind = (name) => {
+  const ext = name.match(/\.(\w+)$/)?.[1].toLowerCase() || '';
+  return ext === 'pdf' ? 'pdf' : /^(mp4|webm|mov)$/.test(ext) ? 'video' : /^(pptx?|ppsx?|odp)$/.test(ext) ? 'slides' : 'other';
+};
+function folderList(items, back) {
+  return h('div', { class: 'folder' }, items.map((f) => (f.items
+    ? h('details', {}, h('summary', {}, icon('folder'), f.name), folderList(f.items, back))
+    : h('button', { class: 'folder-file', onclick: async (e) => {
+      const kind = fileKind(f.name);
+      const file = { name: f.name, url: f.url, back };
+      if (kind === 'slides') return openSlides(file);
+      if (kind !== 'other') return openFile(file, kind);
+      const row = e.currentTarget;
+      try { await portal.download(f.url, f.name); } catch (err) { row.append(h('div', { class: 'send-err' }, errText(err))); }
+    } }, icon('plan'), h('span', {}, f.name)))));
+}
+async function openFolder(a) {
+  const back = () => openFolder(a);
+  showReader(a, msg(T('Загрузка…')));
+  try {
+    const items = Parse.folder(html(await pget(a.url.replace(BASE, ''))));
+    if ($('#reader-title').textContent !== a.name) return;
+    $('#reader-body').replaceChildren(items.length ? folderList(items, back) : msg(T('В папке нет файлов')));
+  } catch (e) {
+    $('#reader-body').replaceChildren(errorBox(e));
+  }
+  if (a.completion && !a.completion.done) refreshCourse();
+}
+
+// Grades of one course in the reader dialog: the disk copy first, then the portal.
+function gradeDetail(rows) {
+  if (!rows.length) return msg(T('В этом курсе нет оценок'));
+  const total = rows.find((r) => r.kind === 'total');
+  return [
+    total?.grade ? h('div', { class: 'kpis' },
+      kpi(total.grade, T('итог курса'), total.range ? T('диапазон {0}', total.range) : ''),
+      total.percent ? kpi(total.percent, T('от максимума')) : null) : null,
+    h('div', { class: 'list' }, rows.filter((r) => r.kind !== 'total').map((r) => (r.kind === 'category'
+      ? h('h4', {}, r.name)
+      : h('div', { class: 'card row' + (r.kind === 'subtotal' ? ' subtotal' : '') },
+        h('div', { class: 'main' },
+          h('div', {}, r.name),
+          h('div', { class: 'sub' }, [r.range && T('диапазон {0}', r.range), r.weight && T('вес {0}', r.weight), r.contribution && T('вклад в итог {0}', r.contribution)].filter(Boolean).join(' · ')),
+          r.feedback ? h('div', { class: 'sub' }, T('Отзыв: {0}', r.feedback)) : null),
+        h('div', { class: 'right grade' + (r.grade ? '' : ' none') }, r.grade || '—', r.percent ? h('small', {}, r.percent) : null))))),
+  ];
+}
+async function openGrades(g) {
+  const a = { name: g.course, url: g.url };
+  const load = async () => Parse.gradeDetail(html(await pget(g.url.replace(BASE, ''))));
+  const shown = () => $('#reader').open && $('#reader-title').textContent === a.name;
+  const paintRows = (rows) => $('#reader-body').replaceChildren(...clean([gradeDetail(rows)]));
+  showReader(a, msg(T('Загрузка…')));
+  const disk = await fromDisk(load);
+  if (disk && shown()) paintRows(disk.data);
+  try {
+    const fresh = await load();
+    if (shown() && JSON.stringify(fresh) !== JSON.stringify(disk?.data)) paintRows(fresh);
+  } catch (e) {
+    if (!disk && shown()) $('#reader-body').replaceChildren(errorBox(e));
+  }
+}
+
+// «Текущая успеваемость»: the page has only ever been empty, so its tables are shown as they come.
+function currentTab(now) {
+  if (!now?.tables.length) {
+    return stateBox({ kind: 'empty', title: T('Текущая успеваемость пока пуста'), text: now?.note ? T(now.note) : T('Когда на портале появятся данные, они будут здесь.') });
+  }
+  return stagger(h('div', { class: 'list' }, now.tables.map((t) => [
+    t.title ? h('h4', {}, t.title) : null,
+    t.rows.map((r) => h('div', { class: 'card row' },
+      h('div', { class: 'main' }, h('div', {}, r[0]), h('div', { class: 'sub' }, r.slice(1, -1).filter(Boolean).join(' · '))),
+      r.length > 1 ? h('div', { class: 'right grade' }, r.at(-1)) : null)),
+  ])));
+}
+
 $('#reader-close').addEventListener('click', () => $('#reader').close());
 $('#reader').addEventListener('click', (e) => { if (e.target === $('#reader')) $('#reader').close(); });
 // Stop video/PDF and free the file after the close animation, unless the dialog was reopened meanwhile.
@@ -1989,6 +2100,7 @@ function filesTab() {
       const fs = ui.svc.fs;
       // The sync file's folder (see writeRemote) is the app's own: not shown here.
       const list = (await listFiles(fs, ui.svc.path)).filter((f) => !(ui.svc.path === '/' && f.type === 'folder' && f.fullname === SYNC_DIR.slice(1, -1)));
+      portal.keep(`files ${ui.svc.path}`, list.map(({ type, filename, fullname, filepath }) => ({ type, filename, fullname, filepath }))).catch(() => {}); // for search
       const crumbs = ui.svc.path.split('/').filter(Boolean);
       const go = (p) => { ui.svc.path = p; draw(); };
       const picker = h('input', { type: 'file', multiple: '', hidden: '', onchange: async () => {
@@ -2134,6 +2246,7 @@ function linksTab(d) {
 // ---- about, legal docs, first-run notice ----
 
 const REPO = 'https://github.com/RGB-Outl4w/UlSU-Portal-Desktop';
+const BOOSTY = 'https://boosty.to/rgboutlaw/donate'; // opens in the system browser, like every non-portal link
 const docName = (base) => (LANG === 'ru' && /^(PRIVACY|LICENSE)/.test(base) ? base.replace(/(\.md)?$/, '.ru.md') : base);
 
 // Minimal Markdown for the bundled docs (headings, lists, tables, code blocks, **bold**, `code`,
@@ -2221,6 +2334,11 @@ Object.assign(views, {
             h('span', { class: 'pill' }, T('Версия {0}', a.version)))),
 
         updateCard(),
+
+        h('div', { class: 'card pane' },
+          paneHead('star', T('Поддержать проект')),
+          h('p', { class: 'sub' }, T('УлГУ · Портал студента — бесплатное приложение с открытым кодом, которое делает один студент. Если оно экономит вам время, можно поддержать разработку. Это необязательно: все функции остаются бесплатными.')),
+          h('div', { class: 'about-btns' }, h('button', { class: 'chip-btn', onclick: () => portal.open(BOOSTY) }, T('Открыть Boosty')))),
 
         h('div', { class: 'card pane' },
           paneHead('profile', T('Автор')),
@@ -2631,22 +2749,138 @@ function paletteItems() {
     ...Object.entries(views).filter(([, v]) => !v.hidden).map(([k, v]) => ({ label: v.title, icon: navIcon(k), kind: T('Раздел'), run: () => show(k) })),
     ...(cache.courses?.courses || []).map((c) => ({ label: c.fullname, icon: 'courses', kind: T('Курс'), run: () => openCourse(c) })),
     ...PAGES.map(([label, url]) => ({ label, icon: 'external', kind: T('Портал'), run: () => portal.open(BASE + url) })),
+    { label: T('Поддержать проект'), icon: 'star', kind: 'Boosty', run: () => portal.open(BOOSTY) },
   ];
+}
+
+// Search over what is already in the disk cache, so it also works offline. The index lives in memory only and
+// is rebuilt source by source on every open; a parsed page is kept until its disk copy changes.
+const GROUP_MAX = 6;
+const GROUPS = [
+  ['chat', T('Диалоги')], ['message', T('Сообщения')], ['note', T('Уведомления')], ['material', T('Материалы курсов')],
+  ['file', T('Личные файлы')], ['deadline', T('Дедлайны')], ['grade', T('Оценки')],
+];
+let found = [];
+let indexRun = 0;
+const parsedPages = new Map();
+const orNull = (call) => call.catch(() => null);
+async function cachedPage(path, parse) {
+  const copy = await orNull(portal.get(path, 'cache'));
+  if (!copy) return null;
+  const old = parsedPages.get(path);
+  if (old?.at === copy.at) return old.data;
+  const data = parse(html(copy.data));
+  parsedPages.set(path, { at: copy.at, data });
+  return data;
+}
+const hit = (group, label, sub, iconName, run) => ({ group, label, kind: sub, icon: iconName, run, hay: `${label} ${sub}`.toLowerCase() });
+const breathe = () => new Promise((r) => setTimeout(r)); // parsing pages must not hold up typing
+
+const SOURCES = [
+  async (uid) => {
+    const r = await orNull(portal.ajax('core_message_get_conversations', { userid: uid, limitfrom: 0, limitnum: 50 }, 'cache'));
+    const list = r?.data.conversations || [];
+    const open = (c) => () => { ui.chat.open = c.id; ui.chat.focus = true; delete cache.messages; show('messages'); };
+    const out = list.map((c) => hit('chat', nameOf(c), textOf(c.messages?.[0]?.text), 'chat', open(c)));
+    for (const c of list) {
+      const m = await orNull(portal.ajax('core_message_get_conversation_messages', { currentuserid: uid, convid: c.id, limitfrom: 0, limitnum: 50, newest: true }, 'cache'));
+      for (const x of m?.data.messages || []) out.push(hit('message', textOf(x.text), nameOf(c), 'chat', open(c)));
+    }
+    return out;
+  },
+  async (uid) => {
+    const r = await orNull(portal.ajax('message_popup_get_popup_notifications', { useridto: uid, newestfirst: true, limit: 50, offset: 0 }, 'cache'));
+    return (r?.data.notifications || []).map((n) => hit('note', textOf(n.subject), textOf(n.smallmessage), navIcon('notifications'), () => {
+      ui.notes.open = n.id;
+      ui.notes.focus = true; // phones: straight to the item, not the list
+      ui.notes.filter = 'all';
+      show('notifications');
+    }));
+  },
+  async () => {
+    const out = [];
+    for (const c of cache.courses?.courses || []) {
+      const page = await cachedPage(`/course/view.php?id=${c.id}`, parseCourse);
+      if (!page) continue;
+      for (const s of page.sections) {
+        if (s.name) out.push(hit('material', s.name, c.fullname, 'courses', () => openCourse(c)));
+        for (const a of s.activities) {
+          if (a.name) out.push(hit('material', a.name, c.fullname, 'courses', () => { openCourse(c); if (a.url) openActivity(a); }));
+        }
+      }
+      await breathe();
+    }
+    return out;
+  },
+  async () => {
+    const out = [];
+    const walk = async (path) => {
+      const r = await orNull(portal.keep(`files ${path}`));
+      for (const f of r?.data || []) {
+        const folder = f.type === 'folder';
+        const to = folder ? `${path}${f.fullname}/` : path;
+        out.push(hit('file', folder ? f.fullname : f.filename, path, 'folder', () => { ui.svc.tab = 'files'; ui.svc.path = to; delete cache.services; show('services'); }));
+        if (folder) await walk(to);
+      }
+    };
+    await walk('/');
+    return out;
+  },
+  async () => {
+    const r = await orNull(portal.ajax('core_calendar_get_action_events_by_timesort', deadlineArgs(), 'cache'));
+    return (r?.data.events || []).map((e) => hit('deadline', e.name, e.course?.fullname || '', navIcon('deadlines'), () => show('deadlines')));
+  },
+  async () => {
+    const list = await cachedPage('/grade/report/overview/index.php', parseGrades) || [];
+    const out = list.map((g) => hit('grade', g.course, g.grade, navIcon('grades'), () => { show('grades'); if (g.url) openGrades(g); }));
+    for (const g of list.filter((x) => x.url)) {
+      for (const r of await cachedPage(g.url.replace(BASE, ''), Parse.gradeDetail) || []) {
+        if (r.kind === 'item') out.push(hit('grade', r.name, [g.course, r.grade].filter(Boolean).join(' · '), navIcon('grades'), () => { show('grades'); openGrades(g); }));
+      }
+      await breathe();
+    }
+    for (const s of await cachedPage('/blocks/buttons/academic_progress.php', parseProgress) || []) {
+      for (const r of s.rows) out.push(hit('grade', r.subject, [T(r.mark), s.name].filter(Boolean).join(' · '), navIcon('progress'), () => show('progress')));
+    }
+    return out;
+  },
+];
+
+async function buildIndex() {
+  const run = ++indexRun;
+  found = [];
+  const uid = await myId().catch(() => null);
+  for (const source of SOURCES) {
+    const part = await source(uid).catch(() => []);
+    if (run !== indexRun) return;
+    found.push(...part);
+    if ($('#palette').open && $('#pq').value.trim().length > 1) renderPalette();
+  }
 }
 
 function renderPalette() {
   const words = $('#pq').value.toLowerCase().split(/\s+/).filter(Boolean);
-  items = paletteItems().filter((it) => words.every((w) => it.label.toLowerCase().includes(w))).slice(0, 60);
+  const nav = paletteItems().filter((it) => words.every((w) => it.label.toLowerCase().includes(w))).slice(0, 30);
+  const groups = words.join('').length < 2 ? [] : GROUPS.map(([key, title]) => ({
+    title, list: found.filter((it) => it.group === key && words.every((w) => it.hay.includes(w))).slice(0, GROUP_MAX),
+  })).filter((g) => g.list.length);
+  items = [...nav, ...groups.flatMap((g) => g.list)];
   sel = Math.min(sel, Math.max(items.length - 1, 0));
+  let n = 0;
+  const row = (it) => {
+    const i = n++;
+    return h('li', { class: i === sel ? 'sel' : null, onclick: () => runItem(i), onmousemove: () => { if (sel !== i) { sel = i; mark(); } } },
+      icon(it.icon), h('span', { class: 'pl-label' }, it.label), h('span', { class: 'kind' }, it.kind));
+  };
   $('#pl').replaceChildren(...(items.length
-    ? items.map((it, i) => h('li', { class: i === sel ? 'sel' : null, onclick: () => runItem(i), onmousemove: () => { if (sel !== i) { sel = i; mark(); } } },
-      icon(it.icon), it.label, h('span', { class: 'kind' }, it.kind)))
+    ? [...nav.map(row), ...groups.flatMap((g) => [h('li', { class: 'group' }, g.title), ...g.list.map(row)])]
     : [h('li', { class: 'empty' }, T('Ничего не найдено'))]));
 }
 
 function mark() {
-  [...$('#pl').children].forEach((li, i) => li.classList.toggle('sel', i === sel));
-  $('#pl').children[sel]?.scrollIntoView({ block: 'nearest' });
+  const rows = [...$('#pl').children].filter((li) => !li.classList.contains('group'));
+  rows.forEach((li, i) => li.classList.toggle('sel', i === sel));
+  rows[sel]?.scrollIntoView({ block: 'nearest' });
 }
 
 function openPalette() {
@@ -2654,9 +2888,8 @@ function openPalette() {
   sel = 0;
   renderPalette();
   $('#palette').showModal();
-  if (!cache.courses) {
-    views.courses.load().then((d) => { cache.courses = d; if ($('#palette').open) renderPalette(); }).catch(() => {});
-  }
+  if (cache.courses) buildIndex();
+  else views.courses.load().then((d) => { cache.courses = d; if ($('#palette').open) renderPalette(); }).catch(() => {}).finally(buildIndex);
 }
 
 function runItem(i) {
@@ -2674,6 +2907,7 @@ $('#pq').addEventListener('keydown', (e) => {
 });
 $('#palette').addEventListener('click', (e) => { if (e.target === $('#palette')) $('#palette').close(); }); // backdrop click
 $('#palette-btn').addEventListener('click', openPalette);
+$('#search-btn').addEventListener('click', openPalette);
 
 // ---- profile card (sidebar + popover), filled whenever /my/ is loaded ----
 

@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('portal', {
   post: (path, fields) => ipcRenderer.invoke('post', path, fields),
   file: (url) => ipcRenderer.invoke('file', url),
   download: (url, name) => ipcRenderer.invoke('download', url, name),
+  openLocal: (url, name) => ipcRenderer.invoke('openLocal', url, name),
+  keep: (key, data) => ipcRenderer.invoke('keep', key, data),
   upload: (args) => ipcRenderer.invoke('upload', args),
   ajax: (method, args, mode) => ipcRenderer.invoke('ajax', method, args, mode),
   open: (url) => ipcRenderer.invoke('open', url),

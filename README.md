@@ -30,14 +30,14 @@ The portal logs you out every time you close the browser, and signing back in me
 | **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts. Blocks can be moved, resized, added and removed |
 | **Schedule** | Current and next week with the I/II week parity, the class in progress highlighted |
 | **Calendar** | Month view with classes and course events; later weeks estimated from the I/II alternation |
-| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, participants, favourites, the 3 most recent courses; the same filter and sort as the portal's Course overview, shared with the website |
-| **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters |
-| **Academic record** | Exam marks per semester with your average, and the full study plan with hours and syllabi |
+| **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, folders, presentations in one click (system app), participants, favourites, the 3 most recent courses; the same filter and sort as the portal's Course overview, shared with the website |
+| **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters, and every graded item of a course |
+| **Academic record** | Exam marks per semester with your average, current performance when the portal has it, and the full study plan with hours and syllabi |
 | **Notifications & messages** | Reading pane, chats with bubbles, sending, new chats, live refresh, deleting messages and chats, mark read/unread, up to 5 pinned chats, an archive; pins, archive and unread marks sync between your devices; unread badges, system notifications |
 | **Services** | Certificate orders, questions to the university, personal files (upload/download), e-library sign-in links |
 | **Offline** | Every section is saved after you open it, so it still works without a connection |
 | **Sign-in** | The real portal page (password, then the MAX code) in the app's look, with an RU / EN switch; the app never sees your password or code |
-| **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, Ctrl+K search, keyboard shortcuts, reduced-motion support; a layout for tablets held upright |
+| **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, search across everything saved on your device (Ctrl+K, or the search button on phones), keyboard shortcuts, reduced-motion support; a layout for tablets held upright |
 
 ## Install
 
@@ -106,6 +106,10 @@ The development notes and milestones live in [ROADMAP.md](ROADMAP.md).
 ## Contributing
 
 Bug reports and ideas are welcome in [Issues](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/issues). The portal changes from time to time; if a section stops loading, an issue with the section name and what you see helps the most. Please never include your password, MAX codes, cookies or screenshots with other people's personal data.
+
+## Support
+
+The app is free and every feature stays free. If it saves you time, you can [support its development on Boosty](https://boosty.to/rgboutlaw/donate). It's entirely optional. Donations go to the independent author, not to the university (see [NOTICE.md](NOTICE.md)).
 
 ## Credits
 

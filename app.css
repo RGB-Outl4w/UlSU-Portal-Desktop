@@ -285,6 +285,10 @@ input[type=search]:focus { width: 260px; }
 #pl li.sel { background: var(--accent-soft); }
 #pl li.sel .i { color: var(--accent); }
 #pl .empty { color: var(--muted); cursor: default; justify-content: center; }
+#pl .group { padding: 10px 12px 4px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: default; }
+#pl .pl-label { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pl li .kind { flex: 0 10 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#search-btn { display: none; }
 
 /* ---------- settings popover ---------- */
 #settings, #profile {
@@ -678,6 +682,16 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .rich td, .rich th { border: 1px solid var(--line); padding: 4px 8px; }
 #reader.media { width: min(1200px, 94vw); height: 88vh; max-height: none; margin-top: 5vh; }
 #reader.media #reader-body { flex: 1; padding: 0; overflow: hidden; display: flex; background: #111; }
+#reader-body .kpis { margin-bottom: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#reader-body h4 { margin: 8px 0 2px; }
+#reader-body .row.subtotal { background: var(--accent-soft); }
+.row .right small { display: block; font-size: 11px; font-weight: 400; }
+.folder { display: flex; flex-direction: column; gap: 2px; }
+.folder details .folder { padding-left: 22px; }
+.folder summary, .folder-file { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: var(--r); cursor: pointer; width: 100%; text-align: left; }
+.folder-file { flex-wrap: wrap; }
+.folder-file span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+@media (hover: hover) { .folder summary:hover, .folder-file:hover { background: var(--accent-soft); } }
 #reader .pdf { flex: 1; border: 0; width: 100%; background: #525659; }
 #reader .player { flex: 1; width: 100%; max-height: 100%; background: #000; }
 
@@ -833,6 +847,7 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
   main::before { display: none; }
   header { padding: 14px 16px 8px; }
   header h1 { font-size: 21px; }
+  #search-btn { display: inline-flex; width: 44px; height: 44px; }
   #content { padding: 4px 16px 20px; }
 
   #tabbar {

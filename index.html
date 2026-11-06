@@ -93,13 +93,14 @@
     <header>
       <h1 id="title"></h1>
       <div id="tools"></div>
+      <button id="search-btn" class="icon-btn" title="Поиск"><svg class="i"><use href="#i-search"/></svg></button>
       <button id="refresh" class="icon-btn" title="Обновить (Ctrl+R)"><svg class="i"><use href="#i-refresh"/></svg></button>
     </header>
     <section id="content"></section>
   </main>
 
   <dialog id="palette">
-    <div class="pq-wrap"><svg class="i"><use href="#i-search"/></svg><input id="pq" placeholder="Раздел, курс или страница портала…" autocomplete="off"></div>
+    <div class="pq-wrap"><svg class="i"><use href="#i-search"/></svg><input id="pq" placeholder="Раздел, курс, сообщение, файл, оценка…" autocomplete="off"></div>
     <ul id="pl"></ul>
   </dialog>
 
@@ -131,6 +132,7 @@
 
   <dialog id="reader">
     <div class="reader-bar">
+      <button class="icon-btn" id="reader-back" title="Назад" hidden>‹</button>
       <h2 id="reader-title"></h2>
       <button class="icon-btn" id="reader-open" title="Открыть на портале"><svg class="i"><use href="#i-external"/></svg></button>
       <button class="icon-btn" id="reader-close" title="Закрыть (Esc)">✕</button>
@@ -174,6 +176,7 @@
 
   <script src="i18n.js"></script>
   <script src="layout.js"></script>
+  <script src="parse.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

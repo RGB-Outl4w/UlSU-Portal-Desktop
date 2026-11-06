@@ -11,6 +11,7 @@
 - **Your account.** You sign in on the portal's own login page, inside the app, with your password and MAX code. The app never sees, stores or sends your password or code. You are responsible for your account and for following the university's rules for the electronic information and educational environment (ЭИОС).
 - **Actions on the portal.** Some features change data on the portal for you: marking activities complete, sending messages and questions, ordering certificates, uploading and deleting personal files. The app asks before each of them. Results depend on the portal and may change if the portal changes.
 - **No warranty.** The software is provided "as is" under the MIT License. The portal may change at any time and features may stop working. Always check important information (deadlines, grades, orders) on the official portal.
+- **Donations.** Optional donations support the app's independent author. They are not payments to or from Ulyanovsk State University and give no official status, priority or support guarantee.
 - **Development.** Written by Maksim Surgutskii (Сургутский Максим Эдуардович, student, group ИС-О-25/1) with the help of Claude Code, an AI coding assistant by Anthropic.
 
 ## Русский
@@ -22,4 +23,5 @@
 - **Ваша учётная запись.** Вход выполняется на настоящей странице входа портала внутри приложения: пароль и код MAX вводите вы сами. Приложение не видит, не хранит и не передаёт ваш пароль и код. Вы отвечаете за свою учётную запись и за соблюдение правил использования ЭИОС университета.
 - **Действия на портале.** Некоторые функции меняют данные на портале от вашего имени: отметки о выполнении, отправка сообщений и вопросов, заказ справок, загрузка и удаление личных файлов. Перед каждым таким действием приложение спрашивает подтверждение. Результат зависит от портала и может измениться, если портал изменится.
 - **Без гарантий.** Программа распространяется «как есть» по лицензии MIT. Портал может измениться в любой момент, и часть функций может перестать работать. Важную информацию (сроки, оценки, заявки) всегда проверяйте на официальном портале.
+- **Пожертвования.** Необязательные пожертвования поддерживают независимого автора приложения. Это не платежи Ульяновскому государственному университету или от него; они не дают официального статуса, приоритета или гарантии поддержки.
 - **Разработка.** Автор — Сургутский Максим Эдуардович, студент группы ИС-О-25/1, при участии Claude Code — ИИ-ассистента для программирования от Anthropic.

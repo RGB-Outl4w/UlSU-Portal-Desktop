@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**ULSU Portal Desktop** · Effective 29 October 2026 · [Русская версия](PRIVACY.ru.md)
+**ULSU Portal Desktop** · Effective 6 November 2026 · [Русская версия](PRIVACY.ru.md)
 
 The short version: **everything stays on your device and on the portal itself.** The app has no server of its own. It talks only to portal.ulsu.ru and to sites you choose to open. The developer receives no data from you.
 
@@ -14,7 +14,8 @@ ULSU Portal Desktop is an open-source app made by an individual student (see [NO
 |---|---|---|---|
 | Login, password, MAX code | You type them on the portal's login page | **Nowhere by the app.** They go straight from the portal page to the portal | To sign in. The app never reads these fields |
 | Portal session cookie (`MoodleSession`) and other portal cookies | Set by portal.ulsu.ru after sign-in | Your computer, app data folder, up to 30 days | So you don't have to sign in and enter a MAX code every time |
-| Copies of portal pages and data (schedule, courses, grades, messages, profile…) | portal.ulsu.ru | Your computer, app data folder (`cache`) | To open instantly and work offline |
+| Copies of portal pages and data (schedule, courses, grades, messages, profile, names of your personal files…) | portal.ulsu.ru | Your computer, app data folder (`cache`) | To open instantly, work offline and search. Search reads these copies; its index stays in memory and is not saved |
+| Presentations you open | portal.ulsu.ru | Your computer, app data folder (`opened`); on Android, Downloads | So your system app can open them. Clear cache and Log out remove the `opened` folder |
 | Session log (time of sign-in, sign-out, lost sessions; no personal content) | The app | Your computer (`session.log`) | To understand how long portal sessions last |
 | Settings (theme, language, accent, collapsed sidebar, sort order, Today layout) | You | Your computer | To remember your choices |
 | Courses filter and sort | You | The portal's own settings for your account (the same ones its Course overview uses) | So the app and the website show the same choice on every device |
@@ -27,6 +28,7 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 
 - **portal.ulsu.ru**: all requests needed to show your data and to perform actions you confirm. This is the same traffic a browser sends when you use the portal.
 - **Sites you open yourself**: e-library links (e.g. Lan, Urait, Znanium, IPR SMART, eLIBRARY) open in your default browser. These links contain sign-in details that the portal creates for you. What those sites do is governed by their own policies.
+- **Boosty, only if you click.** The optional **Support the project** button opens boosty.to in your default browser, without your portal session. The app itself never contacts Boosty, and Boosty's own policy applies there.
 - **GitHub, only when you ask.** The **Check for updates** button in About sends one request to api.github.com to read the latest release number. It includes the app version in the User-Agent and no personal data. The app never checks on its own.
 - **Nothing else.** No analytics, tracking, telemetry, crash reports, advertising or third-party servers.
 
