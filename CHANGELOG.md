@@ -1,5 +1,27 @@
 # Changelog / История изменений
 
+## 1.2.6-beta.3 — 2026-11-06 (pre-release)
+
+**Grades in detail, folders, search everywhere.** / **Подробные оценки, папки, поиск по всему.**
+
+**English**
+- Grades: a course in Grades now opens every graded item with its grade, range, percentage, weight and feedback, inside the app.
+- Academic record: a Current tab for «Текущая успеваемость». The portal page is empty for now, so the tab shows that; how it will look with real data is untested.
+- Courses: folders open inside the app, with subfolders; PDFs open in the viewer and other files save to disk. No real portal folder has been tried yet.
+- Courses: presentations (pptx, ppt, odp) now open in your system app in one click. There is no in-app viewer: the portal offers no preview, and sending files to a converter is ruled out by the privacy policy. If a file can't be opened this way, the portal button stays.
+- Search: Ctrl/⌘K now also finds chats, messages, notifications, course materials, personal files, deadlines and grades. It reads only what is saved on your device, so it works offline and finds what you have opened at least once. Phones get a search button in the header.
+- Optional support: a "Support the project" card in About and an entry in search open Boosty (https://boosty.to/rgboutlaw/donate) in your browser. Also on the website, in the README and as GitHub's Sponsor button. Nothing is locked, and the app never asks.
+- Removed the extra session logging from the two previous test builds. The sign-in fix stays.
+
+**Русский**
+- Оценки: курс в разделе «Оценки» теперь открывает в приложении все элементы с оценкой, диапазоном, процентами, весом и отзывом.
+- Успеваемость: вкладка «Текущая» для текущей успеваемости. Страница на портале пока пуста, и вкладка это показывает; вид с настоящими данными не проверен.
+- Курсы: папки открываются в приложении, с вложенными папками; PDF — в просмотрщике, остальные файлы сохраняются на диск. На настоящей папке портала это ещё не проверялось.
+- Курсы: презентации (pptx, ppt, odp) теперь открываются в системном приложении в один клик. Встроенного просмотра нет: портал не даёт предпросмотра, а отправлять файлы в конвертер запрещает политика конфиденциальности. Если файл так не открыть, остаётся кнопка портала.
+- Поиск: Ctrl/⌘K теперь находит также диалоги, сообщения, уведомления, материалы курсов, личные файлы, дедлайны и оценки. Он читает только то, что сохранено на устройстве, поэтому работает без сети и находит то, что вы открывали хотя бы раз. На телефоне в заголовке появилась кнопка поиска.
+- Поддержка проекта (необязательно): карточка «Поддержать проект» в разделе «О приложении» и пункт в поиске открывают Boosty (https://boosty.to/rgboutlaw/donate) в браузере. Ссылка есть и на сайте, в README и в кнопке Sponsor на GitHub. Ничего не закрыто, и приложение ни о чём не просит.
+- Убрано дополнительное журналирование сессии из двух прошлых тестовых сборок. Исправление входа осталось.
+
 ## 1.2.6-beta.2 — 2026-10-31 (pre-release)
 
 **Sign-in fix.** / **Исправление входа.**
