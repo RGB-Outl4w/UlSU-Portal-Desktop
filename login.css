@@ -51,7 +51,7 @@ html body #loginnotice-banner-root .loginnotice-banner { background: var(--ulp-c
   html body .loginnotice-addr-new * { color: #5fd6a0 !important; }
 }
 /* the form: a card with large fields */
-form#login, .login-box-body form, #region-main form {
+form#login, .login-box-body form, #region-main form:not(#loginwait-root form) {
   background: var(--ulp-card); border: 1px solid var(--ulp-line); border-radius: 18px; padding: 20px 18px 16px !important;
   box-shadow: 0 18px 40px -24px rgba(10, 20, 50, .35);
 }
@@ -82,3 +82,21 @@ a, a.small, a.dimmed { color: var(--ulp-accent) !important; }
 html body .forgetpass a { color: var(--ulp-muted) !important; -webkit-text-fill-color: var(--ulp-muted); opacity: 1 !important; }
 .badge { background: none !important; color: var(--ulp-muted) !important; white-space: normal !important; }
 .alert, .loginerrors { border-radius: 12px !important; }
+/* The MAX code page (/local/loginwait) is the portal's own Tailwind modal: its colours map to the app's. */
+#loginwait-root .tw-bg-slate-100 { background: var(--ulp-page) !important; }
+#loginwait-root .loginwait-modal, #loginwait-root .tw-bg-slate-50 { background: var(--ulp-card) !important; }
+#loginwait-root [class*="tw-border-slate-"] { border-color: var(--ulp-line) !important; }
+#loginwait-root [class*="tw-text-slate-"] { color: var(--ulp-muted) !important; }
+#loginwait-root .tw-text-slate-900, #loginwait-root .tw-text-slate-800 { color: var(--ulp-text) !important; }
+#loginwait-root button.tw-bg-white { background: var(--ulp-accent) !important; color: #fff !important; }
+html body #loginwait-root .loginwait-code-digit:not(:focus):not(.loginwait-code-error):not([class*="tw-border-red"]) { border-color: var(--ulp-line) !important; }
+html body #loginwait-root button.loginwait-confirm-btn { background-color: var(--ulp-accent) !important; }
+html body #loginwait-root .loginwait-resend-btn:not(:disabled), html body #loginwait-root .loginwait-skip-btn, html body #loginwait-root .loginwait-success-continue-btn { color: var(--ulp-accent) !important; }
+@media (prefers-color-scheme: dark) {
+  #loginwait-portal { filter: invert(1) hue-rotate(180deg); } /* the MAX logo has black lettering */
+  #loginwait-root [class*="tw-bg-red-50"] { background: rgba(229, 72, 77, .14) !important; }
+  #loginwait-root .tw-bg-amber-50 { background: rgba(240, 180, 74, .14) !important; }
+  #loginwait-root .tw-bg-emerald-50 { background: rgba(95, 214, 160, .14) !important; }
+  #loginwait-root .tw-text-amber-600 { color: #f0b44a !important; }
+  #loginwait-root .tw-text-emerald-800 { color: #5fd6a0 !important; }
+}

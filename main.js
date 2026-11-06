@@ -20,6 +20,7 @@ const POLL_MS = 3 * 60 * 1000;   // unread check + keepalive interval; tune from
 const LOGIN_ARGS = app.isPackaged ? ['--hidden'] : [app.getAppPath(), '--hidden'];
 
 let ses, mainWin, tray, sesskey, userid, loginPromise, quitting = false, lastOk = Date.now();
+let declined = false; // the user closed the sign-in window: background reads must not reopen it
 let seen = null; // newest notification/message ids already known, so only new ones toast
 
 // Main-process strings; the renderer tells us the UI language (setLang), remembered in lang.json.
@@ -81,6 +82,7 @@ async function cached(key, fetcher, mode) {
 // We never touch the form, only watch for landing on a logged-in page outside login/2FA paths.
 function login() {
   if (loginPromise) return loginPromise;
+  if (declined) return Promise.reject(new Error(t('Вход отменён')));
   loginPromise = new Promise((resolve, reject) => {
     const visible = mainWin?.isVisible();
     const win = new BrowserWindow({
@@ -89,6 +91,13 @@ function login() {
       webPreferences: { partition: PARTITION },
     });
     let done = false;
+    const leaving = (url) => url.startsWith(`${BASE}/`) && !/login|auth|mfa/i.test(new URL(url).pathname);
+    // After the MAX code the portal may land on a bare file (raw text on black): hide before it can show.
+    const hideOnLeave = (_e, url, _inPlace, main) => { if (main && leaving(url)) win.hide(); };
+    win.webContents.on('did-start-navigation', hideOnLeave);
+    win.webContents.on('did-redirect-navigation', hideOnLeave);
+    const reveal = () => { if (!win.isVisible()) win.show(); };
+    win.webContents.on('did-fail-load', (_e, code) => { if (code !== -3 && !done) reveal(); }); // -3: became a download
     // The real sign-in pages in the app's look (login.css): only styling, the form stays the portal's.
     win.webContents.on('dom-ready', () => {
       const url = win.webContents.getURL();
@@ -101,11 +110,13 @@ function login() {
       // The sign-in page's RU | EN switch sets the whole session's language; the app reads pages in Russian.
       await net(`${BASE}/my/?lang=ru`).catch(() => {});
       resolve();
+      if (!quitting) mainWin?.webContents.send('signed-in');
     };
     win.webContents.on('did-finish-load', async () => {
       const url = win.webContents.getURL();
-      if (done || !url.startsWith(`${BASE}/`) || /login|auth|mfa/i.test(new URL(url).pathname)) return; // not the portal (offline page) or still logging in
-      if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return;
+      if (done) return;
+      if (!leaving(url)) return reveal(); // not the portal (offline page) or still logging in
+      if (await win.webContents.executeJavaScript("document.body.classList.contains('notloggedin')")) return reveal();
       ok();
     });
     // After sign-in Moodle opens the URL that asked for it. A file (e.g. sync.json) comes as a download,
@@ -115,7 +126,10 @@ function login() {
     win.on('closed', () => {
       ses.off('will-download', onDownload);
       loginPromise = null;
-      if (!done) reject(new Error(t('Вход отменён')));
+      if (done) return;
+      declined = true;
+      if (!quitting) setSession('expired'); // on quit the main window may be gone already
+      reject(new Error(t('Вход отменён')));
     });
     guardOffline(win);
     win.loadURL(`${BASE}/login/index.php`);
@@ -354,10 +368,22 @@ function guardOffline(win) {
   });
 }
 
+// A link opening a new window may turn out to be a download, which would leave a blank window behind.
+// So a new window shows only once it has a page; on a download it stays hidden (see will-download).
+function quietPopups(win) {
+  win.webContents.setWindowOpenHandler(() => ({ action: 'allow', overrideBrowserWindowOptions: { show: false, autoHideMenuBar: true } }));
+  win.webContents.on('did-create-window', (child) => {
+    quietPopups(child);
+    guardOffline(child);
+    child.webContents.once('did-finish-load', () => child.show());
+  });
+}
+
 function open(url) {
   if (!url.startsWith(BASE)) return shell.openExternal(url);
   const win = new BrowserWindow({ width: 1200, height: 850, autoHideMenuBar: true, webPreferences: { partition: PARTITION, plugins: true } });
   guardOffline(win);
+  quietPopups(win);
   win.loadURL(url);
 }
 
@@ -430,6 +456,10 @@ app.whenReady().then(() => {
   ses = session.fromPartition(PARTITION);
   try { lang = JSON.parse(fs.readFileSync(LANG_FILE(), 'utf8')); } catch { lang = app.getLocale().startsWith('ru') ? 'ru' : 'en'; }
   persistSessionCookie();
+  ses.on('will-download', (_e, item, wc) => {
+    const win = BrowserWindow.fromWebContents(wc);
+    if (win && win !== mainWin && !win.isVisible()) item.once('done', () => win.destroy()); // see quietPopups
+  });
   // mode 'live': no disk copy (portal endpoints that change things over GET, e.g. /CDO/lib.php?API=sendQ)
   ipcMain.handle('get', (_e, p, mode) => (mode === 'live' ? get(p) : cached(['get', p], () => get(p), mode)));
   ipcMain.handle('download', (_e, url, name) => download(url, name));
@@ -444,6 +474,7 @@ app.whenReady().then(() => {
     : mode === 'cache' ? Promise.reject(new Error('NOCACHE')) : ajax(m, a)));
   ipcMain.handle('open', (_e, url) => open(url));
   ipcMain.handle('poll', () => poll());
+  ipcMain.handle('allowLogin', () => { declined = false; });
   // About screen: versions, bundled legal docs, data controls.
   ipcMain.handle('about', () => ({
     version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome,
@@ -480,7 +511,9 @@ app.whenReady().then(() => {
     sesskey = null;
     userid = null;
     seen = null;
-    await ses.clearStorageData();
+    declined = false;
+    // Not localStorage: it holds the settings (Сегодня layout, theme), which are not personal data of the portal.
+    await ses.clearStorageData({ storages: ['cookies', 'filesystem', 'indexdb', 'shadercache', 'serviceworkers', 'cachestorage'] });
     await clearDisk(); // cached pages hold personal data
     log('logged out');
   });

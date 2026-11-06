@@ -315,10 +315,35 @@ function search(placeholder, state) {
   } });
 }
 
+// Dropdown in the app's look: a button showing the value, its options in the ctxMenu popover.
+// Forms read the choice from the button's .value, as from a <select>.
 function select(options, value, onchange) {
-  return h('select', { class: 'select', onchange: (e) => onchange(e.target.value) },
-    options.map(([v, label]) => h('option', { value: v, selected: v === value ? '' : null }, label)));
+  const [first, name] = options.find(([v]) => v === value) || options[0] || ['', ''];
+  const btn = h('button', { type: 'button', class: 'select', 'aria-haspopup': 'menu', onclick: () => {
+    const r = btn.getBoundingClientRect();
+    ctxMenu({ clientX: r.left, clientY: r.bottom + 4, width: r.width }, options.map(([v, label]) => [label, v === btn.value ? 'check' : null, () => {
+      if (v === btn.value) return;
+      btn.value = v;
+      btn.textContent = label;
+      onchange(v);
+    }]));
+  } }, name);
+  btn.value = first;
+  return btn;
 }
+
+// Changes an element's content, then eases its height to the new size instead of jumping.
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+function morph(el, change) {
+  const from = el.offsetHeight;
+  el.morphing?.cancel();
+  change();
+  const to = el.offsetHeight;
+  if (from && from !== to && !calm.matches) {
+    el.morphing = el.animate({ height: [`${from}px`, `${to}px`] }, { duration: 280, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  }
+}
+const fillReader = (...nodes) => morph($('#reader'), () => $('#reader-body').replaceChildren(...nodes));
 
 const hhmm = (d) => d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 const relTime = (sec) => {
@@ -706,8 +731,11 @@ function portalImg(url, attrs = {}) {
   return img;
 }
 
-// Phones show a list or its detail (.split.detail, app.css); this closes the detail.
-const splitBack = () => h('button', { class: 'icon-btn split-back', title: T('Назад'), onclick: (e) => e.target.closest('.split').classList.remove('detail') }, '‹');
+// A list with an optional detail (.split.pick.detail, app.css): phones show one of the two, wider screens
+// squeeze the list beside the detail. This button closes the detail, and so do Esc and Android back.
+const splitBack = (close) => h('button', { class: 'icon-btn split-back', title: phoneMq.matches ? T('Назад') : T('Закрыть'), onclick: () => close() }, phoneMq.matches ? '‹' : '✕');
+// Empties the detail once the list has covered it, unless another item opened meanwhile.
+const clearPane = (split, pane) => setTimeout(() => { if (!split.classList.contains('detail')) pane.replaceChildren(); }, 300);
 
 function setBadge(view, count) {
   for (const b of document.querySelectorAll(`#nav [data-view="${view}"], #tabbar [data-view="${view}"]`)) {
@@ -747,12 +775,19 @@ Object.assign(views, {
       const list = d.notifications.filter((n) => ({ all: true, unread: !n.read, news: n.component === NEWS })[ui.notes.filter]);
       if (!list.length) return msg(T('Уведомлений нет'));
       const reader = h('div', { class: 'card reader' });
+      const close = () => {
+        ui.notes.open = null;
+        split.classList.remove('detail');
+        split.querySelector('.sel')?.classList.remove('sel');
+        clearPane(split, reader);
+      };
       const open = (n, item) => {
         ui.notes.open = n.id;
+        split.classList.add('detail');
         item.parentNode.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
         item.classList.add('sel');
         reader.replaceChildren(...clean([
-          h('div', { class: 'reader-head' }, splitBack(),
+          h('div', { class: 'reader-head' }, splitBack(close),
             h('span', { class: 'pill' + (n.component === NEWS ? ' ok' : '') }, n.component === NEWS ? T('Объявление') : T('Портал')),
             h('h2', {}, textOf(n.subject)),
             h('div', { class: 'sub' }, new Date(n.timecreated * 1000).toLocaleString(LOCALE, { dateStyle: 'long', timeStyle: 'short' }))),
@@ -762,6 +797,7 @@ Object.assign(views, {
       };
       const items = list.map((n) => {
         const item = h('button', { class: 'inbox-item' + (n.read ? '' : ' unread'), onclick: async () => {
+          if (ui.notes.open === n.id) return close();
           open(n, item);
           if (n.read) return;
           n.read = true;
@@ -775,8 +811,8 @@ Object.assign(views, {
         return item;
       });
       const first = list.findIndex((n) => n.id === ui.notes.open);
-      requestAnimationFrame(() => open(list[Math.max(first, 0)], items[Math.max(first, 0)]));
-      const split = h('div', { class: 'split' + (ui.notes.focus ? ' detail moved' : '') }, stagger(h('div', { class: 'card inbox' }, items)), reader);
+      if (first >= 0) requestAnimationFrame(() => open(list[first], items[first]));
+      const split = h('div', { class: 'split pick' + (first >= 0 ? ' detail' : '') + (ui.notes.focus ? ' moved' : '') }, stagger(h('div', { class: 'card inbox' }, items)), reader);
       ui.notes.focus = false;
       return split;
     },
@@ -820,7 +856,7 @@ function messagesScreen(data) {
   const { uid } = data;
   const inbox = h('div', { class: 'card inbox' });
   const chat = h('div', { class: 'card chat' });
-  const split = h('div', { class: 'split' + (ui.chat.focus ? ' detail moved' : '') }, inbox, chat);
+  const split = h('div', { class: 'split pick' + (ui.chat.open != null ? ' detail' : '') + (ui.chat.focus ? ' moved' : '') }, inbox, chat);
   ui.chat.focus = false;
   let open = null; // { c, feed, lastId, lastTime, append(messages) }
 
@@ -851,7 +887,7 @@ function messagesScreen(data) {
     const unread = isUnread(c);
     const item = h('button', { class: 'inbox-item conv' + (unread ? ' unread' : '') + (pinned ? ' pinned' : '') + (open?.c === c ? ' sel' : ''),
       'data-id': c.id, 'data-name': nameOf(c).toLowerCase(), hidden: !matches(nameOf(c), ui.chat.q),
-      onclick: () => { if (!pinDragged) openChat(c); },
+      onclick: () => { if (!pinDragged) (open?.c === c ? closeChat : openChat)(c); },
       oncontextmenu: (e) => { if (!c.draft) { e.preventDefault(); chatMenu(e, c); } } },
     convAvatar(c),
     h('div', { class: 'main' },
@@ -868,7 +904,19 @@ function messagesScreen(data) {
     const cs = list();
     inbox.replaceChildren(...(cs.length ? cs.map(itemFor) : [msg(ui.chat.box === 'archive' ? T('В архиве пусто') : T('Диалогов нет'))]));
     setBadge('messages', data.conversations.filter(isUnread).length);
-    if (!open && cs.length) openChat(cs.find((c) => c.id === ui.chat.open) || cs[0]);
+    if (open) return;
+    const c = cs.find((x) => x.id === ui.chat.open);
+    if (c) openChat(c); else closeChat();
+  }
+
+  function closeChat() {
+    const draft = open?.c.draft;
+    open = null;
+    ui.chat.open = null;
+    split.classList.remove('detail');
+    inbox.querySelector('.sel')?.classList.remove('sel');
+    clearPane(split, chat);
+    if (draft) { ui.chat.draft = null; redraw(); }
   }
 
   // Pinned chats reorder by dragging their handle (mouse or finger); the order syncs.
@@ -901,8 +949,9 @@ function messagesScreen(data) {
   const archive = (c) => {
     const ids = chatState(uid).archive.ids;
     setChat(uid, 'archive', { ids: ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id] });
-    if (open?.c === c) { open = null; ui.chat.open = null; }
-    paint('messages', true); // the archive count in the toolbar changes too
+    if (open?.c === c) closeChat();
+    tools(views.messages.tools(data)); // the archive count changes too
+    redraw();
   };
   const pin = (c) => {
     const ids = chatState(uid).pins.ids;
@@ -936,7 +985,7 @@ function messagesScreen(data) {
     try {
       await pajax('core_message_delete_conversations_by_id', { userid: uid, conversationids: [c.id] });
       data.conversations = data.conversations.filter((x) => x !== c);
-      if (open?.c === c) { open = null; ui.chat.open = null; chat.replaceChildren(); }
+      if (open?.c === c) closeChat();
       redraw();
     } catch (e) { confirmBox(T('Не удалено: {0}', errText(e)), '', T('Понятно')); }
   };
@@ -962,6 +1011,7 @@ function messagesScreen(data) {
 
   function openChat(c) {
     ui.chat.open = c.id;
+    split.classList.add('detail');
     inbox.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
     inbox.querySelector(`[data-id="${c.id}"]`)?.classList.add('sel');
     const other = c.members[0];
@@ -978,7 +1028,7 @@ function messagesScreen(data) {
       h('button', { class: 'icon-btn danger', title: T('Удалить диалог'), onclick: () => removeChat(c) }, icon('trash'))]));
     drawActions();
     chat.replaceChildren(
-      h('div', { class: 'chat-head' }, splitBack(), convAvatar(c),
+      h('div', { class: 'chat-head' }, splitBack(closeChat), convAvatar(c),
         h('div', { class: 'chat-who' }, h('b', {}, nameOf(c)), h('small', {}, c.type === 2 ? T('{0} участников', c.membercount) : other?.isonline ? T('в сети') : '')),
         actions),
       feed,
@@ -1212,7 +1262,7 @@ function showReader(a, body, media = false) {
   $('#reader-back').hidden = !a.back; // a file opened from a folder returns to the folder
   $('#reader-back').onclick = a.back;
   $('#reader').classList.toggle('media', media);
-  $('#reader-body').replaceChildren(body);
+  fillReader(body);
   $('#reader').showModal();
 }
 
@@ -1222,9 +1272,9 @@ async function openReader(a) {
   try {
     const doc = html(await pget(a.url.replace(BASE, '')));
     const box = doc.querySelector('[role=main] .box.generalbox') || doc.querySelector('[role=main]');
-    $('#reader-body').replaceChildren(rich(box?.innerHTML, true));
+    fillReader(rich(box?.innerHTML, true));
   } catch (e) {
-    $('#reader-body').replaceChildren(errorBox(e));
+    fillReader(errorBox(e));
   }
   if (a.completion && !a.completion.done) refreshCourse();
 }
@@ -1243,11 +1293,11 @@ async function openFile(a, kind) {
     if (!$('#reader').open || $('#reader-title').textContent !== a.name) return; // closed or switched meanwhile
     URL.revokeObjectURL(blobUrl);
     blobUrl = URL.createObjectURL(new Blob([bytes], { type: kind === 'pdf' ? 'application/pdf' : type }));
-    $('#reader-body').replaceChildren(kind === 'video'
+    fillReader(kind === 'video'
       ? h('video', { class: 'player', src: blobUrl, controls: '', autoplay: '' })
       : h('iframe', { class: 'pdf', src: blobUrl, title: a.name }));
   } catch (e) {
-    $('#reader-body').replaceChildren(isOffline(e)
+    fillReader(isOffline(e)
       ? stateBox({ kind: 'offline', title: T('Файл недоступен без подключения'), text: T('PDF и видео открываются только при связи с порталом.') })
       : errorBox(e));
   }
@@ -1263,7 +1313,7 @@ async function openSlides(a) {
       if (a.back) a.back(); else $('#reader').close();
     }
   } catch (e) {
-    $('#reader-body').replaceChildren(isOffline(e)
+    fillReader(isOffline(e)
       ? stateBox({ kind: 'offline', title: T('Файл недоступен без подключения'), text: T('Презентации открываются только при связи с порталом.') })
       : stateBox({ title: T('Не удалось открыть презентацию'), text: T('Откройте её на портале: кнопка вверху окна.') }));
   }
@@ -1293,16 +1343,16 @@ async function openFolder(a) {
   try {
     const items = Parse.folder(html(await pget(a.url.replace(BASE, ''))));
     if ($('#reader-title').textContent !== a.name) return;
-    $('#reader-body').replaceChildren(items.length ? folderList(items, back) : msg(T('В папке нет файлов')));
+    fillReader(items.length ? folderList(items, back) : msg(T('В папке нет файлов')));
   } catch (e) {
-    $('#reader-body').replaceChildren(errorBox(e));
+    fillReader(errorBox(e));
   }
   if (a.completion && !a.completion.done) refreshCourse();
 }
 
 // Grades of one course in the reader dialog: the disk copy first, then the portal.
 function gradeDetail(rows) {
-  if (!rows.length) return msg(T('В этом курсе нет оценок'));
+  if (!rows.some((r) => r.kind === 'item')) return msg(T('В этом курсе нет оценок'));
   const total = rows.find((r) => r.kind === 'total');
   return [
     total?.grade ? h('div', { class: 'kpis' },
@@ -1322,7 +1372,7 @@ async function openGrades(g) {
   const a = { name: g.course, url: g.url };
   const load = async () => Parse.gradeDetail(html(await pget(g.url.replace(BASE, ''))));
   const shown = () => $('#reader').open && $('#reader-title').textContent === a.name;
-  const paintRows = (rows) => $('#reader-body').replaceChildren(...clean([gradeDetail(rows)]));
+  const paintRows = (rows) => fillReader(...clean([gradeDetail(rows)]));
   showReader(a, msg(T('Загрузка…')));
   const disk = await fromDisk(load);
   if (disk && shown()) paintRows(disk.data);
@@ -1330,7 +1380,7 @@ async function openGrades(g) {
     const fresh = await load();
     if (shown() && JSON.stringify(fresh) !== JSON.stringify(disk?.data)) paintRows(fresh);
   } catch (e) {
-    if (!disk && shown()) $('#reader-body').replaceChildren(errorBox(e));
+    if (!disk && shown()) fillReader(errorBox(e));
   }
 }
 
@@ -1437,15 +1487,24 @@ function parsePeople(doc) {
 // Small menu at the pointer (right click, or long press on a phone). items: [label, icon, run, danger].
 function ctxMenu(e, items) {
   document.getElementById('ctx')?.remove();
-  const menu = h('div', { id: 'ctx', popover: 'auto', role: 'menu' }, items.map(([label, ic, run, danger]) =>
-    h('button', { role: 'menuitem', class: danger ? 'danger' : null, onclick: () => { menu.hidePopover(); run(); } }, icon(ic), label)));
+  const menu = h('div', { id: 'ctx', popover: 'auto', role: 'menu', onkeydown: (ev) => {
+    const step = { ArrowDown: 1, ArrowUp: -1 }[ev.key];
+    if (!step) return;
+    ev.preventDefault();
+    const all = [...menu.children];
+    all[(all.indexOf(document.activeElement) + step + all.length) % all.length].focus();
+  } }, items.map(([label, ic, run, danger]) =>
+    h('button', { role: 'menuitem', class: danger ? 'danger' : null, onclick: () => { menu.hidePopover(); run(); } }, ic ? icon(ic) : h('span', { class: 'i' }), label)));
+  if (e.width) menu.style.minWidth = `${e.width}px`;
   document.body.append(menu);
   menu.showPopover();
-  const r = menu.getBoundingClientRect();
-  menu.style.left = `${Math.min(e.clientX, innerWidth - r.width - 8)}px`;
-  menu.style.top = `${Math.min(e.clientY, innerHeight - r.height - 8)}px`;
+  const left = Math.min(e.clientX, innerWidth - menu.offsetWidth - 8);
+  const top = Math.min(e.clientY, innerHeight - menu.offsetHeight - 8);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.transformOrigin = `${e.clientX - left}px ${e.clientY - top}px`; // opens out of the pointer
   menu.addEventListener('toggle', (ev) => { if (ev.newState === 'closed') setTimeout(() => menu.remove(), 200); });
-  menu.querySelector('button')?.focus();
+  menu.children[Math.max(items.findIndex(([, ic]) => ic === 'check'), 0)]?.focus();
 }
 
 
@@ -1455,23 +1514,24 @@ async function newChat(uid) {
   const input = h('input', { class: 'box-input', type: 'search', placeholder: T('Имя или фамилия'), 'aria-label': T('Имя или фамилия'),
     onkeydown: (e) => { if (e.key === 'Enter') e.preventDefault(); } }); // nothing to confirm until a person is picked
   const list = h('div', { class: 'people-pick' });
+  const fillList = (...nodes) => morph($('#confirm'), () => list.replaceChildren(...nodes));
   let timer;
   input.addEventListener('input', () => {
     clearTimeout(timer);
     const q = input.value.trim();
-    if (q.length < 2) { list.replaceChildren(); return; }
+    if (q.length < 2) { fillList(); return; }
     timer = setTimeout(async () => {
-      list.replaceChildren(h('div', { class: 'sub' }, T('Поиск…')));
+      fillList(h('div', { class: 'sub' }, T('Поиск…')));
       try {
         const r = await pajax('core_message_message_search_users', { userid: uid, search: q, limitfrom: 0, limitnum: 20 });
         if (input.value.trim() !== q) return;
         const people = [...r.contacts, ...r.noncontacts].filter((p) => p.id !== uid);
-        list.replaceChildren(...(people.length ? people.map((p) => h('button', { type: 'button', class: 'inbox-item conv', onclick: () => {
+        fillList(...(people.length ? people.map((p) => h('button', { type: 'button', class: 'inbox-item conv', onclick: () => {
           $('#confirm').close('cancel');
           writeTo(p.id, p.fullname, p.profileimageurlsmall);
         } }, avatarOf(p, p.fullname), h('div', { class: 'main' }, h('div', { class: 't' }, p.fullname))))
           : [h('div', { class: 'sub' }, T('Никого не нашлось'))]));
-      } catch (e) { list.replaceChildren(h('div', { class: 'send-err' }, errText(e))); }
+      } catch (e) { fillList(h('div', { class: 'send-err' }, errText(e))); }
     }, 300);
   });
   setTimeout(() => input.focus(), 50);
@@ -2313,7 +2373,7 @@ async function openDoc(base) {
   const name = docName(base);
   showReader({ name, url: `${REPO}/blob/main/${name}` }, msg(T('Загрузка…')));
   const text = await portal.doc(name);
-  $('#reader-body').replaceChildren(text ? markdown(text) : errorBox(new Error(name)));
+  fillReader(text ? markdown(text) : errorBox(new Error(name)));
 }
 
 Object.assign(views, {
@@ -2684,6 +2744,13 @@ portal.onSession((state) => {
   else $('#net-banner').hidden = true;
 });
 
+// The user asked for fresh data: the sign-in window may open again even if it was closed before.
+function retry(name) {
+  portal.allowLogin();
+  return show(name, true);
+}
+portal.onSignedIn(() => show(current, true)); // whatever failed while signed out loads now
+
 // Disk copy first (instant, also offline), then the network; the fresh result repaints quietly.
 async function show(name, reload = false) {
   current = name;
@@ -2720,13 +2787,13 @@ async function show(name, reload = false) {
     if (current !== name) return;
     if (isOffline(e) && before) return offline(loadedAt[name], e); // keep showing what we have
     tools();
-    swap(errorBox(e, () => show(name, true)));
+    swap(errorBox(e, () => retry(name)));
   } finally {
     $('#refresh').classList.remove('spin');
   }
 }
 
-$('#net-retry').addEventListener('click', () => show(current, true));
+$('#net-retry').addEventListener('click', () => retry(current));
 // Back online: refresh what's on screen.
 window.addEventListener('online', () => { if (!$('#net-banner').hidden) show(current, true); });
 
@@ -2872,9 +2939,9 @@ function renderPalette() {
     return h('li', { class: i === sel ? 'sel' : null, onclick: () => runItem(i), onmousemove: () => { if (sel !== i) { sel = i; mark(); } } },
       icon(it.icon), h('span', { class: 'pl-label' }, it.label), h('span', { class: 'kind' }, it.kind));
   };
-  $('#pl').replaceChildren(...(items.length
+  morph($('#palette'), () => $('#pl').replaceChildren(...(items.length
     ? [...nav.map(row), ...groups.flatMap((g) => [h('li', { class: 'group' }, g.title), ...g.list.map(row)])]
-    : [h('li', { class: 'empty' }, T('Ничего не найдено'))]));
+    : [h('li', { class: 'empty' }, T('Ничего не найдено'))])));
 }
 
 function mark() {
@@ -2931,6 +2998,24 @@ function renderProfile(p) {
   $('#pp-sub').textContent = sub;
   $('#pp-fields').replaceChildren(...p.fields.flatMap(([k, v]) => [h('dt', {}, T(k)), h('dd', {}, T(v))]));
   $('#me').hidden = false;
+}
+// After logging out nothing of that person stays on screen or in memory.
+function forgetUser() {
+  profileData = null;
+  myUserid = mySesskey = myContext = undefined;
+  $('#me').hidden = true;
+  setTimeout(() => { // after #me has folded away, so it doesn't go blank first
+    for (const el of document.querySelectorAll('#me .avatar, #profile .avatar')) { delete el.dataset.pic; el.replaceChildren(); }
+    for (const id of ['me-name', 'me-sub', 'pp-name', 'pp-sub', 'pp-fields']) $(`#${id}`).replaceChildren();
+  }, 300);
+  setBadge('notifications', 0);
+  setBadge('messages', 0);
+  Object.assign(ui.chat, { open: null, draft: null });
+  ui.notes.open = null;
+  ui.svc.fs = null;
+  chatLive = null;
+  parsedPages.clear();
+  found = [];
 }
 $('#pp-open').addEventListener('click', () => { $('#profile').hidePopover(); portal.open(`${BASE}/user/profile.php`); });
 
@@ -3116,6 +3201,7 @@ $('#logout').addEventListener('click', async () => {
   $('#settings').hidePopover();
   await portal.logout();
   for (const k in cache) delete cache[k];
+  forgetUser();
   show(current, true);
 });
 
@@ -3132,11 +3218,12 @@ function macLabels() {
 }
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !document.querySelector('dialog[open], :popover-open')) $('#content .split.detail .split-back')?.click();
   if (!(IS_MAC ? e.metaKey : e.ctrlKey)) return;
   const tab = e.code.startsWith('Digit') && document.querySelectorAll('#nav [data-view]')[Number(e.code.slice(5)) - 1]?.dataset.view; // Ctrl+N = Nth sidebar tab
   const act = {
     KeyK: openPalette,
-    KeyR: () => show(current, true),
+    KeyR: () => retry(current),
     KeyB: toggleCollapse,
   }[e.code] || (tab && (() => show(tab)));
   if (act) { e.preventDefault(); act(); }
@@ -3195,7 +3282,7 @@ $('#side').addEventListener('click', (e) => { if (e.target.closest('button')) do
 // Phones show list or detail (app.css): tapping a notification/conversation switches to the detail.
 // .moved: from now on the switch slides (app.css), but not the list's first appearance.
 $('#content').addEventListener('click', (e) => {
-  const split = e.target.closest('.split .inbox-item:not(.dragging)')?.closest('.split');
+  const split = e.target.closest('.split .inbox-item.sel:not(.dragging)')?.closest('.split'); // no .sel: it was just closed
   if (!split) return;
   split.classList.add('detail', 'moved');
   if (current === 'messages') chatLive?.markOpen();
@@ -3209,13 +3296,13 @@ portal.onBack?.(() => {
   const pop = document.querySelector(':popover-open');
   if (pop) return pop.hidePopover();
   if (document.body.classList.contains('sheet')) return document.body.classList.remove('sheet');
-  const detail = $('#content .split.detail');
-  if (detail) return detail.classList.remove('detail');
+  const back = $('#content .split.detail .split-back');
+  if (back) return back.click();
   if (views[current].parent) return show(views[current].parent);
   if (current !== 'today') return show('today');
   portal.minimize();
 });
-$('#refresh').addEventListener('click', () => show(current, true));
+$('#refresh').addEventListener('click', () => retry(current));
 
 if (pref('collapsed') || narrowMq.matches) document.body.classList.add('collapsed');
 setAccent(ACCENTS.includes(pref('accent')) ? pref('accent') : ACCENTS[0]);

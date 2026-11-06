@@ -27,9 +27,11 @@ contextBridge.exposeInMainWorld('portal', {
   openData: () => ipcRenderer.invoke('openData'),
   checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
   poll: () => ipcRenderer.invoke('poll'),
+  allowLogin: () => ipcRenderer.invoke('allowLogin'),
   savePrefs: (json) => ipcRenderer.send('prefs-save', json),
   // Only these main->renderer events are exposed.
   onUnread: (cb) => ipcRenderer.on('unread', (_e, counts) => cb(counts)),
+  onSignedIn: (cb) => ipcRenderer.on('signed-in', () => cb()),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, view) => cb(view)),
   onSession: (cb) => ipcRenderer.on('session', (_e, state) => cb(state)), // 'ok' | 'expired' | 'maintenance'
 });

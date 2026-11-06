@@ -7,6 +7,7 @@
   const REPO_API = 'https://api.github.com/repos/RGB-Outl4w/UlSU-Portal-Desktop/releases';
   const native = (method, opts = {}) => Capacitor.nativePromise('UlPortal', method, opts);
   let sesskey, userid, loginPromise;
+  let declined = false; // the user closed the sign-in page: background reads must not reopen it
 
   // WebView's localStorage (app.js prefs: welcome seen, language, recent courses…) never reached disk
   // before Android killed the app. Mirror it in SharedPreferences through UlPrefs (sync, see UlPortalPlugin).
@@ -66,7 +67,14 @@
 
   // Real portal login page in a native WebView; the user types everything, we only watch for landing logged in.
   function login() {
-    loginPromise ||= native('login').finally(() => { loginPromise = null; });
+    if (declined && !loginPromise) return Promise.reject(new Error(T('Вход отменён')));
+    loginPromise ||= native('login').then(() => {
+      setTimeout(() => listeners.signedIn.forEach((cb) => cb()));
+    }, (e) => {
+      declined = true;
+      listeners.session.forEach((cb) => cb('expired'));
+      throw e;
+    }).finally(() => { loginPromise = null; });
     return loginPromise;
   }
 
@@ -191,7 +199,7 @@
   // Unread check (PortalCheck.java, which also posts the notifications): every 3 min while the app is on
   // screen and whenever it comes back; WorkManager runs the same check every 15 min in the background.
   const POLL_MS = 3 * 60 * 1000;
-  const listeners = { unread: [], session: [] };
+  const listeners = { unread: [], session: [], signedIn: [] };
   async function poll() {
     if (loginPromise) return null; // the sign-in page is open: the session is being replaced
     try {
@@ -232,6 +240,7 @@
       if (sesskey) await net(`${BASE}/login/logout.php?sesskey=${sesskey}`).catch(() => {});
       sesskey = null;
       userid = null;
+      declined = false;
       await native('clearCookies');
       await clearCache(); // cached pages hold personal data
     },
@@ -245,6 +254,8 @@
     clearCache,
     checkUpdate,
     poll,
+    allowLogin: async () => { declined = false; },
+    onSignedIn: (cb) => listeners.signedIn.push(cb),
     onUnread: (cb) => listeners.unread.push(cb),
     onSession: (cb) => listeners.session.push(cb),
     // notification tap (UlPortalPlugin.handleOnNewIntent)

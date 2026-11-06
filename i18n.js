@@ -437,6 +437,7 @@ const EN = {
   // 1.2.6: grade detail, current performance, folders, presentations, search, support
   'Экзамены и зачёты': 'Exams and credits',
   'Текущая': 'Current',
+  'Вход отменён': 'Sign-in cancelled',
   'Текущая успеваемость пока пуста': 'Current performance is empty for now',
   'Текущая успеваемость не найдена!': 'The portal has no current performance for you yet.',
   'Когда на портале появятся данные, они будут здесь.': 'When the portal has data, it will show here.',

@@ -14,7 +14,7 @@ const GRADES = `<table class="generaltable user-grade"><tbody>
   <td class="column-percentage">87,50 %</td><td class="column-feedback">Хорошо</td><td class="column-contributiontocoursetotal">-</td></tr>
 <tr><th class="level2 item column-itemname">Не сдано</th><td class="column-grade">-</td><td class="column-range">0–10</td><td class="column-feedback">&nbsp;</td></tr>
 <tr><th class="level2 baggt column-itemname">Итог раздела</th><td class="column-grade">3,50</td></tr>
-<tr><th class="level1 baggt b2b column-itemname">Итоговая оценка за курс</th><td class="column-grade">3,50</td><td class="column-range">0–14</td><td class="column-percentage">25,00 %</td></tr>
+<tr><th class="level1 baggt b2b column-itemname">Итоговая оценка за курс</th><td class="column-grade">Ошибка</td><td class="column-range">0–14</td><td class="column-percentage">Ошибка</td></tr>
 </tbody></table>`;
 
 const EMPTY_NOW = '<div role="main"><div class="accordion">Текущая успеваемость не найдена!</div></div>';
@@ -44,6 +44,8 @@ app.whenReady().then(async () => {
     assert.strictEqual(g[1].weight, ''); // "-" means no value
     assert.strictEqual(g[2].grade, '');
     assert.strictEqual(g[2].feedback, '');
+    assert.strictEqual(g[4].grade, ''); // "Ошибка" is no grade
+    assert.strictEqual(g[4].percent, '');
     assert.deepStrictEqual((await run('gradeDetail', '<p>no table</p>')), []);
 
     const empty = await run('currentProgress', EMPTY_NOW);

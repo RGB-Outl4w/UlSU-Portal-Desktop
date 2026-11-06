@@ -3,13 +3,14 @@
 const Parse = (() => {
   const BASE = 'https://portal.ulsu.ru';
   const text = (el) => el?.textContent.replace(/\s+/g, ' ').trim() || '';
-  const noDash = (s) => (/^[-–—]$/.test(s) ? '' : s); // the portal prints "-" for "no value"
+  // No value: the portal prints "-", or "Ошибка" for a total with nothing graded yet.
+  const noValue = (s) => (/^([-–—]|Ошибка|Error)$/.test(s) ? '' : s);
 
   // /course/user.php?mode=grade: kind is 'category' (heading), 'item', 'subtotal' or 'total' (the course).
   function gradeDetail(doc) {
     return [...doc.querySelectorAll('table.user-grade tbody tr')].map((tr) => {
       const head = tr.querySelector('.column-itemname');
-      const cell = (name) => noDash(text(tr.querySelector(`.column-${name}`)));
+      const cell = (name) => noValue(text(tr.querySelector(`.column-${name}`)));
       const kind = !tr.querySelector('.column-grade') ? 'category'
         : !/\bbagg[tb]\b/.test(head?.className) ? 'item' // baggt/baggb mark aggregate rows
           : head.classList.contains('level1') ? 'total' : 'subtotal';

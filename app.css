@@ -61,7 +61,7 @@
 /* touch: no tap flash, and a long-press on a control doesn't select its text or open a callout.
    :hover rules sit in @media (hover: hover), so they don't stick after a tap; a short press state stands in. */
 html { -webkit-tap-highlight-color: transparent; }
-:is(button, [role=button], select, label, img) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+:is(button, [role=button], label, img) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 @media (hover: none) {
   :is(button, [role=button]) { transition: opacity .12s ease; }
   :is(button, [role=button]):active { opacity: .6; }
@@ -169,12 +169,12 @@ input[type=search]:focus { outline: none; border-color: var(--accent); box-shado
 .select {
   height: 36px; padding: 0 32px 0 12px; border-radius: var(--r); border: 1px solid var(--line);
   background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 14px;
-  color: var(--text); font: inherit; appearance: none; cursor: pointer;
+  color: var(--text); font: inherit; text-align: left; max-width: 100%; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 @media (hover: hover) { .select:hover { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); } }
 .select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.select option { background: Canvas; color: CanvasText; }
 input[type=search] { width: 220px; }
 input[type=search]:focus { width: 260px; }
 
@@ -519,12 +519,19 @@ canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; ali
 .conv-side .count.dot { min-width: 10px; width: 10px; height: 10px; padding: 0; }
 .pin-drag { align-self: center; padding: 6px 2px 6px 8px; color: var(--muted); cursor: grab; touch-action: none; font-size: 15px; }
 .inbox-item.dragging { opacity: .7; background: var(--side-hover); }
-#ctx { position: fixed; inset: auto; margin: 0; min-width: 190px; padding: 5px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--text); box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .4); transition: opacity .12s; }
+#ctx {
+  position: fixed; inset: auto; margin: 0; min-width: 190px; max-height: min(340px, calc(100vh - 16px)); overflow: auto; padding: 5px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--card); color: var(--text); box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .4);
+  transition: opacity .14s ease, transform .18s var(--ease), overlay .18s allow-discrete, display .18s allow-discrete;
+}
 @media (prefers-color-scheme: dark) { #ctx { background: #1f2229; } }
-#ctx:not(:popover-open) { opacity: 0; }
+#ctx:not(:popover-open) { opacity: 0; transform: scale(.95); }
+@starting-style { #ctx:popover-open { opacity: 0; transform: scale(.95); } }
 #ctx button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--r-sm); text-align: left; font-size: 13.5px; }
 #ctx button.danger { color: var(--danger); }
 @media (hover: hover) { #ctx button:hover { background: var(--side-hover); } }
+#ctx button:focus-visible { outline: none; background: var(--side-hover); }
+@media (pointer: coarse) { #ctx button { min-height: 44px; } }
 .inbox-item.conv { -webkit-touch-callout: none; user-select: none; }
 .bubble-del { display: none; margin-right: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .bubble.mine:hover .bubble-del, .bubble.mine:focus-within .bubble-del { display: inline; }
@@ -567,8 +574,17 @@ canvas.crop { width: 280px; height: 280px; max-width: 100%; aspect-ratio: 1; ali
 /* Tablets and small windows only: phones show list or chat one at a time (.split.detail), and two columns
    there left the visible one at 280 px with an empty strip beside it. */
 @media (min-width: 760px) {
-  @container (max-width: 860px) { .split:not(.cal-split) { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); } }
+  @container (max-width: 860px) { .split.pick { --list: 280px; } }
+  /* no detail open: the list takes the whole width and squeezes back when one opens */
+  .split.pick { grid-template-columns: var(--list) minmax(0, 1fr); transition: --list var(--t) var(--ease), column-gap var(--t) var(--ease); }
+  .split.pick:not(.detail) { --list: 100%; column-gap: 0; }
+  .split.pick > :last-child { transition: opacity var(--t-fast), visibility var(--t); }
+  .split.pick:not(.detail) > :last-child { opacity: 0; visibility: hidden; }
+  .chat-head .split-back { order: 1; }
+  .reader-head { position: relative; padding-right: 40px; }
+  .reader-head .split-back { position: absolute; top: -6px; right: -6px; }
 }
+@property --list { syntax: "<length-percentage>"; inherits: false; initial-value: 360px; }
 .cal { display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
 .cal-head { display: grid; grid-template-columns: repeat(7, 1fr); padding: 2px 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; text-align: center; }
 .cal-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(84px, 1fr); gap: 4px; }
@@ -676,6 +692,7 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .reader-bar { display: flex; align-items: center; gap: 6px; padding: 12px 12px 12px 22px; border-bottom: 1px solid var(--line); }
 .reader-bar h2 { flex: 1; margin: 0; font-size: 17px; }
 #reader-body { overflow: auto; padding: 20px 26px 26px; }
+#reader:not(.media) #reader-body > * { animation: soft-in .28s ease; }
 #reader-body .rich { font-size: 15px; }
 .rich img { max-width: 100%; height: auto; border-radius: var(--r-sm); }
 .rich table { border-collapse: collapse; margin: 0 0 .8em; }
@@ -715,7 +732,6 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #net-banner {
   display: flex; align-items: center; gap: 12px; margin: 12px 28px 0; padding: 8px 10px 8px 14px; border-radius: var(--r);
   background: color-mix(in oklab, var(--lab) 14%, transparent); color: var(--text); font-size: 13px;
-  animation: rise .3s var(--ease);
 }
 #net-banner::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--lab); flex: none; }
 #net-banner span { flex: 1; }
@@ -839,7 +855,7 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 
 /* ---------- phones (Android; desktop windows never get this narrow, main.js minWidth 760) ---------- */
 /* bottom tab bar with the main tabs; Ещё opens the whole sidebar as a bottom sheet */
-#tabbar, #side-backdrop, .split-back { display: none; }
+#tabbar, #side-backdrop { display: none; }
 @media (max-width: 759px) {
   :root { --bar-h: 60px; --solid: #f4f6fa; --sheet: #ffffff; }
   body { flex-direction: column; background: var(--solid); }
@@ -937,6 +953,18 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #content.quiet .acts, #content.quiet .check, #content.quiet .fav { animation: none; }
 #content.quiet > *, #content.quiet .day-panel > * { animation: soft-in .2s ease both; }
 @keyframes soft-in { from { opacity: .45; } }
+/* These fold away and back: `hidden` stays the switch, display is kept alive for the exit. */
+#me, #net-banner {
+  interpolate-size: allow-keywords; overflow: hidden;
+  transition: opacity var(--t) ease, height var(--t) var(--ease), margin var(--t) var(--ease), padding var(--t) var(--ease),
+    color var(--t-fast), background var(--t-fast), display var(--t) allow-discrete;
+}
+#me[hidden], #net-banner[hidden] { opacity: 0; height: 0; margin-block: 0; padding-block: 0; }
+@starting-style { #me:not([hidden]), #net-banner:not([hidden]) { opacity: 0; height: 0; margin-block: 0; padding-block: 0; } }
+/* course sections and other <details> open and close smoothly */
+details { interpolate-size: allow-keywords; }
+details::details-content { height: 0; overflow: clip; transition: height var(--t) var(--ease), content-visibility var(--t) allow-discrete; }
+details[open]::details-content { height: auto; }
 
 /* ---------- motion off ---------- */
 @media (prefers-reduced-motion: reduce) {
