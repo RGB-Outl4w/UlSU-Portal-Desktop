@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## Unreleased (1.2.7)
+## 1.2.7 — 2026-11-08
 
 **Save materials to your device.** / **Материалы на устройстве.**
 
