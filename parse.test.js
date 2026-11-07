@@ -59,6 +59,35 @@ app.whenReady().then(async () => {
     assert.strictEqual(f[0].items[0].name, 'a.pdf');
     assert.strictEqual(f[1].url, 'https://portal.ulsu.ru/pluginfile.php/1/mod_folder/content/0/b.pptx');
     assert.deepStrictEqual(await run('folder', '<div></div>'), []);
+    const page = `<div role="main"><div class="box generalbox">
+      <h2>Тема <b>1</b></h2><script>alert(1)</script>
+      <div>Текст с *звёздочкой* и <a href="/mod/x" onclick="evil()">ссылкой</a></div>
+      <p>Строка<br>вторая</p><p><img src="/pluginfile.php/1/a.png" alt="схема"><img src="https://evil.example/t.gif"></p>
+      <ul><li>Раз<ul><li>Вложенный</li></ul></li><li>Два</li></ul><ol><li>Первый</li></ol>
+      <iframe src="https://video.example/1"></iframe>
+      <table><tr><th>А</th><th>Б</th></tr><tr><td>1|2</td><td><p>3</p></td></tr></table></div></div>`;
+    const conv = await win.webContents.executeJavaScript(`(() => {
+      const box = () => Parse.cleanPage(new DOMParser().parseFromString(${JSON.stringify(page)}, 'text/html').querySelector('.generalbox'), 'Видео');
+      return { md: Parse.toMarkdown(box()), txt: Parse.toMarkdown(box(), true), html: Parse.toHtml('Заголовок <1>', box()) };
+    })()`);
+    assert.ok(conv.md.includes('## Тема **1**'), conv.md);
+    assert.ok(conv.md.includes('Текст с \\*звёздочкой\\* и [ссылкой](https://portal.ulsu.ru/mod/x)'), conv.md);
+    assert.ok(conv.md.includes('Строка  \nвторая'), conv.md);
+    assert.ok(conv.md.includes('![схема](https://portal.ulsu.ru/pluginfile.php/1/a.png)'), conv.md);
+    assert.ok(!conv.md.includes('evil') && !conv.md.includes('alert'), conv.md);
+    assert.ok(conv.md.includes('- Раз\n  - Вложенный\n- Два'), conv.md);
+    assert.ok(conv.md.includes('1. Первый'), conv.md);
+    assert.ok(conv.md.includes('[Видео](https://video.example/1)'), conv.md);
+    assert.ok(conv.md.includes('| А | Б |\n| --- | --- |\n| 1\\|2 | 3 |'), conv.md);
+    assert.ok(conv.txt.includes('Тема 1\n\nТекст с *звёздочкой* и ссылкой (https://portal.ulsu.ru/mod/x)'), conv.txt);
+    assert.ok(conv.txt.includes('А\tБ') && !conv.txt.includes('!['), conv.txt);
+    assert.ok(conv.html.startsWith('<!doctype html>') && conv.html.includes('charset="utf-8"') && conv.html.includes('&lt;1&gt;'), conv.html);
+    assert.ok(!/<script|onclick|evil/.test(conv.html), conv.html);
+
+    const csv = await win.webContents.executeJavaScript(`Parse.toCsv(['a', 'b'], [['=1+1', '-'], ['x;y', 'a"b'], ['-5', '-cmd'], [null, 3]])`);
+    assert.strictEqual(csv, `\ufeffa;b\r\n'=1+1;-\r\n"x;y";"a""b"\r\n-5;'-cmd\r\n;3\r\n`);
+    const names = await win.webContents.executeJavaScript(`[Parse.fileName('Тема: 1/2 (конспект).'), Parse.fileName('..'), Parse.fileName('я'.repeat(200) + '.md').length]`);
+    assert.deepStrictEqual(names, ['Тема_ 1_2 (конспект)', '_', 123]);
     console.log('parse.test.js: ok');
     app.exit(0);
   } catch (e) {

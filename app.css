@@ -466,7 +466,7 @@ input[type=search]:focus { width: 260px; }
 }
 @keyframes pop-in { from { transform: scale(.4); opacity: 0; } }
 body.collapsed #nav .count { position: absolute; top: 4px; left: 28px; margin: 0; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
-.tool-btn { height: 36px; padding: 0 14px; border-radius: var(--r); border: 1px solid var(--line); background: var(--card); font-weight: 600; transition: border-color var(--t-fast); }
+.tool-btn { height: 36px; padding: 0 14px; white-space: nowrap; flex-shrink: 0; border-radius: var(--r); border: 1px solid var(--line); background: var(--card); font-weight: 600; transition: border-color var(--t-fast); }
 @media (hover: hover) { .tool-btn:hover { border-color: var(--accent); color: var(--accent); } }
 .tool-btn:disabled { opacity: .5; pointer-events: none; }
 
@@ -691,6 +691,8 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #reader::backdrop { background: rgba(10, 14, 25, .35); }
 .reader-bar { display: flex; align-items: center; gap: 6px; padding: 12px 12px 12px 22px; border-bottom: 1px solid var(--line); }
 .reader-bar h2 { flex: 1; margin: 0; font-size: 17px; }
+.reader-bar .icon-btn:disabled { opacity: .35; pointer-events: none; }
+#reader-prev, #reader-next { font-size: 22px; line-height: 1; }
 #reader-body { overflow: auto; padding: 20px 26px 26px; }
 #reader:not(.media) #reader-body > * { animation: soft-in .28s ease; }
 #reader-body .rich { font-size: 15px; }
@@ -712,6 +714,7 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #reader .pdf { flex: 1; border: 0; width: 100%; background: #525659; }
 #reader .player { flex: 1; width: 100%; max-height: 100%; background: #000; }
 
+.mat-filter { margin-bottom: 16px; }
 .mat-groups { display: flex; flex-direction: column; gap: 20px; max-width: 1100px; }
 .mat-group h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
 .mat-group .n { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--sk); }

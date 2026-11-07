@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
@@ -357,6 +358,8 @@ public class UlPortalPlugin extends Plugin {
         ContentValues values = new ContentValues();
         values.put(MediaStore.Downloads.DISPLAY_NAME, name);
         values.put(MediaStore.Downloads.MIME_TYPE, type);
+        String dir = call.getString("dir");
+        if (dir != null) values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + dir);
         Uri uri = getContext().getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
         if (uri == null) {
             call.reject("Не удалось сохранить файл");
@@ -368,7 +371,10 @@ public class UlPortalPlugin extends Plugin {
             call.reject(e.getMessage());
             return;
         }
-        try {
+        String note = call.getString("note");
+        if (!call.getBoolean("open", true)) {
+            if (note != null) getActivity().runOnUiThread(() -> Toast.makeText(getContext(), note, Toast.LENGTH_SHORT).show());
+        } else try {
             Intent view = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             getActivity().startActivity(Intent.createChooser(view, name));
         } catch (ActivityNotFoundException ignored) {

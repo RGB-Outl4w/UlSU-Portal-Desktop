@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, shell, Tray, Menu, powerMonitor, nativeTheme, Notification, dialog, net: electronNet } = require('electron');
 const fs = require('fs');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
@@ -158,25 +160,109 @@ async function get(p) {
 // the Lax session cookie isn't sent there (it lands on the login page); fetching here sends it.
 // ponytail: whole file in memory; stream through a custom protocol if big videos show up.
 async function file(url) {
-  if (!url.startsWith(`${BASE}/`)) throw new Error('not a portal file');
-  const res = await net(url);
-  const type = res.headers.get('content-type') || '';
-  if (type.startsWith('text/html')) {
-    const html = await res.text();
-    if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return file(url); }
-    throw new Error(t('Портал вернул страницу вместо файла'));
-  }
-  return { type, bytes: new Uint8Array(await res.arrayBuffer()) };
+  const res = await fileReply(url);
+  return { type: res.headers.get('content-type') || '', bytes: new Uint8Array(await res.arrayBuffer()) };
 }
 
+// The portal's reply with the file still unread; its sign-in page signs in and asks again.
+async function fileReply(url) {
+  if (!url.startsWith(`${BASE}/`)) throw new Error('not a portal file');
+  const res = await net(url);
+  if ((res.headers.get('content-type') || '').startsWith('text/html')) {
+    const html = await res.text();
+    if (/<body[^>]*\bnotloggedin\b/.test(html)) { await login(); return fileReply(url); }
+    throw new Error(t('Портал вернул страницу вместо файла'));
+  }
+  return res;
+}
+
+// Same rules as Parse.fileName in parse.js.
+function safeName(s) {
+  const ext = s.match(/\.\w{1,8}$/)?.[0] || '';
+  return (s.slice(0, s.length - ext.length).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '').slice(0, 120) || '_') + ext;
+}
+
+// Straight to disk, so a big video never sits in memory. A failed download leaves no half file behind.
+async function writeBody(res, target) {
+  const part = `${target}.part`;
+  try {
+    await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(part));
+    await fs.promises.rename(part, target);
+  } catch (e) {
+    await fs.promises.rm(part, { force: true });
+    throw e;
+  }
+}
+
+const savePath = async (name) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWin, { defaultPath: path.join(app.getPath('downloads'), safeName(name)) });
+  return canceled ? null : filePath;
+};
+const busy = async (work) => { // a saving file shows in the taskbar or Dock
+  mainWin.setProgressBar(2);
+  try { return await work(); } finally { mainWin.setProgressBar(-1); }
+};
+
 // Save a portal file to disk (asks where); returns the saved path or null if cancelled.
+// ponytail: the reply waits open during the dialog; a dialog left for many minutes can fail the download.
 async function download(url, name) {
-  const { canceled, filePath } = await dialog.showSaveDialog(mainWin, { defaultPath: path.join(app.getPath('downloads'), name) });
-  if (canceled || !filePath) return null;
-  const { bytes } = await file(url);
-  await fs.promises.writeFile(filePath, bytes);
+  const res = await fileReply(url);
+  const filePath = await savePath(withExt(name, res));
+  if (!filePath) { res.body?.cancel().catch(() => {}); return null; }
+  await busy(() => writeBody(res, filePath));
   shell.showItemInFolder(filePath);
   return filePath;
+}
+
+// Text the app made (a page, a table). files go to the folder dir beside it: images of a Markdown page,
+// which point at that folder by name, so the file itself can be renamed in the dialog.
+async function saveData(name, data, files = [], dir) {
+  const filePath = await savePath(name);
+  if (!filePath) return null;
+  await fs.promises.writeFile(filePath, data);
+  if (files.length) {
+    const folder = path.join(path.dirname(filePath), safeName(dir));
+    await fs.promises.mkdir(folder, { recursive: true });
+    for (const f of files) await fs.promises.writeFile(path.join(folder, safeName(f.name)), f.bytes);
+  }
+  shell.showItemInFolder(filePath);
+  return filePath;
+}
+
+// A page as PDF: printed in a hidden window with scripts off. The page is a file, since a data: URL
+// with images can be too long to load.
+async function savePdf(name, html) {
+  const filePath = await savePath(name);
+  if (!filePath) return null;
+  const tmp = path.join(OPEN_DIR(), `${crypto.randomUUID()}.html`);
+  const win = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true, partition: 'ulportal-print' } });
+  try {
+    await fs.promises.mkdir(OPEN_DIR(), { recursive: true });
+    await fs.promises.writeFile(tmp, html);
+    await win.loadFile(tmp);
+    await fs.promises.writeFile(filePath, await win.webContents.printToPDF({ printBackground: true }));
+  } finally {
+    win.destroy();
+    await fs.promises.rm(tmp, { force: true });
+  }
+  shell.showItemInFolder(filePath);
+  return filePath;
+}
+
+// A portal folder into a folder of the same name; files: [{ path: ['sub', 'a.pdf'], url }].
+async function saveFolder(name, files) {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWin, { defaultPath: app.getPath('downloads'), properties: ['openDirectory', 'createDirectory'] });
+  if (canceled || !filePaths[0]) return null;
+  const root = path.join(filePaths[0], safeName(name));
+  await busy(async () => {
+    for (const f of files) {
+      const target = path.join(root, ...f.path.map(safeName));
+      await fs.promises.mkdir(path.dirname(target), { recursive: true });
+      await writeBody(await fileReply(f.url), target);
+    }
+  });
+  shell.showItemInFolder(root);
+  return root;
 }
 
 // Presentations have no viewer in the app: the file is saved to OPEN_DIR and opened by the system app.
@@ -187,12 +273,37 @@ const SLIDE_TYPES = {
   'application/vnd.ms-powerpoint': '.ppt',
   'application/vnd.oasis.opendocument.presentation': '.odp',
 };
+const FILE_TYPES = {
+  ...SLIDE_TYPES,
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.oasis.opendocument.text': '.odt',
+  'application/vnd.ms-excel': '.xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.oasis.opendocument.spreadsheet': '.ods',
+  'application/rtf': '.rtf',
+  'application/zip': '.zip',
+  'text/plain': '.txt',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+  'audio/mpeg': '.mp3',
+};
+// A course item has a title, not a file name: the extension comes from the reply.
+// (session.fetch leaves res.url empty, so the headers are all there is.)
+function withExt(name, res) {
+  const ext = res.headers.get('content-disposition')?.match(/\.\w{1,8}(?="?\s*(;|$))/)?.[0]
+    || FILE_TYPES[(res.headers.get('content-type') || '').split(';')[0].trim()] || '';
+  return name.toLowerCase().endsWith(ext.toLowerCase()) ? name : name + ext;
+}
+
 async function openLocal(url, name) {
   const { type, bytes } = await file(url);
   const ext = SLIDE_TYPES[type.split(';')[0].trim()];
   if (!ext) throw new Error('not a presentation');
   await fs.promises.mkdir(OPEN_DIR(), { recursive: true });
-  const target = path.join(OPEN_DIR(), `${name.replace(/\.\w{2,4}$/, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 100)}${ext}`);
+  const target = path.join(OPEN_DIR(), safeName(name.replace(/\.\w{2,4}$/, '')) + ext);
   await fs.promises.writeFile(target, bytes).catch((e) => { if (!fs.existsSync(target)) throw e; }); // already open: keep that copy
   const err = await shell.openPath(target);
   if (err) throw new Error(err);
@@ -463,6 +574,9 @@ app.whenReady().then(() => {
   // mode 'live': no disk copy (portal endpoints that change things over GET, e.g. /CDO/lib.php?API=sendQ)
   ipcMain.handle('get', (_e, p, mode) => (mode === 'live' ? get(p) : cached(['get', p], () => get(p), mode)));
   ipcMain.handle('download', (_e, url, name) => download(url, name));
+  ipcMain.handle('saveData', (_e, name, data, files, dir) => saveData(name, data, files, dir));
+  ipcMain.handle('savePdf', (_e, name, html) => savePdf(name, html));
+  ipcMain.handle('saveFolder', (_e, name, files) => saveFolder(name, files));
   ipcMain.handle('openLocal', (_e, url, name) => openLocal(url, name));
   // A copy the app makes itself (data from POST reads, which aren't cached): with data saves, without reads.
   ipcMain.handle('keep', (_e, key, data) => cached(['keep', key], async () => data, data === undefined ? 'cache' : undefined));

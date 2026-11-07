@@ -1,5 +1,29 @@
 # Changelog / История изменений
 
+## Unreleased (1.2.7)
+
+**Save materials to your device.** / **Материалы на устройстве.**
+
+**English**
+- Courses: save any material to your device, from the reader's new button or by right-clicking or long-pressing an item. Text pages save as .md, .txt or .html, and as .pdf on desktop. Files keep their format, links save as .md or .txt, and folders save with their subfolders. On Android everything goes to Downloads.
+- Saved pages: images are inside .html and .pdf, in a folder beside .md, and left out of .txt. An embedded video saves as a link.
+- Saving an item marks it viewed on the portal, just like opening it.
+- Reader: ‹ › buttons and the arrow keys move to the previous or next material. On the Materials tab they stay within the group.
+- Materials: a "Not viewed" switch above the groups, and each group shows how many of its items are viewed (locked items count as not viewed).
+- Schedule, Grades, Academic record and Study plan: save what is on screen as .csv or .md. The .csv opens in Excel as columns.
+- Files now save straight to disk, so large videos no longer load into memory on desktop, and the save dialog suggests the right extension.
+- Toolbar buttons such as «← Курсы» no longer break onto two lines when the toolbar is crowded.
+
+**Русский**
+- Курсы: любой материал можно сохранить на устройство новой кнопкой в окне просмотра, правым кликом или долгим нажатием. Текстовые страницы сохраняются как .md, .txt или .html, на компьютере ещё как .pdf. Файлы остаются в своём формате, ссылки сохраняются как .md или .txt, папки — с вложенными папками. На Android всё попадает в «Загрузки».
+- Сохранённые страницы: картинки находятся внутри .html и .pdf, в папке рядом с .md, а в .txt их нет. Встроенное видео сохраняется ссылкой.
+- Сохранение отмечает материал просмотренным на портале, как и открытие.
+- Окно просмотра: кнопки ‹ › и стрелки на клавиатуре открывают предыдущий или следующий материал. На вкладке «Материалы» — внутри своей группы.
+- Материалы: переключатель «Не просмотрено» над группами, а у каждой группы показано, сколько её материалов просмотрено (закрытые считаются непросмотренными).
+- Расписание, Оценки, Успеваемость и Учебный план: то, что на экране, можно сохранить как .csv или .md. Файл .csv открывается в Excel по столбцам.
+- Файлы теперь пишутся прямо на диск: на компьютере большие видео больше не загружаются в память, а окно сохранения предлагает правильное расширение.
+- Кнопки панели инструментов, например «← Курсы», больше не переносятся на две строки, когда панель заполнена.
+
 ## 1.2.6 — 2026-11-06
 
 **Grades in detail, folders, search everywhere.** / **Подробные оценки, папки, поиск по всему.**

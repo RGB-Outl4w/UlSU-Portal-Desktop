@@ -282,7 +282,7 @@ function typeClass(t) {
 // Toolbar state for the list views; sort/filter choices are remembered.
 const ui = {
   courses: { q: '', grouping: null, sort: null }, // null until loaded: the portal's saved choice
-  course: { id: null, info: null, closed: new Set(), tab: 'content', q: '' }, // course opened inside the app; closed = collapsed section ids
+  course: { id: null, info: null, closed: new Set(), tab: 'content', q: '', todo: false }, // course opened inside the app; closed = collapsed section ids; todo = Материалы shows only what isn't viewed
   grades: { q: '', sort: pref('sort-grades') || 'name', only: pref('only-graded') || 'all' },
   progress: { sem: 'all', tab: 'marks' },
   plan: { q: '', sem: null }, // null = pick the current semester from the profile
@@ -384,6 +384,16 @@ function paneHead(iconName, title, extra, onMore) {
     onMore ? h('button', { class: 'more', onclick: onMore }, T('Все →')) : null);
 }
 
+const gradeNum = (g) => parseFloat(g.grade.replace(',', '.')); // "12,50" -> 12.5, "-" -> NaN
+function gradeList(grades) {
+  const ungraded = (a, b) => isNaN(gradeNum(a)) - isNaN(gradeNum(b)); // ungraded always last
+  return grades.filter((g) => ui.grades.only === 'all' || !isNaN(gradeNum(g))).sort({
+    name: (a, b) => byName(a.course, b.course),
+    'grade-desc': (a, b) => ungraded(a, b) || gradeNum(b) - gradeNum(a),
+    'grade-asc': (a, b) => ungraded(a, b) || gradeNum(a) - gradeNum(b),
+  }[ui.grades.sort]);
+}
+
 const views = {
   today: {
     title: T('Сегодня'),
@@ -463,9 +473,14 @@ const views = {
     load: async () => (await loadMy()).weeks,
     tools(weeks) {
       if (!weeks[week]) week = Object.keys(weeks)[0];
-      return seg(Object.entries(weeks).map(([k, v]) =>
+      return [seg(Object.entries(weeks).map(([k, v]) =>
         [k, (k === 'current' ? T('Текущая') : T('Следующая')) + (v.parity ? ` · ${roman(v.parity)}` : '')]), week,
-      (k) => { week = k; swap(views.schedule.render(weeks), true); });
+      (k) => { week = k; swap(views.schedule.render(weeks), true); }),
+      exportBtn(() => {
+        const w = weeks[week];
+        return [`${T('Расписание')} ${w?.range || ''}`.trim(), [T('Дата'), T('Время'), T('Занятие'), T('Вид'), T('Аудитория'), T('Преподаватель')],
+          (w?.days || []).flatMap((d) => d.pairs.map((p) => [d.date.toLocaleDateString(LOCALE), p.time, p.subject, T(p.type), p.place, p.teacher]))];
+      })];
     },
     render(weeks) {
       const w = weeks[week];
@@ -550,6 +565,7 @@ const views = {
     sk: 'rows',
     load: async () => parseGrades(html(await pget('/grade/report/overview/index.php'))),
     tools: () => [
+      exportBtn(() => [T('Оценки'), [T('Предмет'), T('Оценка')], gradeList(cache.grades).map((g) => [g.course, g.grade])]),
       search(T('Поиск предмета'), ui.grades),
       select([['all', T('Все предметы')], ['graded', T('Только с оценкой')]],
         ui.grades.only, (v) => { ui.grades.only = v; pref('only-graded', v); swap(views.grades.render(cache.grades), true); }),
@@ -557,16 +573,10 @@ const views = {
         ui.grades.sort, (v) => { ui.grades.sort = v; pref('sort-grades', v); swap(views.grades.render(cache.grades), true); }),
     ],
     render(grades) {
-      const num = (g) => parseFloat(g.grade.replace(',', '.')); // "12,50" -> 12.5, "-" -> NaN
-      const ungraded = (a, b) => isNaN(num(a)) - isNaN(num(b)); // ungraded always last
-      const list = grades.filter((g) => ui.grades.only === 'all' || !isNaN(num(g))).sort({
-        name: (a, b) => byName(a.course, b.course),
-        'grade-desc': (a, b) => ungraded(a, b) || num(b) - num(a),
-        'grade-asc': (a, b) => ungraded(a, b) || num(a) - num(b),
-      }[ui.grades.sort]);
+      const list = gradeList(grades);
       if (!list.length) return msg(T('Оценок нет'));
       return stagger(h('div', { class: 'list' }, list.map((g) => {
-        const none = isNaN(num(g));
+        const none = isNaN(gradeNum(g));
         return h('button', { class: 'card row lift', 'data-name': g.course.toLowerCase(), hidden: !matches(g.course, ui.grades.q), onclick: () => g.url && openGrades(g) },
           h('div', { class: 'main' }, g.course),
           h('div', { class: 'right grade' + (none ? ' none' : '') }, none ? '—' : g.grade));
@@ -589,6 +599,12 @@ const views = {
       }),
       ui.progress.tab === 'marks' ? seg([['all', T('Все')], ...d.sems.map((s, i) => [String(i), s.name])], ui.progress.sem,
         (k) => { ui.progress.sem = k; swap(views.progress.render(d), true); }) : null,
+      ui.progress.tab === 'marks' && d.sems.length ? exportBtn(() => {
+        const pick = ui.progress.sem === 'all' ? d.sems : [d.sems[ui.progress.sem]].filter(Boolean);
+        return [[T('Успеваемость'), pick.length === 1 ? pick[0].name : ''].filter(Boolean).join(' – '),
+          [T('Семестр'), T('Дисциплина'), T('Форма контроля'), T('Дата'), T('Оценка'), T('Пересдача'), T('Преподаватели')],
+          pick.flatMap((s) => s.rows.map((r) => [s.name, r.subject, T(r.control), r.date, T(r.mark), r.retake, r.teachers.join(', ')]))];
+      }) : null,
     ],
     render({ sems, now }) {
       if (ui.progress.tab === 'now') return currentTab(now);
@@ -628,6 +644,12 @@ const views = {
       h('span', { class: 'tool-label' }, T('Семестр')),
       seg(sems.map((s, i) => [String(i), s.name.replace(/\D+/g, '')]), planSem(sems),
         (k) => { ui.plan.sem = k; swap(views.plan.render(sems), true); }),
+      exportBtn(() => {
+        const s = sems[planSem(sems)];
+        return [`${T('Учебный план')} – ${s?.name || ''}`,
+          [T('Код'), T('Дисциплина'), T('Форма контроля'), T('Всего часов'), T('Лекции'), T('Практика'), T('Лабораторные'), T('Самостоятельная работа')],
+          (s?.rows || []).map((r) => [r.code, r.name, r.control, r.total, r.lect, r.pract, r.lab, r.self])];
+      }),
     ],
     render(sems) {
       const s = sems[planSem(sems)];
@@ -661,8 +683,7 @@ const textOf = (src) => html(src || '').body.textContent.replace(/\s+/g, ' ').tr
 // Portal HTML (messages, notifications, course pages) rebuilt from a tag whitelist: no scripts,
 // styles or attributes survive; links open through portal.open.
 // media: course pages may show portal-hosted images; embeds (video players) become an "open" button.
-const RICH_TAGS = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'SUB', 'SUP', 'UL', 'OL', 'LI', 'A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
-  'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH']);
+const { RICH_TAGS } = Parse;
 function rich(src, media = false) {
   const walk = (from, to) => {
     for (const n of from.childNodes) {
@@ -1201,7 +1222,7 @@ const RECENT_MAX = 3;
 function openCourse(c) {
   const recent = cache.courses?.recent;
   if (Array.isArray(recent)) cache.courses.recent = [c, ...recent.filter((r) => r.id !== c.id)].slice(0, RECENT_MAX);
-  if (ui.course.id !== c.id) { delete cache.course; Object.assign(ui.course, { closed: new Set(), tab: 'content', q: '' }); }
+  if (ui.course.id !== c.id) { delete cache.course; Object.assign(ui.course, { closed: new Set(), tab: 'content', q: '', todo: false }); }
   ui.course.id = c.id;
   ui.course.info = c;
   show('course');
@@ -1256,8 +1277,25 @@ async function openActivity(a) {
   if (a.completion && !a.completion.done && !a.completion.manual) setTimeout(refreshCourse, 2000);
 }
 
+// ‹ › in the reader: what opens inside it, in course order; on Материалы only the group it was opened from.
+function readerList(a) {
+  const inReader = (x) => x.url && !x.restricted && (x.type === 'folder' || ['page', 'video', ...(portal.platform === 'android' ? [] : ['pdf'])].includes(kindOf(x)));
+  if (!a.type || !cache.course || !inReader(a)) return [];
+  return cache.course.sections.flatMap((s) => s.activities).filter((x) => inReader(x) && (ui.course.tab !== 'materials' || kindOf(x) === kindOf(a)));
+}
+
 function showReader(a, body, media = false) {
   $('#reader-title').textContent = a.name;
+  const list = readerList(a);
+  const at = list.findIndex((x) => x.url === a.url);
+  for (const [id, to] of [['#reader-prev', list[at - 1]], ['#reader-next', list[at + 1]]]) {
+    $(id).hidden = at < 0 || list.length < 2;
+    $(id).disabled = !to;
+    $(id).onclick = to ? () => openActivity(to) : null;
+  }
+  const saves = a.type || media ? saveItems(a) : [];
+  $('#reader-save').hidden = !saves.length;
+  $('#reader-save').onclick = (e) => pickAt(e.currentTarget, saves);
   $('#reader-open').onclick = () => portal.open(a.url);
   $('#reader-back').hidden = !a.back; // a file opened from a folder returns to the folder
   $('#reader-back').onclick = a.back;
@@ -1270,13 +1308,117 @@ function showReader(a, body, media = false) {
 async function openReader(a) {
   showReader(a, msg(T('Загрузка…')));
   try {
-    const doc = html(await pget(a.url.replace(BASE, '')));
-    const box = doc.querySelector('[role=main] .box.generalbox') || doc.querySelector('[role=main]');
+    const box = pageBox(html(await pget(a.url.replace(BASE, ''))));
+    if ($('#reader-title').textContent !== a.name) return; // switched to another page meanwhile
     fillReader(rich(box?.innerHTML, true));
   } catch (e) {
     fillReader(errorBox(e));
   }
   if (a.completion && !a.completion.done) refreshCourse();
+}
+
+const pageBox = (doc) => doc.querySelector('[role=main] .box.generalbox') || doc.querySelector('[role=main]');
+
+// ---- saving to the device ----
+
+const IMG_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+const dataUrl = (type, bytes) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(new Blob([bytes], { type }));
+});
+
+// A course page as a file. Portal images need the session, so they can't stay links: .html and .pdf carry
+// them inside, .md gets a folder beside it, .txt has none. An image that fails leaves its alt text.
+async function savePage(a, fmt) {
+  const box = Parse.cleanPage(pageBox(html(await pget(a.url.replace(BASE, '')))), T('Встроенное видео / материал'));
+  const base = Parse.fileName(a.name);
+  const dir = `${base}_files`;
+  const files = [];
+  if (fmt !== 'txt') {
+    await Promise.all([...box.querySelectorAll('img')].map(async (img, i) => {
+      try {
+        const { type, bytes } = await portal.file(img.getAttribute('src'));
+        const mime = type.split(';')[0].trim();
+        if (!IMG_EXT[mime]) throw new Error(mime);
+        if (fmt === 'md') {
+          const name = `${i + 1}.${IMG_EXT[mime]}`;
+          files.push({ name, bytes });
+          img.setAttribute('src', `${encodeURI(dir).replace(/[()]/g, (c) => `%${c.charCodeAt(0).toString(16)}`)}/${name}`);
+        } else img.setAttribute('src', await dataUrl(mime, bytes));
+      } catch {
+        img.replaceWith(img.getAttribute('alt'));
+      }
+    }));
+  }
+  const name = `${base}.${fmt}`;
+  if (fmt === 'txt') return portal.saveData(name, `${a.name}\n\n${Parse.toMarkdown(box, true)}`);
+  if (fmt === 'md') return portal.saveData(name, `# ${a.name}\n\n${Parse.toMarkdown(box)}`, files, dir);
+  return fmt === 'pdf' ? portal.savePdf(name, Parse.toHtml(a.name, box)) : portal.saveData(name, Parse.toHtml(a.name, box));
+}
+
+// A URL item's view.php redirects to the target, and session.fetch follows it without saying where;
+// forceview=1 makes the portal stop on its own page, whose .urlworkaround link is the target.
+async function saveLink(a, fmt) {
+  const page = await portal.get(`${a.url.replace(BASE, '')}&forceview=1`, 'live').catch(() => '');
+  const target = html(page).querySelector('.urlworkaround a')?.getAttribute('href') || a.url;
+  return portal.saveData(`${Parse.fileName(a.name)}.${fmt}`, fmt === 'md' ? `[${a.name}](${target})\n` : `${a.name}\n${target}\n`);
+}
+
+async function saveFolderItem(a) {
+  const flat = (items, at = []) => items.flatMap((f) => (f.items ? flat(f.items, [...at, f.name]) : [{ path: [...at, f.name], url: f.url }]));
+  const files = flat(Parse.folder(html(await pget(a.url.replace(BASE, '')))));
+  if (!files.length) throw new Error(T('В папке нет файлов'));
+  return portal.saveFolder(Parse.fileName(a.name), files);
+}
+
+async function saving(job, a) {
+  try {
+    await job();
+  } catch (e) {
+    confirmBox(T('Не сохранено: {0}', errText(e)), '', T('Понятно'));
+  }
+  if (a?.completion && !a.completion.done) refreshCourse(); // reading the item counts as viewing it
+}
+
+// What a course item can be saved as: ctxMenu rows. Files stay as they are; only text pages have formats.
+function saveItems(a) {
+  const kind = a.type ? kindOf(a) : 'file';
+  if (!kind || !a.url) return [];
+  const row = (label, job) => [label, 'download', () => saving(job, a)];
+  const as = (fmt, job) => row(T('Сохранить как .{0}', fmt), () => job(a, fmt));
+  if (kind === 'page') return ['md', 'txt', 'html', ...(portal.savePdf ? ['pdf'] : [])].map((fmt) => as(fmt, savePage));
+  if (kind === 'link') return ['md', 'txt'].map((fmt) => as(fmt, saveLink));
+  if (a.type === 'folder') return [row(T('Сохранить папку'), () => saveFolderItem(a))];
+  return [row(T('Сохранить файл'), () => portal.download(a.url, Parse.fileName(a.name), false))];
+}
+
+// One row runs at once, several open as a menu under the button.
+function pickAt(btn, items) {
+  if (items.length === 1) return items[0][2]();
+  const r = btn.getBoundingClientRect();
+  ctxMenu({ clientX: r.left, clientY: r.bottom + 4 }, items);
+}
+
+// Right click or long press on a course item.
+const itemMenu = (a) => (e) => {
+  const saves = saveItems(a);
+  if (!saves.length) return;
+  e.preventDefault();
+  ctxMenu(e, [[T('Открыть'), 'external', () => openActivity(a)], ...saves]);
+};
+
+// Toolbar button that saves a table. table() gives [title, head, rows] for what is on screen when pressed.
+function exportBtn(table) {
+  const as = (ext, text) => [T('Сохранить как .{0}', ext), 'download', () => saving(() => {
+    const [title, head, rows] = table();
+    return portal.saveData(`${Parse.fileName(title)}.${ext}`, text(title, head, rows));
+  })];
+  return h('button', { class: 'icon-btn', title: T('Сохранить на устройство'), onclick: (e) => pickAt(e.currentTarget, [
+    as('csv', (_t, head, rows) => Parse.toCsv(head, rows)),
+    as('md', (title, head, rows) => `# ${title}\n\n${Parse.toMdTable(head, rows)}\n`),
+  ]) }, icon('download'));
 }
 
 // PDFs use Chromium's built-in viewer, video files a <video>. The bytes come through the main
@@ -1399,6 +1541,10 @@ function currentTab(now) {
 
 $('#reader-close').addEventListener('click', () => $('#reader').close());
 $('#reader').addEventListener('click', (e) => { if (e.target === $('#reader')) $('#reader').close(); });
+$('#reader').addEventListener('keydown', (e) => {
+  const btn = { ArrowLeft: $('#reader-prev'), ArrowRight: $('#reader-next') }[e.key];
+  if (btn && !btn.hidden && !btn.disabled && !e.target.closest('video, input, [role=menu]')) btn.click();
+});
 // Stop video/PDF and free the file after the close animation, unless the dialog was reopened meanwhile.
 $('#reader').addEventListener('close', () => setTimeout(() => {
   if ($('#reader').open) return;
@@ -1429,7 +1575,7 @@ function completionCheck(a) {
 
 function activityRow(a) {
   if (a.type === 'label') return h('div', { class: 'act label-act' }, rich(a.content, true), completionCheck(a));
-  return h('div', { class: 'act' + (a.restricted ? ' locked' : ''), 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q) },
+  return h('div', { class: 'act' + (a.restricted ? ' locked' : ''), 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), oncontextmenu: itemMenu(a) },
     a.icon ? h('img', { class: 'act-icon', src: a.icon, alt: '' }) : null,
     h('div', { class: 'act-main' },
       h('button', { class: 'act-link', disabled: a.url ? null : '', onclick: () => openActivity(a) }, a.name),
@@ -1455,17 +1601,28 @@ function contentTab(c) {
 function materialsTab(c) {
   const items = c.sections.flatMap((s) => s.activities.map((a) => ({ a, kind: kindOf(a), sec: s.name }))).filter((x) => x.kind);
   if (!items.length) return msg(T('Файлов и страниц в курсе нет'));
-  return stagger(h('div', { class: 'mat-groups' }, KINDS.map(([kind, label]) => {
-    const group = items.filter((x) => x.kind === kind);
+  // A locked item (Ограничено) has no completion mark, but it isn't viewed either: it counts as not viewed.
+  const tracked = items.some((x) => x.a.completion);
+  const left = (x) => !x.a.completion?.done;
+  // Above the groups, not in the toolbar: there it squeezed the course title.
+  const filter = tracked ? seg([['all', T('Все')], ['todo', T('Не просмотрено')]], ui.course.todo ? 'todo' : 'all',
+    (k) => { ui.course.todo = k === 'todo'; swap(views.course.render(c), true); }) : null;
+  if (filter) requestAnimationFrame(() => slide(filter));
+  const bar = filter && h('div', { class: 'mat-filter' }, filter);
+  if (ui.course.todo && !items.some(left)) return [bar, msg(T('Всё просмотрено'))];
+  return [bar, stagger(h('div', { class: 'mat-groups' }, KINDS.map(([kind, label]) => {
+    const all = items.filter((x) => x.kind === kind);
+    const group = ui.course.todo ? all.filter(left) : all;
     if (!group.length) return null;
+    const done = all.length - all.filter(left).length;
     return h('section', { class: 'mat-group' },
-      h('h4', {}, label, h('span', { class: 'n' }, String(group.length))),
+      h('h4', {}, label, h('span', { class: 'n' }, tracked ? `${done}/${all.length}` : String(all.length))),
       h('div', { class: 'mat-grid' }, group.map(({ a, sec }) =>
-        h('button', { class: 'card mat lift', 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), onclick: () => openActivity(a) },
+        h('button', { class: 'card mat lift', 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), onclick: () => openActivity(a), oncontextmenu: itemMenu(a) },
           a.icon ? h('img', { src: a.icon, alt: '' }) : icon('courses'),
           h('div', { class: 'main' }, h('div', { class: 't' }, a.name), h('div', { class: 'sub' }, sec)),
           a.completion?.done ? h('span', { class: 'mat-done', title: T('Просмотрено') }, icon('check')) : null))));
-  })));
+  })))];
 }
 
 // /user/index.php participants table: name (+profile link, picture) | roles | groups | last access.
@@ -1496,7 +1653,7 @@ function ctxMenu(e, items) {
   } }, items.map(([label, ic, run, danger]) =>
     h('button', { role: 'menuitem', class: danger ? 'danger' : null, onclick: () => { menu.hidePopover(); run(); } }, ic ? icon(ic) : h('span', { class: 'i' }), label)));
   if (e.width) menu.style.minWidth = `${e.width}px`;
-  document.body.append(menu);
+  ([...document.querySelectorAll('dialog[open]')].at(-1) || document.body).append(menu); // outside an open dialog it can't be clicked
   menu.showPopover();
   const left = Math.min(e.clientX, innerWidth - menu.offsetWidth - 8);
   const top = Math.min(e.clientY, innerHeight - menu.offsetHeight - 8);

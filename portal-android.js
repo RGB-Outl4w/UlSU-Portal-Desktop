@@ -107,10 +107,32 @@
     return { type, bytes: fromB64(res.data) };
   }
 
-  // Saved to Downloads and opened in the system viewer; returns the file name.
-  async function download(url, name) {
+  // Saved to Downloads and, unless open is false, opened in the system viewer; returns the file name.
+  const savedNote = (name) => T('Сохранено в Загрузки: {0}', name);
+  async function download(url, name, open = true) {
     const { type, bytes } = await file(url);
-    return (await native('save', { name, type, data: toB64(bytes) })).name;
+    return (await native('save', { name, type, data: toB64(bytes), open, note: savedNote(name) })).name;
+  }
+
+  // Octet-stream, whatever the file is: MediaStore keeps the name as given, and may add its own extension
+  // for a type it matches differently (a.md as text/plain becomes a.md.txt).
+  const RAW = 'application/octet-stream';
+  async function saveData(name, data, files = [], dir) {
+    for (const f of files) await native('save', { name: Parse.fileName(f.name), type: RAW, data: toB64(f.bytes), dir: Parse.fileName(dir), open: false });
+    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+    return (await native('save', { name, type: RAW, data: toB64(bytes), open: false, note: savedNote(name) })).name;
+  }
+
+  async function saveFolder(name, files) {
+    for (const [i, f] of files.entries()) {
+      const { type, bytes } = await file(f.url);
+      await native('save', {
+        name: Parse.fileName(f.path.at(-1)), type, data: toB64(bytes), open: false,
+        dir: [name, ...f.path.slice(0, -1)].map(Parse.fileName).join('/'),
+        note: i === files.length - 1 ? savedNote(name) : undefined,
+      });
+    }
+    return name;
   }
 
   async function upload({ itemid, filepath, name, bytes }) {
@@ -229,6 +251,8 @@
     post,
     file,
     download,
+    saveData,
+    saveFolder,
     openLocal: download, // saved to Downloads and opened in the system app
     keep: (key, data) => cached(['keep', key], async () => data, data === undefined ? 'cache' : undefined),
     upload,
