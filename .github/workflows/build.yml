@@ -29,6 +29,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
       - run: npm run dist
+        env: # temporary (1.2.8): github.com release downloads answered 504; files are checksum-verified
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -49,6 +52,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
       - run: npm run dist:mac
+        env: # temporary (1.2.8): github.com release downloads answered 504; files are checksum-verified
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
 
       - name: Verify signatures (ad-hoc) and architectures
         run: |
