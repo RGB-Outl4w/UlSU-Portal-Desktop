@@ -324,3 +324,7 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - **Exports:** `exportBtn(table)` on Расписание, Оценки, Успеваемость, Учебный план. CSV uses `;` and a BOM for Excel with Russian settings; a leading `=`, `+`, `@` or `-text` gets a `'`.
 - **Tested on the real portal (2026-11-08):** pages with 4 images in every format, two PDF resources (extension from the reply), all four exports. Lecture videos are VK embeds, so they save as a link. A URL item redirects at once (the target page comes back with no address), so `saveLink` asks for `&forceview=1`, which gives `.urlworkaround a`; checked on 4 links. No course has a folder: folders are still untested.
 - **Candidates:** keep PDFs and videos available offline; save a whole course or section (opening each item marks it viewed, so it needs a warning or a test first).
+
+## 1.2.8 (2026-11-08)
+
+- **Locked items:** a restricted activity (`.availabilityinfo`, Ограничено) has no link on the course page, so `url` was null and every opener failed its own way. `openActivity` now sends a link-less item to `showLocked`: the portal's reason plus a button to the first item the restriction names (`needs`). The app can't unlock items: access is checked on the portal. Checked on the real portal (66080: 21 locked items).

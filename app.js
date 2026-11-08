@@ -1199,6 +1199,8 @@ function parseCourse(doc) {
           content: a.querySelector('.contentwithoutlink')?.innerHTML || '',
           after: a.querySelector('.contentafterlink')?.innerHTML || '',
           restricted: txt(a, '.availabilityinfo'),
+          // first item the restriction names ("… должен быть отмечен как выполненный"), to open from the locked view
+          needs: a.querySelector('.availabilityinfo a') && { name: txt(a, '.availabilityinfo a'), url: abs(a.querySelector('.availabilityinfo a')) },
           completion: state && {
             manual: state[1] === 'manual', done: /^(y|pass)$/.test(state[2]), fail: state[2] === 'fail',
             toggle: form && Object.fromEntries(['id', 'modulename'].map((k) => [k, form.querySelector(`[name=${k}]`)?.value])),
@@ -1268,6 +1270,7 @@ function kindOf(a) {
 const KINDS = [['video', T('Видео')], ['pdf', 'PDF'], ['slides', T('Презентации')], ['docs', T('Документы')], ['page', T('Страницы и лекции')], ['link', T('Ссылки')], ['other', T('Другое')]];
 
 async function openActivity(a) {
+  if (!a.url) return showLocked(a);
   const kind = kindOf(a);
   if (kind === 'page') return openReader(a);
   if (kind === 'pdf' || kind === 'video') return openFile(a, kind);
@@ -1284,8 +1287,21 @@ function readerList(a) {
   return cache.course.sections.flatMap((s) => s.activities).filter((x) => inReader(x) && (ui.course.tab !== 'materials' || kindOf(x) === kindOf(a)));
 }
 
+// A locked item (Ограничено): the portal gives no link until its conditions are met, so the app can't open
+// or unlock it. Says why, and opens the item the condition names.
+function showLocked(a) {
+  const needs = a.needs?.url && cache.course?.sections.flatMap((s) => s.activities).find((x) => x.url === a.needs.url);
+  showReader(a, stateBox({
+    kind: 'locked',
+    title: T('Материал пока закрыт'),
+    text: a.restricted.replace(/^Ограничено\s*/, '') || T('Портал откроет его, когда будут выполнены условия курса.'),
+    action: a.needs?.url && { label: T('Открыть «{0}»', a.needs.name), run: () => { $('#reader').close(); if (needs) openActivity(needs); else portal.open(a.needs.url); } },
+  }));
+}
+
 function showReader(a, body, media = false) {
   $('#reader-title').textContent = a.name;
+  $('#reader-open').hidden = !a.url;
   const list = readerList(a);
   const at = list.findIndex((x) => x.url === a.url);
   for (const [id, to] of [['#reader-prev', list[at - 1]], ['#reader-next', list[at + 1]]]) {
@@ -1578,7 +1594,7 @@ function activityRow(a) {
   return h('div', { class: 'act' + (a.restricted ? ' locked' : ''), 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), oncontextmenu: itemMenu(a) },
     a.icon ? h('img', { class: 'act-icon', src: a.icon, alt: '' }) : null,
     h('div', { class: 'act-main' },
-      h('button', { class: 'act-link', disabled: a.url ? null : '', onclick: () => openActivity(a) }, a.name),
+      h('button', { class: 'act-link', onclick: () => openActivity(a) }, a.name),
       h('div', { class: 'sub' }, [MOD_NAMES[a.type] || a.type, a.restricted].filter(Boolean).join(' · ')),
       a.after ? rich(a.after, true) : null),
     completionCheck(a));
@@ -1618,10 +1634,11 @@ function materialsTab(c) {
     return h('section', { class: 'mat-group' },
       h('h4', {}, label, h('span', { class: 'n' }, tracked ? `${done}/${all.length}` : String(all.length))),
       h('div', { class: 'mat-grid' }, group.map(({ a, sec }) =>
-        h('button', { class: 'card mat lift', 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), onclick: () => openActivity(a), oncontextmenu: itemMenu(a) },
+        h('button', { class: 'card mat lift' + (a.url ? '' : ' locked'), 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), onclick: () => openActivity(a), oncontextmenu: itemMenu(a) },
           a.icon ? h('img', { src: a.icon, alt: '' }) : icon('courses'),
-          h('div', { class: 'main' }, h('div', { class: 't' }, a.name), h('div', { class: 'sub' }, sec)),
-          a.completion?.done ? h('span', { class: 'mat-done', title: T('Просмотрено') }, icon('check')) : null))));
+          h('div', { class: 'main' }, h('div', { class: 't' }, a.name), h('div', { class: 'sub' }, a.url ? sec : `${T('Закрыто')} · ${sec}`)),
+          !a.url ? h('span', { class: 'mat-lock', title: T('Материал пока закрыт') }, icon('lock'))
+            : a.completion?.done ? h('span', { class: 'mat-done', title: T('Просмотрено') }, icon('check')) : null))));
   })))];
 }
 
@@ -2826,7 +2843,7 @@ function errText(e) {
 // Centered state for empty/offline/error screens: icon, title, hint, optional action.
 function stateBox({ kind = 'error', title, text, action }) {
   return h('div', { class: `state ${kind}` },
-    h('div', { class: 'state-icon' }, icon({ offline: 'wifi-off', empty: 'courses' }[kind] || 'alert')),
+    h('div', { class: 'state-icon' }, icon({ offline: 'wifi-off', empty: 'courses', locked: 'lock' }[kind] || 'alert')),
     h('h3', {}, title),
     text ? h('p', {}, text) : null,
     action ? h('button', { class: 'btn', onclick: action.run }, action.label) : null);

@@ -726,6 +726,9 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 .mat .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mat-done { width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--practice); color: #fff; }
 .mat-done .i { width: 12px; height: 12px; stroke-width: 3; }
+.mat.locked { opacity: .65; }
+.mat-lock { flex: none; color: var(--muted); }
+.mat-lock .i { width: 16px; height: 16px; }
 .person .more { margin-left: auto; }
 
 .embed-btn { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0; padding: 10px 16px; border-radius: var(--r); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -751,10 +754,10 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 }
 .state-icon .i { width: 28px; height: 28px; }
 .state.offline .state-icon { --c: var(--lab); }
-.state.empty .state-icon { --c: var(--muted); }
+.state.empty .state-icon, .state.locked .state-icon { --c: var(--muted); }
 .state h3 { margin: 0 0 6px; font-size: 17px; }
 .state p { margin: 0; color: var(--muted); line-height: 1.5; }
-.state .btn { margin-top: 18px; }
+.state .btn { margin-top: 18px; height: auto; min-height: 36px; padding-block: 8px; line-height: 1.35; } /* a long item name wraps inside it */
 .feed .state, #reader-body .state { padding: 40px 16px; }
 
 /* ---------- services ---------- */

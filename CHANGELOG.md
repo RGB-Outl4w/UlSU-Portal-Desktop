@@ -1,5 +1,17 @@
 # Changelog / История изменений
 
+## Unreleased
+
+**Locked materials.** / **Закрытые материалы.**
+
+**English**
+- Courses: opening a locked item («Ограничено») no longer shows an error. It says why the item is closed and offers a button to the item it waits for, such as the test to pass first. The app can't unlock items: the portal opens them only when the course conditions are met.
+- Materials: locked items are dimmed and marked with a lock and «Закрыто».
+
+**Русский**
+- Курсы: закрытый материал («Ограничено») больше не открывается с ошибкой. Приложение показывает, почему он закрыт, и даёт кнопку к элементу, который нужно выполнить, например к тесту. Открыть такой материал раньше нельзя: портал открывает его только после выполнения условий курса.
+- Материалы: закрытые материалы приглушены и отмечены замком и словом «Закрыто».
+
 ## 1.2.7 — 2026-11-08
 
 **Save materials to your device.** / **Материалы на устройстве.**
