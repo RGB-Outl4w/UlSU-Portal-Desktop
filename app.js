@@ -2617,7 +2617,7 @@ Object.assign(views, {
 // Asks GitHub for the latest release only when the button is pressed (see PRIVACY.md).
 function updateCard() {
   const status = h('p', { class: 'sub' }, pref('autoUpdate') === 'off'
-    ? T('Обновления проверяются только по кнопке.') : T('Приложение проверяет обновления раз в день.'));
+    ? T('Обновления проверяются только по кнопке.') : T('Приложение проверяет обновления каждые 6 часов.'));
   const actions = h('div', { class: 'action-row' });
   const check = h('button', { class: 'tool-btn', onclick: async () => {
     check.disabled = true;
@@ -2920,7 +2920,7 @@ portal.onSession((state) => {
 });
 
 // ---- developer announcements (Supabase, read-only; table in supabase/migrations) ----
-// At start and every 6 h: one request for the active notices. It carries no personal data, and nothing
+// At start, every hour and on coming back to the app (at most every 15 min): one request for the active notices. It carries no personal data, and nothing
 // is written there. Settings → «Не проверять» turns it off. Offline or a paused project: silently skipped.
 const NEWS_URL = 'https://imuxokzoaqwywweegxzw.supabase.co/rest/v1/announcements?select=*&order=id.desc';
 const NEWS_KEY = 'sb_publishable_HJDdb-LL-SdITMfL4cDLhQ_9zD3zJL5'; // publishable key: made to ship in apps
@@ -2931,7 +2931,8 @@ const vcode = (v) => {
 };
 const newsSeen = () => (pref('newsSeen') || '').split(',').filter(Boolean);
 let newsShown = null;
-// The same bar also says when a new release is out: portal.checkUpdate (GitHub), at most once a day,
+// The same bar also says when a new release is out: portal.checkUpdate (GitHub), at most every 6 h
+// (GitHub allows 60 unauthenticated requests an hour per IP, and a dorm or campus network shares one IP),
 // unless Settings → Обновления → Вручную. A dismissed version stays hidden; the next one shows again.
 let upd = null, updAt = 0;
 async function newsItems() {
@@ -2952,7 +2953,7 @@ async function newsItems() {
     } catch {} // offline or the project is paused
   }
   if (pref('autoUpdate') !== 'off') {
-    if (Date.now() - updAt > 24 * 3600 * 1000) {
+    if (Date.now() - updAt > 6 * 3600 * 1000) {
       try { upd = await portal.checkUpdate(); updAt = Date.now(); } catch {}
     }
     if (upd?.update) items.push({ id: `v${upd.latest}`, text: T('Доступна версия {0}', upd.latest), url: upd.url, more: T('Скачать') });
@@ -2960,7 +2961,9 @@ async function newsItems() {
   return items;
 }
 // Announcements first (newest first), then the update; one bar at a time, the next one after «Скрыть».
+let newsAt = 0;
 async function checkNews() {
+  newsAt = Date.now();
   const seen = newsSeen();
   newsShown = (await newsItems()).find((n) => !seen.includes(n.id)) || null;
   if (!newsShown) { $('#news').hidden = true; return; }
@@ -2987,7 +2990,9 @@ for (const key of ['news', 'autoUpdate']) {
   mark();
 }
 checkNews();
-setInterval(checkNews, 6 * 3600 * 1000);
+setInterval(checkNews, 3600 * 1000);
+// Back from the tray / another app: a notice posted meanwhile shows without waiting for the hourly tick.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - newsAt > 15 * 60 * 1000) checkNews(); });
 
 // The user asked for fresh data: the sign-in window may open again even if it was closed before.
 function retry(name) {

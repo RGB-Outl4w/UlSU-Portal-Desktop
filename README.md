@@ -81,7 +81,7 @@ Requires [Node.js](https://nodejs.org) 20 or newer.
 
 ## Privacy
 
-Everything stays on your computer. No analytics, no telemetry, and nothing about you is collected. The app talks to portal.ulsu.ru and to sites you open yourself. It also makes two plain reads that carry no personal data: GitHub's latest release number (once a day) and the developer's public announcement list on Supabase. Both can be turned off in Settings. Read the full [Privacy Policy](PRIVACY.md).
+Everything stays on your computer. No analytics, no telemetry, and nothing about you is collected. The app talks to portal.ulsu.ru and to sites you open yourself. It also makes two plain reads that carry no personal data: GitHub's latest release number (every 6 hours) and the developer's public announcement list on Supabase. Both can be turned off in Settings. Read the full [Privacy Policy](PRIVACY.md).
 
 ## Disclaimer
 

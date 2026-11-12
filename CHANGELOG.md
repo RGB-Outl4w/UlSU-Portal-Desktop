@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## Unreleased
+
+**English**
+- Announcements now appear within an hour, or as soon as you come back to the app, instead of within 6 hours.
+- The update check now runs every 6 hours instead of once a day. Its setting is now called «Автоматически» / «Только по кнопке».
+
+**Русский**
+- Объявления теперь появляются в течение часа или сразу, когда вы возвращаетесь в приложение, а не в течение 6 часов.
+- Обновления теперь проверяются каждые 6 часов, а не раз в день. Пункт в настройках теперь называется «Автоматически» / «Только по кнопке».
+
 ## 1.2.9-beta.1 — 2026-11-13 (pre-release)
 
 **Announcements and update notices.** / **Объявления и сообщения об обновлениях.**

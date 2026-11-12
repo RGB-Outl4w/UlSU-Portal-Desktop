@@ -82,9 +82,9 @@ const EN = {
   'Не проверять': "Don't check",
   'Подробнее': 'More',
   'Скрыть': 'Hide',
-  'Раз в день': 'Once a day',
+  'Автоматически': 'Automatically',
   'Только по кнопке': 'Only on request',
-  'Приложение проверяет обновления раз в день.': 'The app checks for updates once a day.',
+  'Приложение проверяет обновления каждые 6 часов.': 'The app checks for updates every 6 hours.',
 
   // today
   'Подключиться онлайн': 'Join online',

@@ -30,7 +30,7 @@ Dashboard → **Table Editor** → `announcements` → **Insert row**:
 | `until` | Hide after this date and time. Empty: until you switch it off |
 | `active` | Untick to take the notice down |
 
-Leave `id` and `created_at` empty. Apps pick up a new row at their next start or within 6 hours. Each
+Leave `id` and `created_at` empty. Apps pick up a new row at their next start, when the user comes back to the app, or within an hour. Each
 user sees the newest matching notice first; «Скрыть» hides it for good on that device.
 
 Check what the app will receive:
