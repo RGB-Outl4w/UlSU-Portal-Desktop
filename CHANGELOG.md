@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## Unreleased
+## 1.2.9-beta.1 — 2026-11-13 (pre-release)
 
 **Announcements and update notices.** / **Объявления и сообщения об обновлениях.**
 
