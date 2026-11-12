@@ -134,8 +134,8 @@ public class PortalCheck {
             long id = n.getLong("id");
             maxNote = Math.max(maxNote, id);
             if (first || n.optBoolean("read") || id <= seenNote || shown >= 3) continue;
-            String body = n.optString("smallmessage");
-            notify(ctx, (int) id, text(n.optString("subject")), text(body.isEmpty() ? n.optString("fullmessage") : body), "notifications");
+            String body = str(n, "smallmessage");
+            notify(ctx, (int) id, text(str(n, "subject")), text(body.isEmpty() ? str(n, "fullmessage") : body), "notifications");
             shown++;
         }
         shown = 0;
@@ -146,11 +146,11 @@ public class PortalCheck {
             long id = last.getLong("id");
             maxMsg = Math.max(maxMsg, id);
             if (first || c.optInt("unreadcount") == 0 || id <= seenMsg || last.optLong("useridfrom") == userid || shown >= 3) continue;
-            String name = c.optString("name");
+            String name = str(c, "name");
             JSONArray members = c.optJSONArray("members");
-            if (name.isEmpty() && members != null && members.length() > 0) name = members.getJSONObject(0).optString("fullname");
+            if (name.isEmpty() && members != null && members.length() > 0) name = str(members.getJSONObject(0), "fullname");
             notify(ctx, 1_000_000_000 + (int) (c.getLong("id") % 1_000_000_000), name.isEmpty() ? t(ctx, "Новое сообщение", "New message") : name,
-                text(last.optString("text")), "messages");
+                text(str(last, "text")), "messages");
             shown++;
         }
         p.edit().putLong("seenNote", maxNote).putLong("seenMsg", maxMsg).apply();
@@ -203,6 +203,11 @@ public class PortalCheck {
         }
         if (lang == null) lang = java.util.Locale.getDefault().getLanguage().equals("ru") ? "ru" : "en";
         return "en".equals(lang) ? en : ru;
+    }
+
+    // optString turns a JSON null into the text "null" (Moodle sends smallmessage: null for some notices).
+    static String str(JSONObject o, String key) {
+        return o.isNull(key) ? "" : o.optString(key);
     }
 
     static String text(String html) {
