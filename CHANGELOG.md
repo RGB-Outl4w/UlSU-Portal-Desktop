@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## Unreleased
+## 1.2.9-beta.3 — 2026-11-13 (pre-release)
 
 **Report a problem from the app.** / **Сообщения о проблемах из приложения.**
 
