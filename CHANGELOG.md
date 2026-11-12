@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## Unreleased
+## 1.2.9-beta.2 — 2026-11-13 (pre-release)
 
 **English**
 - Announcements now appear within an hour, or as soon as you come back to the app, instead of within 6 hours.
