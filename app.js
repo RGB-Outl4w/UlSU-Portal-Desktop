@@ -2918,6 +2918,52 @@ portal.onSession((state) => {
   else $('#net-banner').hidden = true;
 });
 
+// ---- developer announcements (Supabase, read-only; table in supabase/migrations) ----
+// At start and every 6 h: one request for the active notices. It carries no personal data, and nothing
+// is written there. Settings → «Не проверять» turns it off. Offline or a paused project: silently skipped.
+const NEWS_URL = 'https://imuxokzoaqwywweegxzw.supabase.co/rest/v1/announcements?select=*&order=id.desc';
+const NEWS_KEY = 'sb_publishable_HJDdb-LL-SdITMfL4cDLhQ_9zD3zJL5'; // publishable key: made to ship in apps
+// Same numbers as the Android versionCode: 1.2.8 → 1020899, 1.3.0-beta.2 → 1030002 (betas sort below the release).
+const vcode = (v) => {
+  const m = String(v).match(/^(\d+)\.(\d+)\.(\d+)(?:-\D*(\d+))?/);
+  return m ? m[1] * 1e6 + m[2] * 1e4 + m[3] * 100 + (m[4] ? +m[4] : 99) : 0;
+};
+const newsSeen = () => (pref('newsSeen') || '').split(',').filter(Boolean);
+let newsShown = null;
+async function checkNews() {
+  if (pref('news') === 'off') { $('#news').hidden = true; return; }
+  try {
+    const [rows, { version }] = await Promise.all([
+      fetch(NEWS_URL, { headers: { apikey: NEWS_KEY } }).then((r) => (r.ok ? r.json() : [])),
+      portal.about()]);
+    const v = vcode(version), seen = newsSeen();
+    // Newest first; one bar at a time, the next one shows after this one is hidden.
+    newsShown = rows.find((n) => !seen.includes(String(n.id))
+      && (!n.platform || n.platform === portal.platform)
+      && (!n.min_version || v >= vcode(n.min_version)) && (!n.max_version || v <= vcode(n.max_version))
+      && (!n.until || Date.parse(n.until) > Date.now())) || null;
+    if (!newsShown) { $('#news').hidden = true; return; }
+    $('#news-text').textContent = (LANG === 'en' && newsShown.text_en) || newsShown.text_ru; // plain text, never HTML
+    $('#news-more').hidden = !newsShown.url;
+    $('#news').hidden = false;
+  } catch {}
+}
+$('#news-more').addEventListener('click', () => portal.open(newsShown.url));
+$('#news-close').addEventListener('click', () => {
+  pref('newsSeen', [...newsSeen(), newsShown.id].slice(-50).join(','));
+  checkNews();
+});
+function setNews(mode) {
+  pref('news', mode === 'off' ? 'off' : '');
+  document.querySelectorAll('#news-seg button').forEach((b) => b.classList.toggle('active', b.dataset.news === mode));
+  slide($('#news-seg'));
+  checkNews();
+}
+document.querySelectorAll('#news-seg button').forEach((b) => b.addEventListener('click', () => setNews(b.dataset.news)));
+$(`#news-seg [data-news="${pref('news') === 'off' ? 'off' : 'on'}"]`).classList.add('active');
+checkNews();
+setInterval(checkNews, 6 * 3600 * 1000);
+
 // The user asked for fresh data: the sign-in window may open again even if it was closed before.
 function retry(name) {
   portal.allowLogin();
@@ -3369,7 +3415,7 @@ document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener
   if (portal.platform === 'android') keepPlace();
   setTheme(b.dataset.theme);
 }));
-$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); } });
+$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); } });
 $('#collapse').addEventListener('click', toggleCollapse);
 $('#logout').addEventListener('click', async () => {
   $('#settings').hidePopover();

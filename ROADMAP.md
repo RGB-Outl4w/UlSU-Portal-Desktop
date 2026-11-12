@@ -325,6 +325,13 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - **Tested on the real portal (2026-11-08):** pages with 4 images in every format, two PDF resources (extension from the reply), all four exports. Lecture videos are VK embeds, so they save as a link. A URL item redirects at once (the target page comes back with no address), so `saveLink` asks for `&forceview=1`, which gives `.urlworkaround a`; checked on 4 links. No course has a folder: folders are still untested.
 - **Candidates:** keep PDFs and videos available offline; save a whole course or section (opening each item marks it viewed, so it needs a warning or a test first).
 
+## Supabase (2026-11-12)
+
+- Free project for shared, non-personal data only (setup and how-to: `supabase/README.md`). Sync, cache, cookies and Group B alerts stay off it: they'd put personal data or portal sessions on a server.
+- **Announcements (done, not released):** table `announcements` (migration in `supabase/migrations/`), read with the publishable key straight from app.js (CSP `connect-src`), at start and every 6 h. Filtered on the device by platform, version range (`vcode`, same numbers as the Android versionCode) and `until`; one bar at a time (`#news`), «Скрыть» remembers the id. Settings → Объявления разработчика → Не проверять turns it off. PRIVACY updated. Smoke-tested on Windows with a stubbed reply; not yet on Android or against the real table.
+- **Next:** opt-in diagnostics and an in-app bug report (insert-only table, length checks; spam is the open risk).
+- Dropped: holidays/semester dates for the calendar guess, since a stale table would be confidently wrong.
+
 ## 1.2.8 (2026-11-08)
 
 - **Locked items:** a restricted activity (`.availabilityinfo`, Ограничено) has no link on the course page, so `url` was null and every opener failed its own way. `openActivity` now sends a link-less item to `showLocked`: the portal's reason plus a button to the first item the restriction names (`needs`). The app can't unlock items: access is checked on the portal. Checked on the real portal (66080: 21 locked items).

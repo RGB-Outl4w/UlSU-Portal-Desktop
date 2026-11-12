@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <!-- phones: lay out at device width; without it the WebView zooms out to fit anything wider (Android) -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https://portal.ulsu.ru; frame-src blob:; media-src blob:; style-src 'self' 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https://portal.ulsu.ru; frame-src blob:; media-src blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://imuxokzoaqwywweegxzw.supabase.co">
   <title>УлГУ · Портал студента</title>
   <link rel="stylesheet" href="app.css">
 </head>
@@ -92,6 +92,11 @@
       <span id="net-text"></span>
       <button id="net-retry">Повторить</button>
     </div>
+    <div id="news" hidden>
+      <span id="news-text"></span>
+      <button id="news-more" hidden>Подробнее</button>
+      <button id="news-close">Скрыть</button>
+    </div>
     <header>
       <h1 id="title"></h1>
       <div id="tools"></div>
@@ -175,6 +180,12 @@
     </div>
     <h3>Акцент</h3>
     <div id="accents"></div>
+    <h3>Объявления разработчика</h3>
+    <div class="seg" id="news-seg">
+      <span class="ind"></span>
+      <button data-news="on">Показывать</button>
+      <button data-news="off">Не проверять</button>
+    </div>
     <hr>
     <button id="logout" class="danger-btn"><svg class="i"><use href="#i-logout"/></svg>Выйти из аккаунта</button>
   </div>

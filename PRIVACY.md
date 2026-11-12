@@ -1,12 +1,12 @@
 # Privacy Policy
 
-**ULSU Portal Desktop** · Effective 6 November 2026 · [Русская версия](PRIVACY.ru.md)
+**ULSU Portal Desktop** · Effective 12 November 2026 · [Русская версия](PRIVACY.ru.md)
 
-The short version: **everything stays on your device and on the portal itself.** The app has no server of its own. It talks only to portal.ulsu.ru and to sites you choose to open. The developer receives no data from you.
+The short version: **everything stays on your device and on the portal itself.** The app talks to portal.ulsu.ru, to sites you choose to open, and reads the developer's public notice board (you can turn that off). The developer receives no data from you.
 
 ## Who is responsible
 
-ULSU Portal Desktop is an open-source app made by an individual student (see [NOTICE.md](NOTICE.md)). The developer does not run any servers for the app and does not collect, receive or process your data. Your data is processed on your own device, under your control, and by the ULSU portal under the university's own rules.
+ULSU Portal Desktop is an open-source app made by an individual student (see [NOTICE.md](NOTICE.md)). The developer keeps only a read-only notice board for the app (see below) and does not collect, receive or process your data. Your data is processed on your own device, under your control, and by the ULSU portal under the university's own rules.
 
 ## What the app handles
 
@@ -30,7 +30,8 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 - **Sites you open yourself**: e-library links (e.g. Lan, Urait, Znanium, IPR SMART, eLIBRARY) open in your default browser. These links contain sign-in details that the portal creates for you. What those sites do is governed by their own policies.
 - **Boosty, only if you click.** The optional **Support the project** button opens boosty.to in your default browser, without your portal session. The app itself never contacts Boosty, and Boosty's own policy applies there.
 - **GitHub, only when you ask.** The **Check for updates** button in About sends one request to api.github.com to read the latest release number. It includes the app version in the User-Agent and no personal data. The app never checks on its own.
-- **Nothing else.** No analytics, tracking, telemetry, crash reports, advertising or third-party servers.
+- **Developer announcements (Supabase).** At start and every 6 hours the app reads the list of current notices (for example "the portal changed, please update") from the developer's Supabase project (supabase.co, EU region). This is a plain read. It sends no personal data, no portal data and no identifier. The app filters the list by version and platform on your device. Like any web request it reveals your IP address to Supabase, whose own policy applies. **Settings → Developer announcements → Don't check** turns it off.
+- **Nothing else.** No analytics, tracking, telemetry, crash reports or advertising.
 
 ## Notifications
 

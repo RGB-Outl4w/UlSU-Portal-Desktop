@@ -77,6 +77,11 @@ const EN = {
   'Акцент': 'Accent',
   'Язык': 'Language',
   'Выйти из аккаунта': 'Log out',
+  'Объявления разработчика': 'Developer announcements',
+  'Показывать': 'Show',
+  'Не проверять': "Don't check",
+  'Подробнее': 'More',
+  'Скрыть': 'Hide',
 
   // today
   'Подключиться онлайн': 'Join online',
