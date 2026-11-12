@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## Unreleased
+
+**Announcements and update notices.** / **Объявления и сообщения об обновлениях.**
+
+**English**
+- A bar at the top now shows short notices from the developer, for example when the portal changes and the app needs an update. Notices are read from a public list; the app sends no personal data. Settings → Developer announcements → Don't check turns them off.
+- The app now checks for a new version once a day and says when one is out. It only checks and links to the download; nothing installs by itself. Settings → Updates → Only on request brings back the old behaviour.
+- The privacy policy is updated to describe both (12 November 2026).
+
+**Русский**
+- Вверху появилась полоса с короткими объявлениями разработчика, например когда портал изменился и приложение нужно обновить. Объявления читаются из общего списка; приложение не отправляет личных данных. Настройки → Объявления разработчика → Не проверять выключает их.
+- Приложение теперь раз в день проверяет, вышла ли новая версия, и сообщает об этом. Оно только проверяет и даёт ссылку на загрузку; само ничего не устанавливает. Настройки → Обновления → Только по кнопке возвращает прежнее поведение.
+- Политика конфиденциальности обновлена с описанием обоих пунктов (12 ноября 2026 г.).
+
 ## 1.2.8 — 2026-11-08
 
 **Locked materials.** / **Закрытые материалы.**

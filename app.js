@@ -2616,7 +2616,8 @@ Object.assign(views, {
 
 // Asks GitHub for the latest release only when the button is pressed (see PRIVACY.md).
 function updateCard() {
-  const status = h('p', { class: 'sub' }, T('Обновления проверяются только по кнопке.'));
+  const status = h('p', { class: 'sub' }, pref('autoUpdate') === 'off'
+    ? T('Обновления проверяются только по кнопке.') : T('Приложение проверяет обновления раз в день.'));
   const actions = h('div', { class: 'action-row' });
   const check = h('button', { class: 'tool-btn', onclick: async () => {
     check.disabled = true;
@@ -2930,37 +2931,61 @@ const vcode = (v) => {
 };
 const newsSeen = () => (pref('newsSeen') || '').split(',').filter(Boolean);
 let newsShown = null;
+// The same bar also says when a new release is out: portal.checkUpdate (GitHub), at most once a day,
+// unless Settings → Обновления → Вручную. A dismissed version stays hidden; the next one shows again.
+let upd = null, updAt = 0;
+async function newsItems() {
+  const items = [];
+  if (pref('news') !== 'off') {
+    try {
+      const [rows, { version }] = await Promise.all([
+        fetch(NEWS_URL, { headers: { apikey: NEWS_KEY } }).then((r) => (r.ok ? r.json() : [])),
+        portal.about()]);
+      const v = vcode(version);
+      for (const n of rows) {
+        if ((!n.platform || n.platform === portal.platform)
+          && (!n.min_version || v >= vcode(n.min_version)) && (!n.max_version || v <= vcode(n.max_version))
+          && (!n.until || Date.parse(n.until) > Date.now())) {
+          items.push({ id: String(n.id), text: (LANG === 'en' && n.text_en) || n.text_ru, url: n.url, more: T('Подробнее') });
+        }
+      }
+    } catch {} // offline or the project is paused
+  }
+  if (pref('autoUpdate') !== 'off') {
+    if (Date.now() - updAt > 24 * 3600 * 1000) {
+      try { upd = await portal.checkUpdate(); updAt = Date.now(); } catch {}
+    }
+    if (upd?.update) items.push({ id: `v${upd.latest}`, text: T('Доступна версия {0}', upd.latest), url: upd.url, more: T('Скачать') });
+  }
+  return items;
+}
+// Announcements first (newest first), then the update; one bar at a time, the next one after «Скрыть».
 async function checkNews() {
-  if (pref('news') === 'off') { $('#news').hidden = true; return; }
-  try {
-    const [rows, { version }] = await Promise.all([
-      fetch(NEWS_URL, { headers: { apikey: NEWS_KEY } }).then((r) => (r.ok ? r.json() : [])),
-      portal.about()]);
-    const v = vcode(version), seen = newsSeen();
-    // Newest first; one bar at a time, the next one shows after this one is hidden.
-    newsShown = rows.find((n) => !seen.includes(String(n.id))
-      && (!n.platform || n.platform === portal.platform)
-      && (!n.min_version || v >= vcode(n.min_version)) && (!n.max_version || v <= vcode(n.max_version))
-      && (!n.until || Date.parse(n.until) > Date.now())) || null;
-    if (!newsShown) { $('#news').hidden = true; return; }
-    $('#news-text').textContent = (LANG === 'en' && newsShown.text_en) || newsShown.text_ru; // plain text, never HTML
-    $('#news-more').hidden = !newsShown.url;
-    $('#news').hidden = false;
-  } catch {}
+  const seen = newsSeen();
+  newsShown = (await newsItems()).find((n) => !seen.includes(n.id)) || null;
+  if (!newsShown) { $('#news').hidden = true; return; }
+  $('#news-text').textContent = newsShown.text; // plain text, never HTML
+  $('#news-more').textContent = newsShown.more;
+  $('#news-more').hidden = !newsShown.url;
+  $('#news').hidden = false;
 }
 $('#news-more').addEventListener('click', () => portal.open(newsShown.url));
 $('#news-close').addEventListener('click', () => {
   pref('newsSeen', [...newsSeen(), newsShown.id].slice(-50).join(','));
   checkNews();
 });
-function setNews(mode) {
-  pref('news', mode === 'off' ? 'off' : '');
-  document.querySelectorAll('#news-seg button').forEach((b) => b.classList.toggle('active', b.dataset.news === mode));
-  slide($('#news-seg'));
-  checkNews();
+// Settings switches: «news» (announcements) and «autoUpdate»; '' = on, 'off' = off.
+for (const key of ['news', 'autoUpdate']) {
+  const seg = $(`#${key}-seg`);
+  const mark = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.v === (pref(key) || 'on')));
+  seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    pref(key, b.dataset.v === 'off' ? 'off' : '');
+    mark();
+    slide(seg);
+    checkNews();
+  }));
+  mark();
 }
-document.querySelectorAll('#news-seg button').forEach((b) => b.addEventListener('click', () => setNews(b.dataset.news)));
-$(`#news-seg [data-news="${pref('news') === 'off' ? 'off' : 'on'}"]`).classList.add('active');
 checkNews();
 setInterval(checkNews, 6 * 3600 * 1000);
 
@@ -3415,7 +3440,7 @@ document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener
   if (portal.platform === 'android') keepPlace();
   setTheme(b.dataset.theme);
 }));
-$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); } });
+$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); slide($('#autoUpdate-seg')); } });
 $('#collapse').addEventListener('click', toggleCollapse);
 $('#logout').addEventListener('click', async () => {
   $('#settings').hidePopover();

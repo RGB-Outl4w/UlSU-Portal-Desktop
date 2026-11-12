@@ -124,7 +124,7 @@ Also from this round: a background refresh no longer repaints when the data is u
 **Status (2026-10-25):** done.
 - `npm run dist` builds `dist/ULSU-Portal-Desktop-Setup-<version>.exe`: NSIS, x64, per-user, RU/EN installer, choice of folder, shortcuts named "УлГУ · Портал студента". It is unsigned, so SmartScreen warns on first run.
 - `main.js` pins userData to `%APPDATA%\ulportal`, so the product name never moves the session or cache.
-- Updates: no auto-update (privacy). About has "Проверить обновления", which asks api.github.com for the latest release only on click and links to the download.
+- Updates: no auto-install (privacy). About has "Проверить обновления", which asks api.github.com for the latest release and links to the download. Since the Supabase round it also runs once a day (see below).
 - CI: `.github/workflows/build.yml` builds on every `v*` tag. It checks the tag against package.json and creates a **draft** release with the installer, which is published by hand. Release notes go in `CHANGELOG.md`.
 - To release: bump `version` in package.json, add a CHANGELOG entry, then commit, `git tag vX.Y.Z` and `git push --tags`. Review the draft on GitHub and publish it.
 - Later: code signing (removes the SmartScreen warning).
@@ -329,6 +329,7 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 
 - Free project for shared, non-personal data only (setup and how-to: `supabase/README.md`). Sync, cache, cookies and Group B alerts stay off it: they'd put personal data or portal sessions on a server.
 - **Announcements (done, not released):** table `announcements` (migration in `supabase/migrations/`), read with the publishable key straight from app.js (CSP `connect-src`), at start and every 6 h. Filtered on the device by platform, version range (`vcode`, same numbers as the Android versionCode) and `until`; one bar at a time (`#news`), «Скрыть» remembers the id. Settings → Объявления разработчика → Не проверять turns it off. PRIVACY updated. Smoke-tested on Windows with a stubbed reply; not yet on Android or against the real table.
+- **Daily update check (on by default):** `newsItems()` adds "Доступна версия X" + «Скачать» to the same bar after the announcements, using `portal.checkUpdate()` at most once a day (in memory, so also at every start). Dismissed per version (`v1.2.9`). Settings → Обновления → Только по кнопке turns it off. Notifies only, never downloads or installs. PRIVACY and CHANGELOG updated.
 - **Next:** opt-in diagnostics and an in-app bug report (insert-only table, length checks; spam is the open risk).
 - Dropped: holidays/semester dates for the calendar guess, since a stale table would be confidently wrong.
 
