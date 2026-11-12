@@ -39,5 +39,14 @@ Check what the app will receive:
 curl "https://imuxokzoaqwywweegxzw.supabase.co/rest/v1/announcements?select=*" -H "apikey: sb_publishable_HJDdb-LL-SdITMfL4cDLhQ_9zD3zJL5"
 ```
 
+## Reading problem reports
+
+Dashboard → **Table Editor** → `reports`. Each row is one report: `kind` is `bug` (sent from About) or
+`error` (automatic, if the user switched it on), with `version`, `platform`, `os`, the user's `message`
+and `details` (recent app errors). Sort by `created_at`. Reports can't be answered or linked to a person.
+
+The table keeps itself small: rows older than 90 days are deleted daily (pg_cron job `reports-90-days`)
+and on every insert, and only the newest 5000 rows are kept. Delete a row whenever you're done with it.
+
 The free tier pauses the project after about a week with no requests. The app then just shows no
 notice; restore it from the dashboard.

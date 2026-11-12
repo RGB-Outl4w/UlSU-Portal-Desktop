@@ -131,7 +131,7 @@
       <h3 id="confirm-title"></h3>
       <p id="confirm-text"></p>
       <div class="confirm-actions">
-        <button value="cancel" class="tool-btn">Отмена</button>
+        <button value="cancel" class="tool-btn" formnovalidate>Отмена</button>
         <button value="ok" class="btn" id="confirm-ok">Подтвердить</button>
       </div>
     </form>
@@ -191,6 +191,12 @@
       <span class="ind"></span>
       <button data-v="on">Автоматически</button>
       <button data-v="off">Только по кнопке</button>
+    </div>
+    <h3>Отчёты об ошибках</h3>
+    <div class="seg" id="errReports-seg">
+      <span class="ind"></span>
+      <button data-v="on">Отправлять</button>
+      <button data-v="off">Не отправлять</button>
     </div>
     <hr>
     <button id="logout" class="danger-btn"><svg class="i"><use href="#i-logout"/></svg>Выйти из аккаунта</button>

@@ -1,12 +1,12 @@
 # Privacy Policy
 
-**ULSU Portal Desktop** · Effective 12 November 2026 · [Русская версия](PRIVACY.ru.md)
+**ULSU Portal Desktop** · Effective 13 November 2026 · [Русская версия](PRIVACY.ru.md)
 
-The short version: **everything stays on your device and on the portal itself.** The app talks to portal.ulsu.ru, to sites you choose to open, and reads the developer's public notice board and GitHub's latest release number (you can turn both off). The developer receives no data from you.
+The short version: **everything stays on your device and on the portal itself.** The app talks to portal.ulsu.ru, to sites you choose to open, and reads the developer's public notice board and GitHub's latest release number (you can turn both off). The developer receives nothing from you unless you send a problem report yourself, or switch on automatic error reports.
 
 ## Who is responsible
 
-ULSU Portal Desktop is an open-source app made by an individual student (see [NOTICE.md](NOTICE.md)). The developer keeps only a read-only notice board for the app (see below) and does not collect, receive or process your data. Your data is processed on your own device, under your control, and by the ULSU portal under the university's own rules.
+ULSU Portal Desktop is an open-source app made by an individual student (see [NOTICE.md](NOTICE.md)). The developer keeps only a read-only notice board for the app and a box for problem reports (see below). Reports are built to carry no personal data, and the developer collects nothing else. Your data is processed on your own device, under your control, and by the ULSU portal under the university's own rules.
 
 ## What the app handles
 
@@ -31,7 +31,9 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 - **Boosty, only if you click.** The optional **Support the project** button opens boosty.to in your default browser, without your portal session. The app itself never contacts Boosty, and Boosty's own policy applies there.
 - **GitHub, for update checks.** Every 6 hours while the app runs, and when you press **Check for updates** in About, the app sends one request to api.github.com to read the latest release number. It includes the app version in the User-Agent and no personal data. If a newer version exists, the app says so and links to the release page; it never downloads or installs anything by itself. **Settings → Updates → Only on request** limits this to the button.
 - **Developer announcements (Supabase).** At start, every hour, and when you come back to the app (at most every 15 minutes) the app reads the list of current notices (for example "the portal changed, please update") from the developer's Supabase project (supabase.co, EU region). This is a plain read. It sends no personal data, no portal data and no identifier. The app filters the list by version and platform on your device. Like any web request it reveals your IP address to Supabase, whose own policy applies. **Settings → Developer announcements → Don't check** turns it off.
-- **Nothing else.** No analytics, tracking, telemetry, crash reports or advertising.
+- **Problem reports (Supabase), only when you send one.** **About → Report a problem** sends the text you write to the developer's Supabase project. With **Attach technical details** ticked (you see exactly what is sent before sending) it adds the app version, platform, operating system version and the app's recent error messages, with file paths cut down to file names so they don't show your user name. No account, name, portal data or identifier is attached. Please don't type personal data into the report. Reports can't be read back by the app or anyone else, can't be answered, and are deleted automatically after 90 days at the latest.
+- **Automatic error reports, off unless you switch them on.** **Settings → Error reports → Send** makes the app send its own error messages the same way (version, platform, operating system, message, file names only), at most 5 a day.
+- **Nothing else.** No analytics, tracking, telemetry or advertising.
 
 ## Notifications
 
@@ -47,7 +49,7 @@ Data stored on the portal itself (your account, messages, files, orders) is mana
 
 ## Russian personal data law (152-ФЗ)
 
-The app's developer does not obtain or process your personal data: processing happens on your device at your own initiative, and on the university's portal under the university's policies. The developer is therefore not a personal data operator for this app.
+The app's developer does not obtain or process your personal data: processing happens on your device at your own initiative, and on the university's portal under the university's policies. Problem and error reports are designed to contain no personal data and no identifier, so they can't be linked to you; if you type personal data into a report anyway, it is used only to fix the problem and deleted within 90 days. The developer is therefore not a personal data operator for this app.
 
 ## Children
 

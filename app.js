@@ -91,6 +91,22 @@ function pref(key, value) {
   } catch {}
 }
 
+// Recent errors in this window, for bug reports and, when switched on, automatic error reports
+// (autoReport, below). Paths are cut to the file name: a full path holds the Windows/macOS user name.
+const appErrors = [];
+const noPaths = (s) => String(s || '').replace(/(?:file:\/\/\/?|\b[A-Za-z]:[\\/]|\/(?:Users|home)\/)[^\s)'"]*[\\/]([^\\/\s)'"]+)/g, '$1');
+function noteError(e) {
+  const message = noPaths(e?.message || e).slice(0, 300);
+  if (!message || /OFFLINE|MAINTENANCE/.test(message)) return; // expected states, already shown to the user
+  if (appErrors.some((x) => x.message === message)) return;
+  const stack = noPaths(e?.stack).slice(0, 1500);
+  appErrors.push({ message, stack, at: new Date().toISOString() });
+  if (appErrors.length > 20) appErrors.shift();
+  autoReport(message, stack);
+}
+window.addEventListener('error', (e) => noteError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => noteError(e.reason));
+
 // Children of el animate in one after another (see .stagger in app.css).
 function stagger(el) {
   [...el.children].forEach((c, i) => c.style.setProperty('--i', Math.min(i, 14)));
@@ -2609,7 +2625,7 @@ Object.assign(views, {
               e.target.textContent = T('Кэш очищен');
             } }, T('Очистить кэш')),
             h('button', { class: 'chip-btn', onclick: () => portal.open(REPO) }, 'GitHub'),
-            h('button', { class: 'chip-btn', onclick: () => portal.open(`${REPO}/issues`) }, T('Сообщить о проблеме'))))));
+            h('button', { class: 'chip-btn', onclick: (e) => reportProblem(e.target) }, T('Сообщить о проблеме'))))));
     },
   },
 });
@@ -2977,15 +2993,17 @@ $('#news-close').addEventListener('click', () => {
   pref('newsSeen', [...newsSeen(), newsShown.id].slice(-50).join(','));
   checkNews();
 });
-// Settings switches: «news» (announcements) and «autoUpdate»; '' = on, 'off' = off.
-for (const key of ['news', 'autoUpdate']) {
+// Settings switches; a pref left empty means the default: announcements and the update check on,
+// automatic error reports off.
+const SWITCHES = { news: 'on', autoUpdate: 'on', errReports: 'off' };
+for (const [key, def] of Object.entries(SWITCHES)) {
   const seg = $(`#${key}-seg`);
-  const mark = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.v === (pref(key) || 'on')));
+  const mark = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.v === (pref(key) || def)));
   seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    pref(key, b.dataset.v === 'off' ? 'off' : '');
+    pref(key, b.dataset.v === def ? '' : b.dataset.v);
     mark();
     slide(seg);
-    checkNews();
+    if (key !== 'errReports') checkNews();
   }));
   mark();
 }
@@ -2993,6 +3011,57 @@ checkNews();
 setInterval(checkNews, 3600 * 1000);
 // Back from the tray / another app: a notice posted meanwhile shows without waiting for the hourly tick.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - newsAt > 15 * 60 * 1000) checkNews(); });
+
+// ---- problem reports (Supabase, insert-only; table in supabase/migrations) ----
+// Sent only by the user (About → Сообщить о проблеме) or, if switched on in Settings, for app errors
+// (at most 5 a day). The app can't read them back; the table keeps 5000 rows and 90 days at most.
+const REPORTS_URL = 'https://imuxokzoaqwywweegxzw.supabase.co/rest/v1/reports';
+async function deviceInfo() {
+  const a = await portal.about();
+  const os = a.os || (a.runtime || []).map(([k, v]) => `${k} ${v}`).join(', ');
+  return { version: a.version, platform: portal.platform, os: os.slice(0, 200) };
+}
+async function sendReport(row) {
+  const { version, platform, os } = await deviceInfo();
+  const r = await fetch(REPORTS_URL, {
+    method: 'POST',
+    headers: { apikey: NEWS_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ version, platform, os: row.details ? os : null, ...row }),
+  });
+  if (!r.ok) throw new Error(T('Сервер ответил {0}', r.status));
+}
+function autoReport(message, stack) {
+  if (pref('errReports') !== 'on') return;
+  const day = new Date().toISOString().slice(0, 10);
+  const [d, n] = (pref('errSent') || '').split(':');
+  const count = d === day ? +n : 0;
+  if (count >= 5) return;
+  pref('errSent', `${day}:${count + 1}`);
+  sendReport({ kind: 'error', message, details: stack || message }).catch(() => {});
+}
+async function reportProblem(btn) {
+  const { version, platform, os } = await deviceInfo();
+  const tech = [`${version} · ${platform} · ${os}`, ...appErrors.map((x) => `${x.at} ${x.message}\n${x.stack}`)].join('\n\n').slice(0, 8000);
+  const text = h('textarea', { required: true, maxlength: 2000, placeholder: T('Что случилось и как это повторить?') });
+  const attach = h('input', { type: 'checkbox', checked: true });
+  const choice = await formBox(T('Сообщить о проблеме'), [
+    h('label', { class: 'field' }, h('span', {}, T('Описание')), text),
+    h('label', { class: 'opt' }, attach, T('Приложить технические сведения')),
+    h('details', { class: 'tech' }, h('summary', {}, T('Что будет отправлено')), h('pre', {}, tech)),
+    h('p', { class: 'sub' }, T('Не указывайте личные данные: логин, ФИО, оценки. Ответить на это сообщение нельзя — если нужен ответ, создайте issue на GitHub.')),
+    h('button', { type: 'button', class: 'chip-btn', onclick: () => portal.open(`${REPO}/issues`) }, T('Открыть GitHub')),
+  ], T('Отправить'));
+  const message = text.value.trim();
+  if (choice !== 'ok' || !message) return;
+  btn.disabled = true;
+  try {
+    await sendReport({ kind: 'bug', message, details: attach.checked ? tech : null });
+    btn.textContent = T('Сообщение отправлено');
+  } catch (e) {
+    btn.disabled = false;
+    await confirmBox(T('Не удалось отправить'), errText(e), T('Понятно'));
+  }
+}
 
 // The user asked for fresh data: the sign-in window may open again even if it was closed before.
 function retry(name) {
@@ -3445,7 +3514,7 @@ document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener
   if (portal.platform === 'android') keepPlace();
   setTheme(b.dataset.theme);
 }));
-$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); slide($('#autoUpdate-seg')); } });
+$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); slide($('#autoUpdate-seg')); slide($('#errReports-seg')); } });
 $('#collapse').addEventListener('click', toggleCollapse);
 $('#logout').addEventListener('click', async () => {
   $('#settings').hidePopover();

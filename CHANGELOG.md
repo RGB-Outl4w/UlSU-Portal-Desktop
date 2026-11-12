@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## Unreleased
+
+**Report a problem from the app.** / **Сообщения о проблемах из приложения.**
+
+**English**
+- About → Report a problem now opens a form in the app instead of GitHub. You can attach technical details (app version, system, recent error messages without your user name) and see exactly what is sent. No account or personal data is attached. Reports can't be answered; GitHub issues are still there if you need a reply.
+- New in Settings: Error reports. Off by default; when switched on, the app sends its own error messages, at most 5 a day.
+- Privacy policy updated (13 November 2026).
+
+**Русский**
+- О приложении → Сообщить о проблеме теперь открывает форму в приложении, а не GitHub. Можно приложить технические сведения (версия приложения, система, последние ошибки без имени пользователя) и посмотреть, что именно уйдёт. Учётная запись и личные данные не прикладываются. Ответить на сообщение нельзя; если нужен ответ, по-прежнему можно создать issue на GitHub.
+- Новое в настройках: «Отчёты об ошибках». По умолчанию выключено; если включить, приложение само отправляет свои сообщения об ошибках, не больше 5 в день.
+- Политика конфиденциальности обновлена (13 ноября 2026 г.).
+
 ## 1.2.9-beta.2 — 2026-11-13 (pre-release)
 
 **English**
