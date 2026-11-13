@@ -1,5 +1,27 @@
 # Changelog / История изменений
 
+## 1.2.9 — 2026-11-13
+
+**Announcements, update notices and problem reports.** / **Объявления, сообщения об обновлениях и о проблемах.**
+
+**English**
+- Announcements: a bar at the top shows short notices from the developer, for example when the portal changes and the app needs an update. The app checks at start, every hour and when you come back to it. It only reads a public list and sends no personal data. Settings → Developer announcements → Don't check turns them off.
+- Update notices: the app checks for a new version every 6 hours and says when one is out, with a link to the download. Nothing downloads or installs by itself. Settings → Updates → Only on request brings back the old behaviour.
+- Report a problem: About → Report a problem opens a form in the app. You can attach technical details (app version, system, recent errors without your user name) and see exactly what is sent. No account or personal data is attached. Reports can't be answered; GitHub issues are still there if you need a reply.
+- Error reports: new in Settings, off by default. When switched on, the app sends its own error messages, at most 5 a day.
+- Android: some portal notifications showed "null" as their text. They now show the message.
+- Settings scroll on short screens.
+- Privacy policy updated (13 November 2026) to describe all of the above.
+
+**Русский**
+- Объявления: вверху появилась полоса с короткими объявлениями разработчика, например когда портал изменился и приложение нужно обновить. Приложение проверяет их при запуске, раз в час и когда вы в него возвращаетесь. Оно только читает общий список и не отправляет личных данных. Настройки → Объявления разработчика → Не проверять выключает их.
+- Обновления: приложение каждые 6 часов проверяет, вышла ли новая версия, и сообщает об этом со ссылкой на загрузку. Само оно ничего не скачивает и не устанавливает. Настройки → Обновления → Только по кнопке возвращает прежнее поведение.
+- Сообщить о проблеме: О приложении → Сообщить о проблеме открывает форму в приложении. Можно приложить технические сведения (версия приложения, система, последние ошибки без имени пользователя) и посмотреть, что именно уйдёт. Учётная запись и личные данные не прикладываются. Ответить на сообщение нельзя; если нужен ответ, можно создать issue на GitHub.
+- Отчёты об ошибках: новый пункт в настройках, по умолчанию выключен. Если включить, приложение само отправляет свои сообщения об ошибках, не больше 5 в день.
+- Android: у некоторых уведомлений портала вместо текста было «null». Теперь показывается само сообщение.
+- Настройки прокручиваются на невысоких экранах.
+- Политика конфиденциальности обновлена (13 ноября 2026 г.) с описанием всего перечисленного.
+
 ## 1.2.9-beta.3 — 2026-11-13 (pre-release)
 
 **Report a problem from the app.** / **Сообщения о проблемах из приложения.**
