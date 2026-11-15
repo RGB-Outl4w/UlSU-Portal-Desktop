@@ -1,5 +1,11 @@
 # Changelog / История изменений
 
+## 1.2.10-beta.2 — 2026-11-16 (pre-release)
+
+**Test build for in-app updates.** / **Тестовая сборка для проверки обновления из приложения.**
+
+- No changes from beta.1: install it from beta.1 with About → Updates → Install. / Изменений по сравнению с beta.1 нет: установите её из beta.1 через «О приложении → Обновления → Установить».
+
 ## 1.2.10-beta.1 — 2026-11-16 (pre-release)
 
 **Updates from inside the app.** / **Обновление прямо из приложения.**
