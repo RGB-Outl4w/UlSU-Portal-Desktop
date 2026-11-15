@@ -1,5 +1,17 @@
 # Changelog / История изменений
 
+## 1.2.10 — 2026-11-16
+
+**Updates from inside the app.** / **Обновление прямо из приложения.**
+
+**English**
+- Install updates in the app: when a new version is out, the update bar and About → Updates show **Install**. The app downloads the file from GitHub with a progress bar and checks its SHA-256 checksum. Windows installs it silently and restarts the app. macOS opens the disk image to drag into Applications. Android opens its install screen; the first time, it asks you to allow installs from this app. Nothing downloads until you press the button. This works from 1.2.10 on: install 1.2.10 itself the usual way.
+- Privacy policy updated (16 November 2026) to describe this.
+
+**Русский**
+- Установка обновлений в приложении: когда выходит новая версия, в полосе обновления и в разделе «О приложении → Обновления» появляется кнопка **«Установить»**. Приложение скачивает файл с GitHub, показывает ход загрузки и сверяет контрольную сумму SHA-256. Windows устанавливает его незаметно и перезапускает приложение. macOS открывает образ диска, чтобы перетащить приложение в «Программы». Android открывает экран установки; в первый раз он попросит разрешить установку из этого приложения. Пока вы не нажмёте кнопку, ничего не скачивается. Работает начиная с 1.2.10: саму 1.2.10 установите как обычно.
+- Политика конфиденциальности обновлена (16 ноября 2026 г.) с описанием этого.
+
 ## 1.2.10-beta.2 — 2026-11-16 (pre-release)
 
 **Test build for in-app updates.** / **Тестовая сборка для проверки обновления из приложения.**
