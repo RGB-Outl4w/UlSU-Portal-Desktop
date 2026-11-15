@@ -3,6 +3,7 @@ const fs = require('fs');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
 
@@ -44,6 +45,8 @@ const MAIN_EN = {
   'Сессия на портале завершилась': 'Your portal session has ended',
   'Откройте приложение, чтобы войти снова.': 'Open the app to sign in again.',
   'Выход': 'Quit',
+  'Файл обновления повреждён, попробуйте ещё раз': 'The update file is damaged, please try again',
+  'Перетащите ULSU Portal Desktop в папку «Программы» и замените старую версию.': 'Drag ULSU Portal Desktop to the Applications folder and replace the old version.',
 };
 const t = (key, ...args) => ((lang === 'en' && MAIN_EN[key]) || key).replace(/\{(\d)\}/g, (_, i) => args[i]);
 
@@ -356,7 +359,56 @@ async function checkUpdate() {
   const data = await res.json();
   const r = beta ? data.filter((x) => !x.draft).reduce((best, x) => (!best || newer(x.tag_name, best.tag_name) ? x : best), null) : data;
   if (!r) return { current, latest: null };
-  return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update: newer(r.tag_name, current) };
+  const update = newer(r.tag_name, current);
+  updateFile = update && app.isPackaged ? updateAsset(r) : null;
+  return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update, asset: !!updateFile };
+}
+
+// In-app update, only when the user presses «Установить»: the release file for this platform, from GitHub,
+// checked against the SHA-256 GitHub lists for it. Windows: silent per-user install over this copy, then the
+// installer starts the app again. macOS: the ad-hoc-signed build can't replace itself (Squirrel.Mac needs a
+// real certificate), so the DMG opens and the app quits for the usual drag to Applications.
+let updateFile = null; // set by checkUpdate; the renderer never passes a URL
+const UPDATE_DIR = () => path.join(app.getPath('temp'), 'ulportal-update');
+function updateAsset(r) {
+  const v = r.tag_name.replace(/^v/, '');
+  const name = { win32: `ULSU-Portal-Desktop-Setup-${v}.exe`, darwin: `ULSU-Portal-Desktop-${v}-${process.arch}.dmg` }[process.platform];
+  const a = r.assets?.find((x) => x.name === name && /^sha256:[0-9a-f]{64}$/.test(x.digest || ''));
+  return a && { name, url: a.browser_download_url, size: a.size, sha256: a.digest.slice(7) };
+}
+async function installUpdate() {
+  const a = updateFile;
+  if (!a) throw new Error('no update');
+  await fs.promises.rm(UPDATE_DIR(), { recursive: true, force: true });
+  await fs.promises.mkdir(UPDATE_DIR(), { recursive: true });
+  const file = path.join(UPDATE_DIR(), a.name);
+  const res = await electronNet.fetch(a.url, { headers: { 'User-Agent': `ulportal/${app.getVersion()}` } })
+    .catch((e) => { throw new Error(`OFFLINE: ${e.message}`); });
+  if (!res.ok) throw new Error(`GitHub: ${res.status}`);
+  const hash = crypto.createHash('sha256');
+  let got = 0, sent = 0;
+  await pipeline(Readable.fromWeb(res.body), async function* (chunks) {
+    for await (const c of chunks) {
+      hash.update(c);
+      got += c.length;
+      if (Date.now() - sent > 250) { sent = Date.now(); mainWin?.webContents.send('update-progress', got / a.size); }
+      yield c;
+    }
+  }, fs.createWriteStream(file));
+  if (hash.digest('hex') !== a.sha256) {
+    await fs.promises.rm(file, { force: true });
+    throw new Error(t('Файл обновления повреждён, попробуйте ещё раз'));
+  }
+  mainWin?.webContents.send('update-progress', 1);
+  if (process.platform === 'win32') {
+    // --updated: install over the current folder without pages; --force-run: start the app when done.
+    app.once('will-quit', () => spawn(file, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref());
+  } else {
+    await shell.openPath(file);
+    await dialog.showMessageBox(mainWin, { message: t('Перетащите ULSU Portal Desktop в папку «Программы» и замените старую версию.') });
+  }
+  quitting = true;
+  app.quit();
 }
 
 // Form POST to a portal page (e.g. manual completion toggle); sesskey is added here.
@@ -600,6 +652,7 @@ app.whenReady().then(() => {
   ipcMain.handle('clearCache', clearDisk);
   ipcMain.handle('openData', () => shell.openPath(app.getPath('userData')));
   ipcMain.handle('checkUpdate', () => checkUpdate());
+  ipcMain.handle('installUpdate', () => installUpdate());
   // UI prefs mirror (preload.js / app.js pref()): written at once and atomically, read before the UI starts.
   const PREFS_FILE = path.join(app.getPath('userData'), 'prefs.json');
   ipcMain.on('prefs-load', (e) => { e.returnValue = fs.existsSync(PREFS_FILE) ? fs.readFileSync(PREFS_FILE, 'utf8') : '{}'; });
@@ -676,6 +729,7 @@ app.whenReady().then(() => {
   mainWin.on('focus', () => mainWin.flashFrame(false));
 
   createTray();
+  fs.promises.rm(UPDATE_DIR(), { recursive: true, force: true }).catch(() => {}); // last update's installer
   setInterval(poll, POLL_MS);
   powerMonitor.on('resume', () => setTimeout(poll, 10_000)); // give network time to come back
 });

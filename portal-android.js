@@ -215,8 +215,16 @@
     const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
     const r = beta ? data.filter((x) => !x.draft).reduce((best, x) => (!best || newer(x.tag_name, best.tag_name) ? x : best), null) : data;
     if (!r) return { current, latest: null };
-    return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update: newer(r.tag_name, current) };
+    const update = newer(r.tag_name, current);
+    // the APK for installUpdate (UlPortalPlugin.update checks the URL and SHA-256 again)
+    const name = `ULSU-Portal-Android-${r.tag_name.replace(/^v/, '')}.apk`;
+    const a = update && r.assets?.find((x) => x.name === name && /^sha256:[0-9a-f]{64}$/.test(x.digest || ''));
+    updateFile = a ? { name, url: a.browser_download_url, size: a.size, sha256: a.digest.slice(7) } : null;
+    return { current, latest: r.tag_name.replace(/^v/, ''), url: r.html_url, update, asset: !!updateFile };
   }
+  let updateFile = null;
+  // 'permission': Android's "Install unknown apps" page opened; 'install': its install screen opened.
+  const installUpdate = async () => (await native('update', updateFile)).state;
 
   // Unread check (PortalCheck.java, which also posts the notifications): every 3 min while the app is on
   // screen and whenever it comes back; WorkManager runs the same check every 15 min in the background.
@@ -277,6 +285,8 @@
     doc: (name) => (DOCS.includes(name) ? fetch(name).then((r) => r.text()) : Promise.resolve(null)),
     clearCache,
     checkUpdate,
+    installUpdate,
+    onUpdateProgress: (cb) => Capacitor.nativeCallback('UlPortal', 'addListener', { eventName: 'updateProgress' }, (d) => cb(d.p)),
     poll,
     allowLogin: async () => { declined = false; },
     onSignedIn: (cb) => listeners.signedIn.push(cb),

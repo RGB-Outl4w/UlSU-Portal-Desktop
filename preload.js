@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('portal', {
   clearCache: () => ipcRenderer.invoke('clearCache'),
   openData: () => ipcRenderer.invoke('openData'),
   checkUpdate: () => ipcRenderer.invoke('checkUpdate'),
+  installUpdate: () => ipcRenderer.invoke('installUpdate'),
   poll: () => ipcRenderer.invoke('poll'),
   allowLogin: () => ipcRenderer.invoke('allowLogin'),
   savePrefs: (json) => ipcRenderer.send('prefs-save', json),
@@ -36,5 +37,6 @@ contextBridge.exposeInMainWorld('portal', {
   onUnread: (cb) => ipcRenderer.on('unread', (_e, counts) => cb(counts)),
   onSignedIn: (cb) => ipcRenderer.on('signed-in', () => cb()),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_e, view) => cb(view)),
+  onUpdateProgress: (cb) => ipcRenderer.on('update-progress', (_e, p) => cb(p)), // 0..1
   onSession: (cb) => ipcRenderer.on('session', (_e, state) => cb(state)), // 'ok' | 'expired' | 'maintenance'
 });

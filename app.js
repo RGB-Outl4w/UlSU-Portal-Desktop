@@ -2644,7 +2644,9 @@ function updateCard() {
       else if (!u.update) status.textContent = T('Установлена последняя версия ({0}).', u.current);
       else {
         status.replaceChildren(h('b', {}, T('Доступна версия {0}', u.latest)), ` · ${T('у вас {0}', u.current)}`);
-        actions.replaceChildren(h('button', { class: 'btn', onclick: () => portal.open(u.url) }, T('Скачать')), check);
+        const get = h('button', { class: 'btn', onclick: () => (u.asset ? runUpdate(get, status) : portal.open(u.url)) },
+          u.asset ? T('Установить') : T('Скачать'));
+        actions.replaceChildren(get, check);
       }
     } catch (e) {
       status.textContent = errText(e);
@@ -2972,13 +2974,14 @@ async function newsItems() {
     if (Date.now() - updAt > 6 * 3600 * 1000) {
       try { upd = await portal.checkUpdate(); updAt = Date.now(); } catch {}
     }
-    if (upd?.update) items.push({ id: `v${upd.latest}`, text: T('Доступна версия {0}', upd.latest), url: upd.url, more: T('Скачать') });
+    if (upd?.update) items.push({ id: `v${upd.latest}`, text: T('Доступна версия {0}', upd.latest), url: upd.url, update: upd.asset, more: upd.asset ? T('Установить') : T('Скачать') });
   }
   return items;
 }
 // Announcements first (newest first), then the update; one bar at a time, the next one after «Скрыть».
 let newsAt = 0;
 async function checkNews() {
+  if (updating) return; // the bar shows the download
   newsAt = Date.now();
   const seen = newsSeen();
   newsShown = (await newsItems()).find((n) => !seen.includes(n.id)) || null;
@@ -2988,7 +2991,29 @@ async function checkNews() {
   $('#news-more').hidden = !newsShown.url;
   $('#news').hidden = false;
 }
-$('#news-more').addEventListener('click', () => portal.open(newsShown.url));
+$('#news-more').addEventListener('click', (e) => (newsShown.update ? runUpdate(e.target, $('#news-text')) : portal.open(newsShown.url)));
+
+// In-app update (portal.installUpdate): the release file downloads with a progress bar and is checked
+// against GitHub's SHA-256; then Windows installs and restarts, macOS opens the DMG and quits, Android
+// opens its install screen. Only on the button; Скачать (the release page) when there is no file for this platform.
+let updating = null; // where the progress goes while a download runs
+portal.onUpdateProgress((p) => updating?.replaceChildren(T('Загрузка обновления'), ' ', h('progress', { max: 1, value: p })));
+async function runUpdate(btn, out) {
+  if (updating) return;
+  updating = out;
+  btn.disabled = true;
+  out.replaceChildren(T('Загрузка обновления'), ' ', h('progress', { max: 1 }));
+  try {
+    const state = await portal.installUpdate();
+    out.textContent = state === 'permission' ? T('Разрешите установку из этого приложения, вернитесь и нажмите «Установить» ещё раз.')
+      : state === 'install' ? T('Подтвердите установку на экране Android.') : T('Установка…');
+  } catch (e) {
+    out.textContent = isOffline(e) ? T('Не удалось скачать обновление. Проверьте подключение.') : T(errText(e)); // Android errors come in Russian
+  } finally {
+    updating = null;
+    btn.disabled = false;
+  }
+}
 $('#news-close').addEventListener('click', () => {
   pref('newsSeen', [...newsSeen(), newsShown.id].slice(-50).join(','));
   checkNews();

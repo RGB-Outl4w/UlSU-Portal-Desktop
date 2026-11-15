@@ -746,6 +746,8 @@ header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-
 #net-banner span, #news span { flex: 1; }
 #net-banner button, #news button { font-weight: 600; color: var(--bar); padding: 4px 10px; border-radius: var(--r-sm); }
 #news button[hidden] { display: none; }
+/* update download (runUpdate) */
+progress { width: 140px; height: 6px; vertical-align: middle; accent-color: var(--accent); }
 @media (hover: hover) { #net-banner button:hover, #news button:hover { background: color-mix(in oklab, var(--bar) 14%, transparent); } }
 
 /* empty / offline / error state */

@@ -15,6 +15,7 @@ import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -37,6 +38,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
@@ -45,8 +47,14 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -395,6 +403,82 @@ public class UlPortalPlugin extends Plugin {
                 call.reject("OFFLINE: " + e.getMessage());
             }
         }).start();
+    }
+
+    // In-app update (portal.installUpdate): the APK from GitHub Releases into the cache, checked against the
+    // SHA-256 GitHub lists for it, then Android's own install screen (same signing key: it installs over this
+    // copy). The first time, Android wants "Install unknown apps" allowed for this app: its settings page
+    // opens and the user taps «Установить» again (the downloaded file is reused).
+    static final String RELEASES = "https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/download/";
+
+    @PluginMethod
+    public void update(PluginCall call) {
+        String url = call.getString("url", ""), sha = call.getString("sha256", ""), name = call.getString("name", "");
+        long size = call.getLong("size", 0L);
+        if (!url.startsWith(RELEASES) || !name.matches("ULSU-Portal-Android-[0-9A-Za-z.-]+\\.apk") || !sha.matches("[0-9a-f]{64}")) {
+            call.reject("bad update");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                File dir = new File(getContext().getCacheDir(), "update"), apk = new File(dir, name);
+                boolean have = false;
+                if (apk.isFile()) try (InputStream in = new FileInputStream(apk)) { have = sha.equals(sha256(in, null, 0)); }
+                if (!have) {
+                    File[] old = dir.listFiles();
+                    if (old != null) for (File f : old) f.delete();
+                    dir.mkdirs();
+                    HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setRequestProperty("User-Agent", "ulportal");
+                    if (c.getResponseCode() != 200) throw new Exception("GitHub: " + c.getResponseCode());
+                    String got;
+                    try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(apk)) { got = sha256(in, out, size); }
+                    if (!sha.equals(got)) {
+                        apk.delete();
+                        call.reject("Файл обновления повреждён, попробуйте ещё раз");
+                        return;
+                    }
+                }
+                JSObject ret = new JSObject();
+                Intent intent;
+                if (!getContext().getPackageManager().canRequestPackageInstalls()) {
+                    intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getContext().getPackageName()));
+                    ret.put("state", "permission");
+                } else {
+                    Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
+                    intent = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    ret.put("state", "install");
+                }
+                getActivity().runOnUiThread(() -> {
+                    getActivity().startActivity(intent);
+                    call.resolve(ret);
+                });
+            } catch (Exception e) {
+                call.reject("OFFLINE: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    // Copies in to out (if any) and returns the SHA-256 in hex; with size, sends updateProgress (0..1) to app.js.
+    private String sha256(InputStream in, OutputStream out, long size) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] buf = new byte[65536];
+        long got = 0, sent = 0;
+        for (int n; (n = in.read(buf)) > 0; ) {
+            md.update(buf, 0, n);
+            if (out != null) out.write(buf, 0, n);
+            got += n;
+            if (size > 0 && System.currentTimeMillis() - sent > 250) {
+                sent = System.currentTimeMillis();
+                JSObject p = new JSObject();
+                p.put("p", (double) got / size);
+                notifyListeners("updateProgress", p);
+            }
+        }
+        StringBuilder hex = new StringBuilder();
+        for (byte b : md.digest()) hex.append(String.format("%02x", b));
+        return hex.toString();
     }
 
     // Asked once, after the first successful sign-in or start with a session (Android 13+).
