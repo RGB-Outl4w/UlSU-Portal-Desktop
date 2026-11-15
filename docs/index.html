@@ -73,46 +73,24 @@
     .btn.ghost:hover { border-color: color-mix(in oklab, var(--brand) 45%, var(--line)); }
     .note { font-size: 13px; color: var(--muted); margin: 14px 0 0; }
 
-    /* app illustration (sample data only) */
+    /* app screenshots (real app, names and group replaced with sample data) */
     .stage { position: relative; max-width: 1020px; margin: 56px auto 0; padding-bottom: 28px; text-align: left; }
-    .win { display: grid; grid-template-columns: 176px minmax(0, 1fr); height: 520px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px 18px 0 0; border-bottom: 0; background: var(--surface); box-shadow: var(--shadow); font-size: 13px; line-height: 1.4; }
-    .win aside { display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; background: var(--bg); border-right: 1px solid var(--line); color: var(--muted); }
-    .win aside b { display: flex; align-items: center; gap: 8px; padding: 0 6px 14px; color: var(--text); font-size: 14px; }
-    .win aside b img { width: 24px; border-radius: 7px; }
-    .win aside i { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; font-style: normal; }
-    .win aside i .i { font-size: 16px; }
-    .win aside i.on { background: var(--soft); color: var(--brand); font-weight: 600; }
-    .win main { padding: 20px 22px; min-width: 0; }
-    .win h4 { margin: 0 0 14px; font-size: 21px; letter-spacing: -.01em; }
-    .now { color: #fff; border-radius: 14px; padding: 16px 18px; background: linear-gradient(125deg, #2f7bff, #0d45ca 60%, #0a2f8f); }
-    .now small { opacity: .8; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 10px; }
-    .now b { display: block; font-size: 18px; margin: 4px 0 2px; }
-    .now u { display: block; height: 5px; margin-top: 12px; border-radius: 3px; background: linear-gradient(90deg, #fff 62%, rgba(255, 255, 255, .25) 62%); }
-    .cards { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; margin-top: 12px; }
+    .win { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+    .win img, .phone img, .shot img { display: block; width: 100%; height: auto; }
+    /* phone in front of the window */
+    .phone { position: absolute; right: -14px; bottom: 0; width: 232px; overflow: hidden; border: 6px solid color-mix(in oklab, var(--text) 86%, var(--bg)); border-radius: 34px; background: var(--surface); box-shadow: var(--shadow); }
+    .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .shot { margin: 0; }
+    .shot > div { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+    .shot figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; text-align: center; }
+    /* small sample lists inside the feature tiles */
     .mini { min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 13px; background: var(--bg); }
-    .mini > strong { display: block; margin-bottom: 6px; font-size: 13px; }
     .line { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 0; border-top: 1px solid var(--line); }
-    .mini > strong + .line { border-top: 0; }
     .line > span:last-child, .line .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .line .grow { flex: 1; }
-    .line .t { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
     .pill { flex: none; padding: 1px 7px; border-radius: 9px; font-size: 10.5px; font-weight: 700; color: var(--brand); background: var(--soft); }
     .pill.g { color: var(--green); background: color-mix(in oklab, var(--green) 14%, transparent); }
     .pill.o { color: var(--orange); background: color-mix(in oklab, var(--orange) 14%, transparent); }
-    .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
-    .faint { color: var(--muted); font-size: 11.5px; }
-    /* phone in front of the window */
-    .phone { position: absolute; right: -14px; bottom: 0; width: 232px; height: 462px; overflow: hidden; display: flex; flex-direction: column; padding: 14px 10px 0; border: 6px solid color-mix(in oklab, var(--text) 86%, var(--bg)); border-bottom-width: 0; border-radius: 34px 34px 0 0; background: var(--surface); box-shadow: var(--shadow); font-size: 12px; line-height: 1.35; }
-    .phone h4 { margin: 4px 6px 10px; font-size: 18px; }
-    .chat { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 6px; border-radius: 11px; }
-    .chat > div { min-width: 0; flex: 1; }
-    .chat b, .chat small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chat b { font-weight: 600; }
-    .chat small { color: var(--muted); font-size: 11px; }
-    .ava { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; background: var(--c, #2f7bff); }
-    .count { flex: none; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--brand-2); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center; }
-    .tabs { display: flex; justify-content: space-around; margin: auto -10px 0; padding: 10px 0 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 18px; }
-    .tabs .on { color: var(--brand); }
 
     /* facts */
     .facts { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); border-block: 1px solid var(--line); background: var(--surface); }
@@ -204,15 +182,15 @@
       .privacy, #faq .wrap { grid-template-columns: 1fr; }
       #faq .wrap { gap: 12px; }
       nav .links a { display: none; }
-      .phone { right: 0; }
-      .cards { grid-template-columns: 1fr; max-width: calc(100% - 190px); } /* clear of the phone */
+      .phone { right: 0; width: 180px; }
+      .shots { grid-template-columns: 1fr; max-width: 640px; margin: 0 auto; }
     }
     @media (max-width: 760px) {
       section { padding: 64px 0; }
       .hero { padding-top: 124px; }
       .win { display: none; } /* a phone shows the phone */
       .stage { display: flex; justify-content: center; margin-top: 40px; padding: 0; }
-      .phone { position: static; width: min(270px, 100%); height: 440px; }
+      .phone { position: static; width: min(270px, 100%); }
       .facts { grid-template-columns: repeat(2, 1fr); }
       .facts div:nth-child(3) { border-left: 0; }
       .facts div:nth-child(n + 3) { border-top: 1px solid var(--line); }
@@ -296,51 +274,10 @@
         <span class="en">Windows 10/11 · macOS 12+ · Android 10+ · Mac with Intel — <a data-dl="mac-x64" href="https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases/latest">separate build</a></span>
       </p>
 
-      <!-- Illustration with sample data; not a screenshot of anyone's account. -->
-      <div class="stage reveal" aria-hidden="true">
-        <div class="win">
-          <aside>
-            <b><img src="logo.svg" alt="">УлГУ</b>
-            <i class="on"><svg class="i"><use href="#home"/></svg><span class="ru">Сегодня</span><span class="en">Today</span></i>
-            <i><svg class="i"><use href="#cal"/></svg><span class="ru">Расписание</span><span class="en">Schedule</span></i>
-            <i><svg class="i"><use href="#book"/></svg><span class="ru">Курсы</span><span class="en">Courses</span></i>
-            <i><svg class="i"><use href="#clock"/></svg><span class="ru">Дедлайны</span><span class="en">Deadlines</span></i>
-            <i><svg class="i"><use href="#bell"/></svg><span class="ru">Уведомления</span><span class="en">Notifications</span></i>
-            <i><svg class="i"><use href="#chat"/></svg><span class="ru">Сообщения</span><span class="en">Messages</span></i>
-            <i><svg class="i"><use href="#trend"/></svg><span class="ru">Оценки</span><span class="en">Grades</span></i>
-            <i><svg class="i"><use href="#apps"/></svg><span class="ru">Сервисы</span><span class="en">Services</span></i>
-          </aside>
-          <main>
-            <h4><span class="ru">Сегодня</span><span class="en">Today</span></h4>
-            <div class="now">
-              <small><span class="ru">Идёт сейчас</span><span class="en">Happening now</span></small>
-              <b><span class="ru">Базы данных</span><span class="en">Databases</span></b>
-              <span class="ru">Лекции · 3/217 · до 12:20 · осталось 34 мин</span><span class="en">Lecture · 3/217 · until 12:20 · 34 min left</span>
-              <u></u>
-            </div>
-            <div class="cards">
-              <div class="mini">
-                <strong><span class="ru">Пары сегодня</span><span class="en">Classes today</span></strong>
-                <div class="line"><span class="t">09:30</span><span class="pill g"><span class="ru">Практ.</span><span class="en">Practice</span></span><span><span class="ru">Философия</span><span class="en">Philosophy</span></span></div>
-                <div class="line"><span class="t">11:00</span><span class="pill"><span class="ru">Лекции</span><span class="en">Lecture</span></span><span><span class="ru">Базы данных</span><span class="en">Databases</span></span></div>
-                <div class="line"><span class="t">12:45</span><span class="pill g"><span class="ru">Практ.</span><span class="en">Practice</span></span><span><span class="ru">Web-технологии</span><span class="en">Web technologies</span></span></div>
-              </div>
-              <div class="mini">
-                <strong><span class="ru">Дедлайны</span><span class="en">Deadlines</span></strong>
-                <div class="line"><span class="dot"></span><span class="grow"><span class="ru">Лабораторная 3</span><span class="en">Lab assignment 3</span></span><span class="faint"><span class="ru">2 дня</span><span class="en">2 days</span></span></div>
-                <div class="line"><span class="dot"></span><span class="grow"><span class="ru">Тест, раздел 2</span><span class="en">Section 2 quiz</span></span><span class="faint"><span class="ru">5 дней</span><span class="en">5 days</span></span></div>
-              </div>
-            </div>
-          </main>
-        </div>
-        <div class="phone">
-          <h4><span class="ru">Сообщения</span><span class="en">Messages</span></h4>
-          <div class="chat"><span class="ava"><span class="ru">ПА</span><span class="en">AP</span></span><div><b><span class="ru">Петрова А. С.</span><span class="en">A. Petrova</span></b><small><span class="ru">Лабораторная принята</span><span class="en">Your lab is accepted</span></small></div><span class="count">2</span></div>
-          <div class="chat"><span class="ava" style="--c: #12a06a"><span class="ru">ИТ</span><span class="en">IT</span></span><div><b><span class="ru">Кафедра ИТ</span><span class="en">IT Department</span></b><small><span class="ru">Расписание консультаций</span><span class="en">Office hours schedule</span></small></div></div>
-          <div class="chat"><span class="ava" style="--c: #d9770b"><span class="ru">СГ</span><span class="en">GH</span></span><div><b><span class="ru">Староста группы</span><span class="en">Group head</span></b><small><span class="ru">Завтра пара в 3/217</span><span class="en">Tomorrow's class is in 3/217</span></small></div></div>
-          <div class="chat"><span class="ava" style="--c: #6d5bff"><span class="ru">СК</span><span class="en">KS</span></span><div><b><span class="ru">Смирнов К. Д.</span><span class="en">K. Smirnov</span></b><small><span class="ru">Вы: Спасибо!</span><span class="en">You: Thanks!</span></small></div></div>
-          <div class="tabs"><svg class="i"><use href="#home"/></svg><svg class="i"><use href="#cal"/></svg><svg class="i on"><use href="#chat"/></svg><svg class="i"><use href="#book"/></svg></div>
-        </div>
+      <!-- Real app screenshots; names, group and avatar replaced with sample data. -->
+      <div class="stage reveal">
+        <div class="win"><picture><source srcset="screenshots/dark-today.webp" media="(prefers-color-scheme: dark)"><img src="screenshots/light-today.webp" width="2880" height="1800" alt="Экран «Сегодня»: следующая пара, пары на день, дедлайны и уведомления"></picture></div>
+        <div class="phone"><picture><source srcset="screenshots/phone-dark-schedule.webp" media="(prefers-color-scheme: dark)"><img src="screenshots/phone-light-schedule.webp" width="780" height="1688" alt="Расписание на телефоне"></picture></div>
       </div>
     </div>
   </header>
@@ -428,6 +365,18 @@
         <li class="reveal"><h3><span class="ru">Войдите</span><span class="en">Sign in</span></h3><p><span class="ru">На настоящей странице портала: логин, пароль и код MAX — как обычно.</span><span class="en">On the real portal page: login, password and MAX code, as usual.</span></p></li>
         <li class="reveal"><h3><span class="ru">Оставьте в трее</span><span class="en">Keep it in the tray</span></h3><p><span class="ru">Пока приложение работает, сессия остаётся активной. На компьютере его можно запускать вместе с системой: это включается в меню трея.</span><span class="en">While the app runs, your session stays active. On a computer it can start with the system: turn that on in the tray menu.</span></p></li>
       </ol>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <h2 class="reveal"><span class="ru">Как это выглядит</span><span class="en">What it looks like</span></h2>
+      <p class="sub reveal"><span class="ru">Настоящие снимки приложения; имена и группа заменены на примерные.</span><span class="en">Real screenshots of the app; names and the group are replaced with sample data.</span></p>
+      <div class="shots">
+        <figure class="shot reveal"><div><picture><source srcset="screenshots/dark-schedule.webp" media="(prefers-color-scheme: dark)"><img src="screenshots/light-schedule.webp" width="2880" height="1800" loading="lazy" alt="Расписание на неделю"></picture></div><figcaption><span class="ru">Расписание</span><span class="en">Schedule</span></figcaption></figure>
+        <figure class="shot reveal"><div><img src="screenshots/dark-calendar.webp" width="2880" height="1800" loading="lazy" alt="Календарь месяца с парами"></div><figcaption><span class="ru">Календарь</span><span class="en">Calendar</span></figcaption></figure>
+        <figure class="shot reveal"><div><img src="screenshots/dark-courses.webp" width="2880" height="1800" loading="lazy" alt="Список курсов с прогрессом"></div><figcaption><span class="ru">Курсы</span><span class="en">Courses</span></figcaption></figure>
+      </div>
     </div>
   </section>
 

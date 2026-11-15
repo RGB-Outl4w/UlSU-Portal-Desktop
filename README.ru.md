@@ -7,7 +7,7 @@
 **Неофициальное приложение для [portal.ulsu.ru](https://portal.ulsu.ru) — портала студентов Ульяновского государственного университета — для Windows, macOS и Android.**
 Входите один раз, видите свой день целиком, а курсы, дедлайны, оценки и сообщения — в один клик.
 
-[![Версия](https://img.shields.io/badge/версия-1.2.8-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
+[![Версия](https://img.shields.io/badge/версия-1.2.10-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-12a06a)](LICENSE.ru.md)
 [![Платформа](https://img.shields.io/badge/платформа-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#установка)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
@@ -16,6 +16,8 @@
 [English](README.md) · **Русский** · [Сайт](https://rgb-outl4w.github.io/UlSU-Portal-Desktop/?lang=ru)
 
 </div>
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-today.webp"><img src="docs/screenshots/light-today.webp" alt="Экран «Сегодня»: следующая пара, пары на день, дедлайны и уведомления"></picture></p>
 
 ---
 
@@ -38,6 +40,16 @@
 | **Без сети** | Каждый открытый раздел сохраняется и работает без подключения |
 | **Вход** | Настоящая страница портала (пароль, затем код MAX) в оформлении приложения, с переключателем RU / EN; пароль и код приложение не видит |
 | **Удобство** | Фото профиля с квадратной обрезкой, светлая и тёмная тема, цвет акцента, русский и английский, поиск по всему, что сохранено на устройстве (Ctrl+K или кнопка поиска на телефоне), горячие клавиши, режим уменьшения анимации; раскладка для планшета в вертикальном положении |
+
+## Скриншоты
+
+Настоящие снимки приложения. Имена, группа и аватар заменены на примерные.
+
+| Расписание | Календарь | Курсы |
+|---|---|---|
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-schedule.webp"><img src="docs/screenshots/light-schedule.webp" alt="Расписание"></picture> | <img src="docs/screenshots/dark-calendar.webp" alt="Календарь"> | <img src="docs/screenshots/dark-courses.webp" alt="Курсы"> |
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark-today.webp"><img src="docs/screenshots/phone-light-today.webp" width="260" alt="«Сегодня» на телефоне"></picture> &nbsp; <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark-schedule.webp"><img src="docs/screenshots/phone-light-schedule.webp" width="260" alt="Расписание на телефоне"></picture></p>
 
 ## Установка
 

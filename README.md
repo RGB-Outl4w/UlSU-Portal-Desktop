@@ -17,6 +17,8 @@ Stay signed in, see your day at a glance, and keep courses, deadlines, grades an
 
 </div>
 
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-today.webp"><img src="docs/screenshots/light-today.webp" alt="The Today screen: next class, today's classes, deadlines and notifications"></picture></p>
+
 ---
 
 ## Why
@@ -38,6 +40,16 @@ The portal logs you out every time you close the browser, and signing back in me
 | **Offline** | Every section is saved after you open it, so it still works without a connection |
 | **Sign-in** | The real portal page (password, then the MAX code) in the app's look, with an RU / EN switch; the app never sees your password or code |
 | **Comfort** | Profile picture with square crop, light/dark theme, accent colours, Russian and English, search across everything saved on your device (Ctrl+K, or the search button on phones), keyboard shortcuts, reduced-motion support; a layout for tablets held upright |
+
+## Screenshots
+
+Real screenshots of the app. Names, the group and the avatar are replaced with sample data.
+
+| Schedule | Calendar | Courses |
+|---|---|---|
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-schedule.webp"><img src="docs/screenshots/light-schedule.webp" alt="Schedule"></picture> | <img src="docs/screenshots/dark-calendar.webp" alt="Calendar"> | <img src="docs/screenshots/dark-courses.webp" alt="Courses"> |
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark-today.webp"><img src="docs/screenshots/phone-light-today.webp" width="260" alt="Today on a phone"></picture> &nbsp; <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark-schedule.webp"><img src="docs/screenshots/phone-light-schedule.webp" width="260" alt="Schedule on a phone"></picture></p>
 
 ## Install
 
