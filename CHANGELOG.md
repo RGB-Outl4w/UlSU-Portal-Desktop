@@ -1,6 +1,6 @@
 # Changelog / История изменений
 
-## 1.2.10 — unreleased
+## 1.2.10-beta.1 — 2026-11-16 (pre-release)
 
 **Updates from inside the app.** / **Обновление прямо из приложения.**
 
