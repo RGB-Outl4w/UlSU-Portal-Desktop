@@ -336,3 +336,9 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 ## 1.2.8 (2026-11-08)
 
 - **Locked items:** a restricted activity (`.availabilityinfo`, Ограничено) has no link on the course page, so `url` was null and every opener failed its own way. `openActivity` now sends a link-less item to `showLocked`: the portal's reason plus a button to the first item the restriction names (`needs`). The app can't unlock items: access is checked on the portal. Checked on the real portal (66080: 21 locked items).
+
+## Later: parser fixes without a release (idea, 2026-11-16)
+
+- **Why:** if the portal renames its markup, parsers break until users install a new version. On 2026-11-16, an empty next week turned out to be the portal's own data, not a parser bug, but the question stands.
+- **Chosen: remote selectors.** Move the selectors and regexes the parsers use (`parseSchedule`: `.schedule__item`, `.schedule-table_time`, `data-schedule-week-panel`, ...) into one JSON object, with today's values built in as defaults. At start, fetch overrides from Supabase (a table read with the publishable key, like `announcements`) or from a file under `docs/`. Cache the last good copy and merge it over the defaults. It is data only, so a leaked key can't run code. It fixes renamed classes only; a new endpoint, JSON data or a different structure still needs a release (the in-app updater covers that).
+- **Rejected: remote parser code** (`eval` of fetched JS). It fixes everything, but whoever controls the Supabase project or the GitHub account could run code in every user's signed-in portal session. It would need signed bundles with the public key in the app, and Google Play restricts downloaded code.
