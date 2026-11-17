@@ -391,9 +391,9 @@ input[type=search]:focus { width: 260px; }
 .pane { padding: 14px 16px 10px; }
 .pane-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--muted); }
 .pane-head h3 { margin: 0; font-size: 15px; color: var(--text); }
-.pane-head .more { margin-left: auto; color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 8px; border-radius: var(--r-sm); }
+.pane-head .more { margin-left: auto; white-space: nowrap; color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 8px; border-radius: var(--r-sm); }
 @media (hover: hover) { .pane-head .more:hover { background: var(--accent-soft); } }
-.pill { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; color: var(--accent); background: var(--accent-soft); }
+.pill { font-size: 11.5px; font-weight: 700; white-space: nowrap; padding: 2px 9px; border-radius: 20px; color: var(--accent); background: var(--accent-soft); }
 .pill.danger { color: var(--danger); background: color-mix(in oklab, var(--danger) 13%, transparent); }
 .pill.ok { color: var(--practice); background: color-mix(in oklab, var(--practice) 14%, transparent); }
 .pane .empty { color: var(--muted); padding: 14px 0 10px; }
@@ -952,6 +952,16 @@ progress { width: 140px; height: 6px; vertical-align: middle; accent-color: var(
   .cal-cell { padding: 4px; }
   .cal-cell .cal-ev { font-size: 0; padding: 0; height: 4px; background: currentColor; } /* event chips shrink to colour bars */
   .cal-cell .cal-more { display: none; }
+
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } /* 170px tiles missed two columns by 4px */
+  .recent { overflow-x: auto; scrollbar-width: none; } /* recent courses scroll sideways instead of shrinking to "Б…" */
+  .recent::-webkit-scrollbar { display: none; }
+  .recent .chip-btn { flex: none; max-width: 220px; }
+  #tools > .tool-label { display: none; } /* "Семестр" squeezed beside the search; the 1–8 tabs speak for themselves */
+  /* Успеваемость: survey link and mark go on a row of their own under the subject */
+  .row:has(> .mark) { flex-wrap: wrap; row-gap: 8px; }
+  .row:has(> .mark) > .main { flex-basis: 100%; }
+  .row > .mark { margin-left: auto; }
 
   #settings, #profile { inset: auto 8px 8px 8px; width: auto; }
   #palette { margin-top: 6vh; }
