@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## 1.2.11 — 2026-11-17
+
+**Phone layout fixes and a clearer empty next week.** / **Исправления для телефонов и понятная пустая следующая неделя.**
+
+**English**
+- When the portal hasn't published next week's timetable yet, Schedule, the Today tile and the calendar now say so, instead of "no classes".
+- Phones: the date beside "Upcoming classes" no longer breaks onto two lines; the number tiles on Academic record and Study plan sit two per row; recent courses scroll sideways instead of shrinking; Academic record rows put "Rate" and the mark under the subject; refresh, search and month arrows are bigger to tap.
+- Android: the update screen now explains what to do if Google Play Protect warns about the app.
+
+**Русский**
+- Если портал ещё не опубликовал расписание на следующую неделю, «Расписание», плитка на «Сегодня» и календарь теперь так и пишут, а не «занятий нет».
+- Телефоны: дата рядом с «Ближайшие занятия» больше не переносится на две строки; плитки с цифрами в «Успеваемости» и «Учебном плане» стоят по две в ряд; недавние курсы прокручиваются вбок, а не сжимаются; в «Успеваемости» кнопка «Оценить» и отметка стоят под названием предмета; кнопки обновления, поиска и стрелки месяцев стало легче нажимать.
+- Android: экран обновления подсказывает, что делать, если Google Play Защита предупредит о приложении.
+
 ## 1.2.10 — 2026-11-16
 
 **Updates from inside the app.** / **Обновление прямо из приложения.**
