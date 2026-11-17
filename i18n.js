@@ -397,7 +397,7 @@ const EN = {
   'Установить': 'Install',
   'Загрузка обновления': 'Downloading the update',
   'Установка…': 'Installing…',
-  'Подтвердите установку на экране Android.': 'Confirm the installation on the Android screen.',
+  'Подтвердите установку на экране Android. Если Play Защита предупредит, нажмите «Подробнее» → «Всё равно установить».': 'Confirm the installation on the Android screen. If Play Protect warns, tap More details → Install anyway.',
   'Разрешите установку из этого приложения, вернитесь и нажмите «Установить» ещё раз.': 'Allow installs from this app, come back and press Install again.',
   'Не удалось скачать обновление. Проверьте подключение.': 'Could not download the update. Check your connection.',
   'Файл обновления повреждён, попробуйте ещё раз': 'The update file is damaged, please try again',

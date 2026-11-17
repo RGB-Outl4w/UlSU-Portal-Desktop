@@ -71,7 +71,7 @@ Not sure which Mac you have?  → **About This Mac** → **Chip**.
 - **macOS 12–14:** Control-click the app → **Open** → **Open**.
 - If macOS still refuses, run in Terminal: `xattr -dr com.apple.quarantine "/Applications/ULSU Portal Desktop.app"`
 
-**Android 10+:** download the `.apk` on the phone and open it. Android asks once to allow installing apps from your browser or file manager; allow it, then tap **Install**. The app isn't on Google Play yet. It asks for permission to show notifications. In the background it checks for new notifications and messages about every 15 minutes, which also keeps the portal session alive. Android may check less often to save battery.
+**Android 10+:** download the `.apk` on the phone and open it. Android asks once to allow installing apps from your browser or file manager; allow it, then tap **Install**. The app isn't on Google Play yet, so Google Play Protect may call it unsafe or from an unknown developer. It flags apps installed from outside Google Play, especially ones that can install their own updates, as this app does from GitHub. Tap **More details** → **Install anyway**. The source is open, and every release is built from this repository by GitHub Actions. It asks for permission to show notifications. In the background it checks for new notifications and messages about every 15 minutes, which also keeps the portal session alive. Android may check less often to save battery.
 
 ### Run from source
 

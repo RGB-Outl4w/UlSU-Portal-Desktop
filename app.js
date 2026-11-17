@@ -3006,7 +3006,7 @@ async function runUpdate(btn, out) {
   try {
     const state = await portal.installUpdate();
     out.textContent = state === 'permission' ? T('Разрешите установку из этого приложения, вернитесь и нажмите «Установить» ещё раз.')
-      : state === 'install' ? T('Подтвердите установку на экране Android.') : T('Установка…');
+      : state === 'install' ? T('Подтвердите установку на экране Android. Если Play Защита предупредит, нажмите «Подробнее» → «Всё равно установить».') : T('Установка…');
   } catch (e) {
     out.textContent = isOffline(e) ? T('Не удалось скачать обновление. Проверьте подключение.') : T(errText(e)); // Android errors come in Russian
   } finally {
