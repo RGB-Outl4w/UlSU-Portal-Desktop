@@ -166,6 +166,20 @@
     footer .wrap { display: grid; gap: 10px; }
     footer .links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 6px; }
 
+    /* screenshot zoom: a native <dialog> (Esc closes it too); fades in and out, backdrop included */
+    .js :is(.win, .phone, .shot) img { cursor: zoom-in; }
+    #zoom { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 24px; border: 0; background: none; opacity: 0;
+      transition: opacity .25s var(--ease), display .25s allow-discrete, overlay .25s allow-discrete; }
+    #zoom[open] { display: grid; place-items: center; opacity: 1; }
+    #zoom::backdrop { background: rgba(8, 10, 16, 0); transition: background .25s, display .25s allow-discrete, overlay .25s allow-discrete; }
+    #zoom[open]::backdrop { background: rgba(8, 10, 16, .72); }
+    #zoom img { width: auto; height: auto; max-width: calc(100vw - 48px); max-height: calc(100dvh - 48px); border-radius: 12px; box-shadow: var(--shadow); scale: .94; transition: scale .25s var(--ease); }
+    #zoom[open] img { scale: 1; }
+    @starting-style { #zoom[open] { opacity: 0; } #zoom[open]::backdrop { background: rgba(8, 10, 16, 0); } #zoom[open] img { scale: .94; } }
+    #zoom button { position: fixed; top: 14px; right: 14px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(20, 23, 30, .7); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
+    #zoom button:hover { background: rgba(40, 45, 58, .85); }
+    html:has(#zoom[open]) { overflow: hidden; }
+
     /* hidden only when JS runs (it reveals them on scroll); without JS everything stays visible */
     .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
     .js .reveal.in { opacity: 1; transform: none; }
@@ -453,6 +467,8 @@
     </div>
   </footer>
 
+  <dialog id="zoom"><button type="button" aria-label="Закрыть / Close">✕</button><img alt=""></dialog>
+
   <script>
     // Language: ?lang=ru|en, then the saved choice, then the browser language.
     const root = document.documentElement;
@@ -493,6 +509,18 @@
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     }), { threshold: 0.08 });
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+    // Screenshots open full size; a click anywhere but the picture (backdrop or ✕) closes it, as does Esc.
+    const zoom = document.getElementById('zoom');
+    const zoomImg = zoom.querySelector('img');
+    document.querySelectorAll(':is(.win, .phone, .shot) img').forEach((img) => {
+      img.tabIndex = 0;
+      img.setAttribute('role', 'button');
+      const open = () => { zoomImg.src = img.currentSrc || img.src; zoomImg.alt = img.alt; zoom.showModal(); };
+      img.addEventListener('click', open);
+      img.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+    zoom.addEventListener('click', (e) => { if (e.target !== zoomImg) zoom.close(); });
   </script>
 </body>
 </html>
