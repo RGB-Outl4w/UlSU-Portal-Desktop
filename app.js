@@ -444,11 +444,13 @@ const views = {
 
         pairs: () => h('div', { class: 'card pane' },
           paneHead('schedule', todayDay ? T('Пары сегодня') : T('Ближайшие занятия'),
-            !todayDay && nextDay ? h('span', { class: 'pill' }, nextDay.date.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })) : null,
+            !todayDay && nextDay ? h('span', { class: 'pill' }, nextDay.date.toLocaleDateString(LOCALE,
+              { weekday: 'short', day: 'numeric', month: phoneMq.matches ? 'numeric' : 'short' })) : null, // "ср, 18.11": fits beside the title on a phone
             () => show('schedule')),
           (todayDay || nextDay)
             ? (todayDay || nextDay).pairs.map((p) => pairRow(p, !!todayDay, now.getHours() * 60 + now.getMinutes()))
-            : h('div', { class: 'empty' }, T('Пар на ближайшие дни нет'))),
+            : h('div', { class: 'empty' }, d.weeks.next && !d.weeks.next.days.length
+              ? T('На портале пока нет расписания на следующую неделю') : T('Пар на ближайшие дни нет'))),
 
         deadlines: () => h('div', { class: 'card pane' },
           paneHead('deadlines', T('Дедлайны'), overdue ? h('span', { class: 'pill danger' }, T('{0} просрочено', overdue)) : null, () => show('deadlines')),
@@ -503,7 +505,8 @@ const views = {
       if (!w) return msg(T('Расписание не найдено на портале'));
       return [
         h('div', { class: 'week-line' }, w.parity ? h('span', { class: 'week-num' }, T('{0} неделя', roman(w.parity))) : null, w.range),
-        w.days.length ? stagger(h('div', { class: 'days' }, w.days.map((d) => dayCard(d)))) : msg(T('Занятий нет')),
+        w.days.length ? stagger(h('div', { class: 'days' }, w.days.map((d) => dayCard(d))))
+          : msg(week === 'next' ? T('На портале пока нет расписания на следующую неделю') : T('Занятий нет')),
       ];
     },
   },
@@ -1835,10 +1838,12 @@ function pairsOn(date, weeks) {
   const cur = weeks.current?.days[0]?.date;
   if (!cur || date < new Date().setHours(0, 0, 0, 0)) return { pairs: [], guess: false };
   const offset = Math.round((mondayOf(date) - mondayOf(cur)) / (7 * DAY_MS));
-  if (offset < 2 || offset > 8) return { pairs: [], guess: false };
+  // An empty next week usually means the portal hasn't published it yet: say so instead of "no classes".
+  const unknown = offset % 2 === 1 && offset <= 8 && !weeks.next?.days.length;
+  if (offset < 2 || offset > 8) return { pairs: [], guess: false, unknown };
   const template = offset % 2 ? weeks.next : weeks.current;
   const day = template?.days.find((d) => d.date.getDay() === date.getDay());
-  return { pairs: day?.pairs || [], guess: true };
+  return { pairs: day?.pairs || [], guess: true, unknown };
 }
 
 const isDeadline = (e) => e.isactionevent || /due|close/.test(e.eventtype);
@@ -1920,13 +1925,13 @@ Object.assign(views, {
         ui.cal.sel = date.toDateString();
         cell.parentNode.querySelectorAll('.sel').forEach((x) => x.classList.remove('sel'));
         cell.classList.add('sel');
-        const { pairs, guess } = pairsOn(date, d.weeks);
+        const { pairs, guess, unknown } = pairsOn(date, d.weeks);
         const evs = byDay[date.toDateString()] || [];
         const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
         panel.replaceChildren(...clean([
           h('div', { class: 'reader-head' },
             h('h2', {}, date.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })),
-            h('div', { class: 'sub' }, [pairs.length ? `${pairs.length} ${plural(pairs.length, 'пара|пары|пар')}` : T('Пар нет'),
+            h('div', { class: 'sub' }, [pairs.length ? `${pairs.length} ${plural(pairs.length, 'пара|пары|пар')}` : unknown ? T('Расписания на портале пока нет') : T('Пар нет'),
               evs.length ? `${evs.length} ${plural(evs.length, 'событие|события|событий')}` : null].filter(Boolean).join(' · '))),
           showEvents && evs.length ? [h('h4', { class: 'panel-h' }, T('События')), evs.map((e) =>
             h('button', { class: 'mini', onclick: () => portal.open(e.url || e.viewurl) },

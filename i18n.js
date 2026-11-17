@@ -137,6 +137,8 @@ const EN = {
   'Следующая': 'Next week',
   'Расписание не найдено на портале': 'No schedule found on the portal',
   'Занятий нет': 'No classes',
+  'На портале пока нет расписания на следующую неделю': "The portal doesn't have next week's timetable yet",
+  'Расписания на портале пока нет': 'No timetable on the portal yet',
   'Всё': 'All',
   'Занятия': 'Classes',
   'События': 'Events',

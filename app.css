@@ -953,6 +953,8 @@ progress { width: 140px; height: 6px; vertical-align: middle; accent-color: var(
   .cal-cell .cal-ev { font-size: 0; padding: 0; height: 4px; background: currentColor; } /* event chips shrink to colour bars */
   .cal-cell .cal-more { display: none; }
 
+  .icon-btn { width: 44px; height: 44px; } /* finger-sized: refresh, search, month arrows */
+  .month-name { min-width: 112px; } /* longest is "September 2026" at 108px; 130px pushed the export button to its own row */
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } /* 170px tiles missed two columns by 4px */
   .recent { overflow-x: auto; scrollbar-width: none; } /* recent courses scroll sideways instead of shrinking to "Б…" */
   .recent::-webkit-scrollbar { display: none; }
