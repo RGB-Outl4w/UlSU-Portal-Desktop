@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## 1.2.12 — 2026-11-21
+
+- Updated the author credits in the app, website, and documentation.
+- Обновили сведения об авторе в приложении, на сайте и в документации.
+
 ## 1.2.11 — 2026-11-17
 
 **Phone layout fixes and a clearer empty next week.** / **Исправления для телефонов и понятная пустая следующая неделя.**
