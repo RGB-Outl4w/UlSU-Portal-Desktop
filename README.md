@@ -7,7 +7,7 @@
 **An unofficial app for [portal.ulsu.ru](https://portal.ulsu.ru), the student portal of Ulyanovsk State University, on Windows, macOS and Android.**
 Stay signed in, see your day at a glance, and keep courses, deadlines, grades and messages one click away.
 
-[![Version](https://img.shields.io/badge/version-1.2.11-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
+[![Version](https://img.shields.io/badge/version-1.2.12-0d45ca)](https://github.com/RGB-Outl4w/UlSU-Portal-Desktop/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-12a06a)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android-5c677d)](#install)
 [![Electron](https://img.shields.io/badge/Electron-45-47848f)](https://www.electronjs.org)
@@ -125,7 +125,7 @@ The app is free and every feature stays free. If it saves you time, you can [sup
 
 ## Credits
 
-Created by **Maksim Surgutskii** (Сургутский Максим Эдуардович), student, group ИС-О-25/1, with the help of [Claude Code](https://claude.com/claude-code), an AI coding assistant by Anthropic.
+Created by **Maksim Surgutskii** (Сургутский Максим Эдуардович), student, group ИС-О-25/1.
 
 Built with [Electron](https://www.electronjs.org). Icons based on [Lucide](https://lucide.dev). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
