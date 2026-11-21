@@ -125,7 +125,7 @@ The app is free and every feature stays free. If it saves you time, you can [sup
 
 ## Credits
 
-Created by **Maksim Surgutskii** (Сургутский Максим Эдуардович), student, group ИС-О-25/1, with the help of [Claude Code](https://claude.com/claude-code), an AI coding assistant by Anthropic.
+Created by **Maksim Surgutskii** (Сургутский Максим Эдуардович), student, group ИС-О-25/1.
 
 Built with [Electron](https://www.electronjs.org). Icons based on [Lucide](https://lucide.dev). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

@@ -371,7 +371,6 @@ const EN = {
   'Автор': 'Author',
   'Сургутский Максим Эдуардович': 'Maksim Surgutskii',
   'студент группы ИС-О-25/1': 'student, group ИС-О-25/1',
-  'Разработано при участии Claude Code — ИИ-ассистента для программирования от Anthropic.': 'Built with the help of Claude Code, an AI coding assistant by Anthropic.',
   'Работает на': 'Runs on',
   'Правовая информация': 'Legal',
   'Неофициальный проект. Не связан с УлГУ и не одобрен университетом. Данные хранятся только на вашем устройстве и на самом портале.': 'Unofficial project. Not affiliated with or endorsed by ULSU. Your data stays on your device and on the portal itself.',

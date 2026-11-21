@@ -2597,8 +2597,7 @@ Object.assign(views, {
 
         h('div', { class: 'card pane' },
           paneHead('profile', T('Автор')),
-          h('p', { class: 'about-author' }, h('b', {}, T('Сургутский Максим Эдуардович')), h('br'), T('студент группы ИС-О-25/1')),
-          h('p', { class: 'sub' }, T('Разработано при участии Claude Code — ИИ-ассистента для программирования от Anthropic.'))),
+          h('p', { class: 'about-author' }, h('b', {}, T('Сургутский Максим Эдуардович')), h('br'), T('студент группы ИС-О-25/1'))),
 
         h('div', { class: 'card pane' },
           paneHead('settings', T('Работает на')),

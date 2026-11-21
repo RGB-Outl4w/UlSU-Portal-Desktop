@@ -125,7 +125,7 @@ docs/          Сайт проекта (GitHub Pages)
 
 ## Авторы
 
-Автор — **Сургутский Максим Эдуардович**, студент группы ИС-О-25/1, при участии [Claude Code](https://claude.com/claude-code) — ИИ-ассистента для программирования от Anthropic.
+Автор — **Сургутский Максим Эдуардович**, студент группы ИС-О-25/1.
 
 Построено на [Electron](https://www.electronjs.org). Иконки на основе [Lucide](https://lucide.dev). См. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
