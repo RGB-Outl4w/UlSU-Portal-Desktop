@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## 1.3.0-beta.1 — 2026-11-23 (pre-release)
+
+**English**
+- **Android widget.** Add **ULSU timetable** from the home-screen widget picker. Open Schedule online once to load your timetable. The widget shows your next class offline and opens Schedule when tapped.
+- **Alerts.** Enable deadline reminders or course grade alerts in Settings. Reminders cover the final 24 hours before a deadline. Grade alerts report a change after saving the first set of course grades.
+
+**Русский**
+- **Виджет Android.** Добавьте **Расписание УлГУ** на главный экран и один раз откройте раздел «Расписание» с подключением к интернету. Виджет показывает следующую пару без сети. Нажатие открывает расписание.
+- **Уведомления.** В настройках можно включить напоминания в течение 24 часов до дедлайна и уведомления об изменениях итоговых оценок по курсам.
+
 ## 1.2.12 — 2026-11-21
 
 - Updated the author credits in the app, website, and documentation.

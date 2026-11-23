@@ -3,6 +3,8 @@
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/backup_alerts"
+        android:fullBackupContent="@xml/backup_alerts_legacy"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -23,6 +25,18 @@
             </intent-filter>
 
         </activity>
+
+        <receiver
+            android:name=".ScheduleWidget"
+            android:exported="false"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/schedule_widget" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

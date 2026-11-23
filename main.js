@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
+const { courseGrades, changedGrades, deadlineReminders, DAY } = require('./alerts');
 
 // Data folder stays %APPDATA%\ulportal whatever the installer's product name is, so updates and
 // the dev build share one session and cache. Must run before anything reads userData (incl. the lock).
@@ -36,6 +37,10 @@ const MAIN_EN = {
   'УлГУ · Портал студента': 'ULSU · Student Portal',
   '{0} непрочитанных': '{0} unread',
   'Новое сообщение': 'New message',
+  'Приближаются дедлайны': 'Upcoming deadlines',
+  'Дедлайнов в ближайшие 24 ч: {0}.': 'Deadlines in the next 24 hours: {0}.',
+  'Обновились оценки': 'Grades updated',
+  'Курсов с изменениями оценок: {0}.': 'Courses with grade changes: {0}.',
   'Открыть': 'Open',
   'Запускать с Windows': 'Start with Windows',
   'Открывать при входе в систему': 'Open at login',
@@ -64,6 +69,8 @@ async function net(url, opts) {
 // Disk copy of every read (pages and *_get_* AJAX calls), one JSON file per request, so views
 // open instantly and still work offline. mode 'cache' answers from disk only, as { at, data }.
 const CACHE_DIR = () => path.join(app.getPath('userData'), 'cache');
+const PREFS_FILE = () => path.join(app.getPath('userData'), 'prefs.json');
+const ALERTS_FILE = () => path.join(app.getPath('userData'), 'alerts.json');
 const OPEN_DIR = () => path.join(app.getPath('userData'), 'opened'); // files handed to the system app; apart, they can be locked
 const clearDisk = async () => {
   await fs.promises.rm(CACHE_DIR(), { recursive: true, force: true });
@@ -418,9 +425,10 @@ async function post(p, fields) {
   return res.text();
 }
 
-async function call(methodname, args) {
+async function call(methodname, args, signal) {
   const res = await net(`${BASE}/lib/ajax/service.php?sesskey=${sesskey}&info=${methodname}`, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify([{ index: 0, methodname, args }]),
   });
@@ -463,16 +471,83 @@ function setSession(state) {
   }
 }
 
+const readJson = (file) => {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { return {}; }
+};
+let alertCheck, alertsEpoch = 0;
+let lastGradeCheck = null;
+function pollAlerts(account, key) {
+  if (alertCheck || !Notification.isSupported()) return;
+  const settings = readJson(PREFS_FILE());
+  const reminders = settings.deadlineReminders === 'on';
+  const grades = settings.gradeAlerts === 'on' &&
+    (lastGradeCheck?.account !== account || Date.now() - lastGradeCheck.at >= 15 * 60_000);
+  if (!reminders && !grades) return;
+  const epoch = alertsEpoch;
+  const current = (setting) => !quitting && userid === account && sesskey === key && alertsEpoch === epoch &&
+    readJson(PREFS_FILE())[setting] === 'on';
+  const saved = readJson(ALERTS_FILE());
+  let state = saved.account === account ? saved : { account };
+  const commit = (next) => {
+    const file = ALERTS_FILE();
+    try {
+      fs.writeFileSync(file + '.tmp', JSON.stringify(next));
+      fs.renameSync(file + '.tmp', file);
+      state = next;
+    } finally {
+      fs.rmSync(file + '.tmp', { force: true });
+    }
+  };
+  alertCheck = (async () => {
+    if (reminders) {
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const reply = await call('core_calendar_get_action_events_by_timesort', {
+          timesortfrom: now, timesortto: now + DAY, limitnum: 50, limittononsuspendedevents: true,
+        }, AbortSignal.timeout(20_000));
+        if (Array.isArray(reply.data?.events) && current('deadlineReminders')) {
+          const result = deadlineReminders(reply.data.events, state.sent || {}, Math.floor(Date.now() / 1000));
+          if (JSON.stringify(result.sent) !== JSON.stringify(state.sent || {})) {
+            commit({ ...state, sent: result.sent });
+            if (result.count) toast(t('Приближаются дедлайны'), t('Дедлайнов в ближайшие 24 ч: {0}.', result.count), 'deadlines');
+          }
+        }
+      } catch {} // The reminders request can fail independently of the grades request.
+    }
+    if (grades && current('gradeAlerts')) {
+      lastGradeCheck = { account, at: Date.now() };
+      const reply = await net(BASE + '/grade/report/overview/index.php', {
+        cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(20_000),
+      });
+      if (!reply.ok) return;
+      const markup = await reply.text();
+      // The portal cookie can change during sign-in. Keep this read bound to the successful poll.
+      if (markup.match(/"sesskey":"(\w+)"/)?.[1] !== key) return;
+      const fresh = courseGrades(markup);
+      if (!fresh || !Object.keys(fresh).length || !current('gradeAlerts')) return;
+      const previous = state.grades || {};
+      const count = changedGrades(previous, fresh).length;
+      const snapshot = { ...previous, ...fresh };
+      if (JSON.stringify(snapshot) === JSON.stringify(previous)) return;
+      commit({ ...state, grades: snapshot });
+      if (count) toast(t('Обновились оценки'), t('Курсов с изменениями оценок: {0}.', count), 'grades');
+    }
+  })().catch(() => {}).finally(() => { alertCheck = null; });
+}
+
 // Checks unread notifications/messages; doubles as the keepalive that stops Moodle's idle timeout.
 // Never opens the login window: a dead session is only logged; the next view load asks to log in.
 // First run only records what exists, so old items don't toast on startup.
 async function poll() {
   if (!sesskey || !userid || loginPromise) return null;
+  const account = userid;
+  const key = sesskey;
   try {
     const [notes, convs] = await Promise.all([
       call('message_popup_get_popup_notifications', { useridto: userid, newestfirst: true, limit: 10, offset: 0 }),
       call('core_message_get_conversations', { userid, limitfrom: 0, limitnum: 20 }),
     ]);
+    if (userid !== account || sesskey !== key) return null;
     const dead = [notes, convs].find((r) => r.error);
     if (dead) {
       const code = dead.exception?.errorcode;
@@ -502,6 +577,7 @@ async function poll() {
     };
     for (const n of newNotes.slice(0, 3)) toast(strip(n.subject), strip(n.smallmessage || n.fullmessage), 'notifications');
     for (const c of newMsgs.slice(0, 3)) toast(c.name || c.members[0]?.fullname || t('Новое сообщение'), strip(c.messages[0].text), 'messages');
+    pollAlerts(account, key);
     return unread;
   } catch (e) {
     if (/MAINTENANCE/.test(e.message)) setSession('maintenance');
@@ -654,12 +730,12 @@ app.whenReady().then(() => {
   ipcMain.handle('checkUpdate', () => checkUpdate());
   ipcMain.handle('installUpdate', () => installUpdate());
   // UI prefs mirror (preload.js / app.js pref()): written at once and atomically, read before the UI starts.
-  const PREFS_FILE = path.join(app.getPath('userData'), 'prefs.json');
-  ipcMain.on('prefs-load', (e) => { e.returnValue = fs.existsSync(PREFS_FILE) ? fs.readFileSync(PREFS_FILE, 'utf8') : '{}'; });
+  const prefsFile = PREFS_FILE();
+  ipcMain.on('prefs-load', (e) => { e.returnValue = fs.existsSync(prefsFile) ? fs.readFileSync(prefsFile, 'utf8') : '{}'; });
   ipcMain.on('prefs-save', (_e, json) => {
     try {
-      fs.writeFileSync(`${PREFS_FILE}.tmp`, json);
-      fs.renameSync(`${PREFS_FILE}.tmp`, PREFS_FILE);
+      fs.writeFileSync(prefsFile + '.tmp', json);
+      fs.renameSync(prefsFile + '.tmp', prefsFile);
     } catch (err) {
       log(`prefs write failed: ${err.message}`);
     }
@@ -674,11 +750,16 @@ app.whenReady().then(() => {
   }); // renderer asks after marking things read
   ipcMain.handle('logout', async () => {
     // End the server session too, not just our cookie copy.
-    if (sesskey) await ses.fetch(`${BASE}/login/logout.php?sesskey=${sesskey}`).catch(() => {});
+    const key = sesskey;
     sesskey = null;
     userid = null;
     seen = null;
     declined = false;
+    alertsEpoch++;
+    lastGradeCheck = null;
+    await fs.promises.rm(ALERTS_FILE(), { force: true }).catch(() => {});
+    await fs.promises.rm(ALERTS_FILE() + '.tmp', { force: true }).catch(() => {});
+    if (key) await ses.fetch(BASE + '/login/logout.php?sesskey=' + key).catch(() => {});
     // Not localStorage: it holds the settings (Сегодня layout, theme), which are not personal data of the portal.
     await ses.clearStorageData({ storages: ['cookies', 'filesystem', 'indexdb', 'shadercache', 'serviceworkers', 'cachestorage'] });
     await clearDisk(); // cached pages hold personal data

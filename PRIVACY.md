@@ -21,6 +21,7 @@ ULSU Portal Desktop is an open-source app made by an individual student (see [NO
 | Courses filter and sort | You | The portal's own settings for your account (the same ones its Course overview uses) | So the app and the website show the same choice on every device |
 | Archived chats, pinned chats and their order, chats you marked unread | You | Your computer, plus a small file `ulportal-sync/sync.json` in your personal files on the portal | So these choices are the same on all your devices. Deleting that folder on the portal stops sharing them; each device keeps its own copy |
 | Files you upload or download | You / the portal | Your chosen folder; uploads go to your personal files on the portal | Only when you ask |
+| Android widget timetable (1.3.0 beta) | The timetable loaded by the app | A local copy of class names, times and rooms in Android’s no-backup app storage, cleared on logout or Clear cache | To show the next class on your home screen if you add the widget |
 
 The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Application Support/ulportal` on macOS. On Android everything stays in the app's private storage, which other apps can't read; uninstalling the app deletes it. The Android background check (about every 15 minutes) talks only to portal.ulsu.ru, and its notifications are created on the phone itself.
 
@@ -38,6 +39,8 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 ## Notifications
 
 The app checks the portal for new notifications and messages every few minutes while it runs, including from the tray / menu bar. Notification text is shown by your operating system on your computer and is not sent anywhere else.
+
+If you enable deadline reminders or course grade alerts, the app reads the portal’s deadlines or grade overview during its regular checks. It keeps a local baseline of course grades and the IDs and due times of deadlines it has already signaled. These records are specific to your account on that device and are cleared on logout. The app sends none of these records to the developer.
 
 ## Deleting your data
 
