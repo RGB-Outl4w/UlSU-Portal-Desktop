@@ -11,8 +11,8 @@ The current baseline is 1.2.12. Keep feature work under **Unreleased** until its
 
 | Release | Scope | Dependencies and acceptance |
 |---|---|---|
-| **1.3.0 · Group B** | Existing commitments: reminders, grade alerts, Android home-screen widget, assignment submission. | Reminders and grade alerts use the existing portal loaders and notification mechanisms. The widget needs Android scheduling and a local data source. Assignment submission needs authenticated upload, confirmation, and verification of portal-side behavior. Keep these on the 1.3.0 milestone. |
-| **1.3.1 · AI Study Assistant** | Proposed first release of contextual prompt generation on Windows, macOS, and Android. Include selection by section, topic or individual material, manual selection, all supported text formats, cancellation, warnings, preview, copy, and TXT export. | Reuse the current course model, session, reader, and save flows. The assistant has no functional dependency on Group B. Recheck course entry points against 1.3.0 assignment work, and verify signed-in extraction and completion tracking on the portal before release. Verify both macOS architectures, Windows, and Android clipboard, export, Back, and background behavior. |
+| **1.3.0 · Group B** | Deadline reminders, course grade alerts, and the Android home-screen widget. | Reminders and grade alerts use the existing portal loaders and notification mechanisms. The widget uses the saved timetable. Test launcher refresh, offline behavior, and signed-in portal reads. |
+| **1.3.1 · AI Study Assistant** | Proposed first release of contextual prompt generation on Windows, macOS, and Android. Include selection by section, topic or individual material, manual selection, all supported text formats, cancellation, warnings, preview, copy, and TXT export. | Reuse the current course model, session, reader, and save flows. The assistant has no functional dependency on Group B. Verify signed-in extraction and completion tracking on the portal before release. Verify both macOS architectures, Windows, and Android clipboard, export, Back, and background behavior. |
 | **Subsequent v1.3.x patches** | Address compatibility and accessibility findings from the first cross-platform release. Consider richer document coverage after real course samples establish a need. | Prioritize portal format regressions and cases that affect multiple students. |
 
 The Chromium extension runs one content script inside Moodle and combines topic grouping, authenticated fetches, text extraction and a shadow-DOM prompt editor. It uses PDF.js and a small ZIP/XML reader. Its topic-number grouping, format coverage and six prompt workflows informed the native implementation. The archive supplies third-party PDF notices and has no license for the extension's own source. The app implements the behavior independently and bundles licensed PDF.js and zip.js from npm.
@@ -330,7 +330,13 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 
 ## 1.2.7 round (2026-11-08)
 
-- **Planned milestone, 1.3.0 (Group B):** reminders, grade alerts, Android widget, assignment submission. See the v1.3.x sequence above.
+- **Next milestone, 1.3.0 (Group B):** deadline reminders, course grade alerts, and the Android home-screen widget.
+
+> [!NOTE]
+> **Deferred items**
+>
+> **Native assignment submission.** Revisit after the portal’s draft and final submission flows, allowed upload types, and any required submission statement have been verified in a university test course. Assignments continue to open on the portal.
+
 - **Save to device:** `saveItems(a)` gives the ctxMenu rows for an item; the reader button and right click / long press (`itemMenu`) share them. `Parse.cleanPage` makes a safe copy of a page inside its inert document, then `toMarkdown` (also plain text) and `toHtml` write it. Images: data URLs in .html/.pdf, `<title>_files/` beside .md (fixed name, so renaming the .md in the dialog keeps the links), none in .txt.
 - `session.fetch` leaves `res.url` empty, so a file's extension comes from Content-Disposition, then Content-Type (`withExt`). `download()` now asks the portal first, then shows the dialog, and streams to `<target>.part`.
 - PDF of a page: hidden window, scripts off, `printToPDF`; desktop only.
