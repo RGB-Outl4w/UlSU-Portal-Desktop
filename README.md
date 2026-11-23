@@ -31,6 +31,7 @@ The portal logs you out every time you close the browser, and signing back in me
 |---|---|
 | **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts. Blocks can be moved, resized, added and removed |
 | **Schedule** | Current and next week with the I/II week parity, the class in progress highlighted |
+| **Android widget** (unreleased) | Add **ULSU timetable** from your launcher’s widget picker. It shows the next class from your saved timetable, even offline. Tap it to open Schedule. |
 | **Calendar** | Month view with classes and course events; later weeks estimated from the I/II alternation |
 | **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, folders, presentations in one click (system app), participants, favourites, the 3 most recent courses; the same filter and sort as the portal's Course overview, shared with the website |
 | **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters, and every graded item of a course |

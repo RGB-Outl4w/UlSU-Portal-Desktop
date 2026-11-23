@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## Unreleased / Не выпущено
+
+- Added an Android home-screen widget for the next class in the saved timetable. Tap it to open Schedule.
+- Добавили виджет Android со следующей парой из сохранённого расписания. Нажатие открывает раздел «Расписание».
+
 ## 1.2.12 — 2026-11-21
 
 - Updated the author credits in the app, website, and documentation.

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">Расписание УлГУ</string>
+    <string name="widget_description">Следующая пара из сохранённого расписания УлГУ</string>
+    <string name="widget_next_class">Следующая пара</string>
+    <string name="widget_open_schedule">Открыть расписание</string>
+    <string name="widget_load_schedule">Загрузите или обновите расписание</string>
+    <string name="widget_no_classes">Предстоящих пар нет</string>
+</resources>
