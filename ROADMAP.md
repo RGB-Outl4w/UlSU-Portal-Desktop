@@ -314,7 +314,13 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 
 ## 1.2.7 round (2026-11-08)
 
-- **Next milestone, 1.3.0 (Group B):** reminders, grade alerts, Android widget, assignment submission.
+- **Next milestone, 1.3.0 (Group B):** deadline reminders, course grade alerts, and the Android home-screen widget.
+
+> [!NOTE]
+> **Deferred items**
+>
+> **Native assignment submission.** Revisit after the portal’s draft and final submission flows, allowed upload types, and any required submission statement have been verified in a university test course. Assignments continue to open on the portal.
+
 - **Save to device:** `saveItems(a)` gives the ctxMenu rows for an item; the reader button and right click / long press (`itemMenu`) share them. `Parse.cleanPage` makes a safe copy of a page inside its inert document, then `toMarkdown` (also plain text) and `toHtml` write it. Images: data URLs in .html/.pdf, `<title>_files/` beside .md (fixed name, so renaming the .md in the dialog keeps the links), none in .txt.
 - `session.fetch` leaves `res.url` empty, so a file's extension comes from Content-Disposition, then Content-Type (`withExt`). `download()` now asks the portal first, then shows the dialog, and streams to `<target>.part`.
 - PDF of a page: hidden window, scripts off, `printToPDF`; desktop only.
@@ -352,4 +358,4 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 ## 1.3.0 Group B implementation
 
 - **Reminders and grade alerts:** opt-in settings on desktop and Android. The existing portal checks look for actionable deadlines in the final 24 hours and changes to previously seen course grades. Confirmation against a signed-in test account remains part of release verification.
-- **Android home-screen widget and assignment submission:** planned for the same milestone. The widget needs launcher and offline refresh checks. Standard Moodle 3.7 distinguishes editing a submission from sending it for grading, which can ask the student to accept a submission statement. Verify the university’s form, available submission types, and draft and final states in a test course.
+- **Android home-screen widget:** implemented on its own feature branch. The launcher displays the next saved class and opens Schedule when tapped. Confirm behavior on a physical device and against the signed-in portal before release.
