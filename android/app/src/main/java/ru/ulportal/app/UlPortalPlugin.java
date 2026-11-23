@@ -136,6 +136,7 @@ public class UlPortalPlugin extends Plugin {
             for (PluginCall c : calls) c.reject("Вход отменён");
             return;
         }
+        ScheduleWidget.clear(getContext());
         PortalCheck.prefs(getContext()).edit().putString("state", "ok").apply();
         // The sign-in page's RU | EN switch sets the language of the whole portal session; the app reads the
         // portal's pages in Russian, so its session goes back to Russian before anything is loaded.
@@ -247,6 +248,7 @@ public class UlPortalPlugin extends Plugin {
             web.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onPageStarted(WebView view, String page, Bitmap favicon) {
+                    if (!login && isLoginPage(page)) ScheduleWidget.clear(getContext());
                     // Leaving the sign-in pages: the portal itself (/my/) loads next. Keep it out of sight.
                     if (login && page.startsWith(BASE + "/") && !isLoginPage(page)) view.animate().alpha(0f).setDuration(120);
                 }
@@ -505,7 +507,29 @@ public class UlPortalPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void scheduleWidgetGeneration(PluginCall call) {
+        call.resolve(new JSObject().put("generation", ScheduleWidget.generation()));
+    }
+
+    @PluginMethod
+    public void updateScheduleWidget(PluginCall call) {
+        try {
+            ScheduleWidget.save(getContext(), call.getData());
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not save the widget timetable");
+        }
+    }
+
+    @PluginMethod
+    public void clearScheduleWidget(PluginCall call) {
+        ScheduleWidget.clear(getContext());
+        call.resolve();
+    }
+
+    @PluginMethod
     public void clearCookies(PluginCall call) {
+        ScheduleWidget.clear(getContext());
         PortalCheck.reset(getContext());
         CookieManager.getInstance().removeAllCookies((ok) -> {
             CookieManager.getInstance().flush();

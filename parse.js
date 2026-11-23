@@ -195,7 +195,30 @@ const Parse = (() => {
     return (s.slice(0, s.length - ext.length).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '').slice(0, 120) || '_') + ext;
   }
 
-  return { gradeDetail, currentProgress, folder, RICH_TAGS, cleanPage, toMarkdown, toMdTable, toCsv, toHtml, fileName };
+  // The launcher shows only dates published by the portal, so it never uses Calendar's guesses.
+  function widgetSchedule(weeks) {
+    const lessons = [];
+    let expiresAt = 0;
+    for (const key of ['current', 'next']) {
+      for (const day of weeks[key]?.days || []) {
+        const date = new Date(day.date);
+        if (!Number.isFinite(+date)) continue;
+        const end = new Date(date).setHours(24, 0, 0, 0);
+        expiresAt = Math.max(expiresAt, end);
+        for (const pair of day.pairs) {
+          const time = /^(\d{1,2}):([0-5]\d)\s*[-–—]/.exec(pair.time);
+          const subject = pair.subject.trim().slice(0, 160);
+          if (!time || Number(time[1]) > 23 || !subject) continue;
+          const start = new Date(date).setHours(Number(time[1]), Number(time[2]), 0, 0);
+          lessons.push({ start, subject, place: pair.place.trim().slice(0, 100) });
+        }
+      }
+    }
+    lessons.sort((a, b) => a.start - b.start);
+    return { expiresAt, lessons };
+  }
+
+  return { gradeDetail, currentProgress, folder, RICH_TAGS, cleanPage, toMarkdown, toMdTable, toCsv, toHtml, fileName, widgetSchedule };
 })();
 
 if (typeof module === 'object') module.exports = Parse;
