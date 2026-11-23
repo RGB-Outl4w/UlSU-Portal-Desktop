@@ -35,6 +35,10 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 - **Automatic error reports, off unless you switch them on.** **Settings → Error reports → Send** makes the app send its own error messages the same way (version, platform, operating system, message, file names only), at most 5 a day.
 - **Nothing else.** No analytics, tracking, telemetry or advertising.
 
+## AI Study Assistant (unreleased)
+
+The assistant fetches selected course materials with your existing portal session and extracts their text on your device. It keeps extracted text and prompts in memory while the dialog is open. Copy writes to the system clipboard, and TXT export writes a file you choose to save. **Copy and open ChatGPT** writes to the clipboard and opens the site in your browser. You decide whether to paste or send the prompt. The app sends no extracted material or prompt to ChatGPT, Supabase, or another service.
+
 ## Notifications
 
 The app checks the portal for new notifications and messages every few minutes while it runs, including from the tray / menu bar. Notification text is shown by your operating system on your computer and is not sent anywhere else.
