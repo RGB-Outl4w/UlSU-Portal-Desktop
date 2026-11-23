@@ -107,6 +107,16 @@
     return { type, bytes: fromB64(res.data) };
   }
 
+  async function studyRead(id, url) {
+    try {
+      const reply = await native('studyRead', { id, url });
+      return { url: reply.url, type: reply.type, bytes: fromB64(reply.data) };
+    } catch (error) {
+      if (error.message === 'STUDY_EXPIRED') listeners.session.forEach((cb) => cb('expired'));
+      throw error;
+    }
+  }
+
   // Saved to Downloads and, unless open is false, opened in the system viewer; returns the file name.
   const savedNote = (name) => T('Сохранено в Загрузки: {0}', name);
   async function download(url, name, open = true) {
@@ -258,6 +268,9 @@
     get: (p, mode) => (mode === 'live' ? get(p) : cached(['get', p], () => get(p), mode)),
     post,
     file,
+    studyRead,
+    studyCancel: (id) => native('studyCancel', { id }),
+    studyCopy: (text) => native('studyCopy', { text }),
     download,
     saveData,
     saveFolder,

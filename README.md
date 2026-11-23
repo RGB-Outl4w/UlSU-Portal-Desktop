@@ -82,7 +82,13 @@ npm install
 npm start
 ```
 
-Requires [Node.js](https://nodejs.org) 20 or newer.
+Requires [Node.js](https://nodejs.org) 22.13 or newer.
+
+### AI Study Assistant (unreleased)
+
+In **Courses**, open **AI Study Assistant** from a course, section, material row or reader. Select the whole section, a topic group, or individual materials. Extract text, choose a template or enter your own instructions, then review the prompt and its estimated size. You can copy it, save a UTF-8 TXT file, or copy it and open ChatGPT to paste it yourself. The assistant creates prompts. The AI service produces answers only after you choose to share a prompt.
+
+The app reads Moodle pages and printable books, section descriptions and labels, selectable PDF text, DOCX and PPTX. The dialog shows skipped materials and keeps successful results when others fail. Scanned PDFs, videos, and legacy DOC/PPT need a separate text source. The portal may mark fetched material as viewed. Extraction uses the current session and takes place on your device. Closing the dialog clears the extracted text, and sending a prompt to any external service is your choice.
 
 ## How it works
 

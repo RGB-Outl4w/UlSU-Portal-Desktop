@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## Unreleased / Не выпущено
+
+- **AI Study Assistant** in Courses and the reader. Select course materials, extract text locally, preview a Russian or English study prompt, then copy it or save it as TXT. An optional shortcut copies the prompt and opens ChatGPT for manual pasting. Proposed for 1.3.1.
+- **ИИ-помощник по учёбе** в курсах и окне чтения. Выберите материалы, извлеките текст на устройстве, просмотрите промт на русском или английском и скопируйте его либо сохраните в TXT. Дополнительная кнопка копирует промт и открывает ChatGPT для ручной вставки. Предлагается для версии 1.3.1.
+
 ## 1.2.12 — 2026-11-21
 
 - Updated the author credits in the app, website, and documentation.

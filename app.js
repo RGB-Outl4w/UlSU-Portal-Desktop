@@ -1331,6 +1331,10 @@ function showReader(a, body, media = false) {
   const saves = a.type || media ? saveItems(a) : [];
   $('#reader-save').hidden = !saves.length;
   $('#reader-save').onclick = (e) => pickAt(e.currentTarget, saves);
+  const studyItem = { ...a, type: a.type || 'file', video: kindOf(a) === 'video' };
+  $('#reader-study').hidden = !Study.eligible(studyItem);
+  $('#reader-study').title = $('#reader-study').ariaLabel = T('ИИ-помощник по учёбе');
+  $('#reader-study').onclick = () => openStudy(studyCourse(), a.name, [studyItem]);
   $('#reader-open').onclick = () => portal.open(a.url);
   $('#reader-back').hidden = !a.back; // a file opened from a folder returns to the folder
   $('#reader-back').onclick = a.back;
@@ -1503,16 +1507,19 @@ const fileKind = (name) => {
   return ext === 'pdf' ? 'pdf' : /^(mp4|webm|mov)$/.test(ext) ? 'video' : /^(pptx?|ppsx?|odp)$/.test(ext) ? 'slides' : 'other';
 };
 function folderList(items, back) {
-  return h('div', { class: 'folder' }, items.map((f) => (f.items
-    ? h('details', {}, h('summary', {}, icon('folder'), f.name), folderList(f.items, back))
-    : h('button', { class: 'folder-file', onclick: async (e) => {
-      const kind = fileKind(f.name);
-      const file = { name: f.name, url: f.url, back };
+  return h('div', { class: 'folder' }, items.map((f) => {
+    if (f.items) return h('details', {}, h('summary', {}, icon('folder'), f.name), folderList(f.items, back));
+    const kind = fileKind(f.name);
+    const file = { name: f.name, url: f.url, back };
+    const opener = h('button', { class: 'folder-file', onclick: async (e) => {
       if (kind === 'slides') return openSlides(file);
       if (kind !== 'other') return openFile(file, kind);
       const row = e.currentTarget;
       try { await portal.download(f.url, f.name); } catch (err) { row.append(h('div', { class: 'send-err' }, errText(err))); }
-    } }, icon('plan'), h('span', {}, f.name)))));
+    } }, icon('plan'), h('span', {}, f.name));
+    const assistant = /\.(pdf|docx|pptx)$/i.test(f.name) && studyItemButton({ ...file, type: 'file' });
+    return assistant ? h('div', { class: 'study-folder-row' }, opener, assistant) : opener;
+  }));
 }
 async function openFolder(a) {
   const back = () => openFolder(a);
@@ -1616,17 +1623,204 @@ function activityRow(a) {
       h('button', { class: 'act-link', onclick: () => openActivity(a) }, a.name),
       h('div', { class: 'sub' }, [MOD_NAMES[a.type] || a.type, a.restricted].filter(Boolean).join(' · ')),
       a.after ? rich(a.after, true) : null),
-    completionCheck(a));
+    studyItemButton(a), completionCheck(a));
+}
+
+const studyCourse = () => ui.course.info?.fullname || cache.course?.title || '';
+const studyItems = (section) => Study.sectionItems(section, T).map((item) => ({
+  ...item, video: kindOf(item) === 'video',
+}));
+function studyItemButton(item) {
+  if (!Study.eligible(item)) return null;
+  const title = T('ИИ-помощник по учёбе');
+  return h('button', { class: 'icon-btn study-item-btn', title, 'aria-label': title,
+    onclick: () => openStudy(studyCourse(), item.name, [{ ...item, video: kindOf(item) === 'video' }]),
+  }, icon('sparkles'));
+}
+
+const studyStatus = {
+  reading: 'Извлечение…', ok: 'Текст извлечён', restricted: 'Доступ ограничен',
+  missing: 'Материал недоступен или ссылка не поддерживается', expired: 'Сессия истекла. Войдите в портал.',
+  offline: 'Нет связи с порталом', limit: 'Материал превышает лимит размера или обработки',
+  budget: 'Достигнут общий лимит. Выберите меньше материалов и повторите извлечение.',
+  unsupported: 'Формат не поддерживается', invalid: 'Не удалось прочитать материал',
+  scan: 'В PDF нет текстового слоя', empty: 'Текст не найден',
+  link: 'Ссылка или видео. Текст не извлекался.', book: 'Портал не предоставил полную версию книги',
+  chapter: 'Извлечена только доступная глава книги',
+  parser: 'Не удалось загрузить модуль чтения', cancelled: 'Извлечение отменено',
+};
+
+function openStudy(course, topic, items, groups = [], initialSelection = items) {
+  const dlg = $('#study');
+  if (dlg.open || !items.length) return;
+  const trigger = document.activeElement;
+  const courseId = ui.course.id;
+  const title = T('ИИ-помощник по учёбе');
+  const mobile = portal.platform === 'android';
+  const budget = mobile ? 90000 : 260000;
+  const limit = mobile ? 200000 : 750000;
+  const itemsRead = new Map();
+  let run;
+  let refreshAfter;
+  let currentTopic = topic;
+  const selected = new Set(initialSelection);
+  const info = h('p', { class: 'sub', role: 'status' });
+  const selection = h('p', { class: 'sub', role: 'status' });
+  const feedback = h('p', { class: 'sub', role: 'status' });
+  const preview = h('textarea', { readonly: '', rows: '8', 'aria-label': T('Предпросмотр промта') });
+  const template = h('select', { class: 'box-input', 'aria-label': T('Шаблон задания') },
+    Study.templates.map(([label], i) => h('option', { value: i }, T(label))));
+  const custom = h('textarea', { rows: '3', hidden: '', maxlength: '12000', 'aria-label': T('Своё задание') });
+  const close = h('button', { class: 'icon-btn', autofocus: '', title: T('Закрыть (Esc)'),
+    'aria-label': T('Закрыть (Esc)'), onclick: () => dlg.close() }, '✕');
+  const button = (label, onclick, cls = 'tool-btn') => h('button', { class: cls, type: 'button', onclick }, T(label));
+  const read = async (url, signal) => {
+    if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+    const id = crypto.randomUUID();
+    const cancel = () => portal.studyCancel(id).catch(() => {});
+    signal.addEventListener('abort', cancel, { once: true });
+    try { return await portal.studyRead(id, url); }
+    finally { signal.removeEventListener('abort', cancel); }
+  };
+  const extract = button('Извлечь текст', async () => {
+    const active = rows.filter((row) => row.pick.checked);
+    if (run || !active.length) return;
+    const controller = new AbortController();
+    run = controller;
+    let finished = 0;
+    feedback.textContent = '';
+    for (const row of rows) {
+      row.result = null;
+      row.status.textContent = row.item.restricted ? T(studyStatus.restricted) : '';
+    }
+    update();
+    try {
+      const results = await Study.collect(active.map((row) => row.item), {
+        read, signal: controller.signal, budget, cache: itemsRead, translate: T,
+        progress(index, status) {
+          if (status !== 'reading') finished++;
+          const completion = active[index].item.completion;
+          if (!completion?.manual && completion?.done === false && ['ok', 'chapter', 'scan', 'empty'].includes(status)) refreshAfter = true;
+          active[index].status.textContent = T(studyStatus[status]);
+          feedback.textContent = T('Проверено материалов: {0} из {1}', finished, active.length);
+        },
+      });
+      if (dlg.open && run === controller) results.forEach((result, i) => { active[i].result = result; });
+    } finally {
+      if (run === controller) {
+        run = null;
+        if (dlg.open) update();
+      }
+    }
+  }, 'btn');
+  const cancel = button('Остановить извлечение', () => run?.abort());
+  const copy = button('Скопировать промт', () => perform(async (text) => {
+    await portal.studyCopy(text);
+    feedback.textContent = T('Промт скопирован.');
+  }));
+  const save = button('Сохранить .txt', () => perform(async (text) => {
+    if (await portal.saveData(Parse.fileName((currentTopic || title) + '.txt'), text)) {
+      feedback.textContent = T('Промт сохранён.');
+    }
+  }));
+  const chat = button('Скопировать и открыть ChatGPT', () => perform(async (text) => {
+    await portal.studyCopy(text);
+    feedback.textContent = T('Промт скопирован. Вставьте его в ChatGPT вручную.');
+    await portal.open('https://chatgpt.com/');
+  }));
+
+  async function perform(action) {
+    try { await action(preview.value); }
+    catch { feedback.textContent = T('Действие не выполнено. Попробуйте ещё раз.'); }
+  }
+
+  const rows = items.map((item) => {
+    const pick = h('input', { type: 'checkbox', onchange: update });
+    pick.checked = selected.has(item);
+    const status = h('span', { class: 'sub' }, item.restricted ? T(studyStatus.restricted) : '');
+    return { item, pick, status, el: h('label', { class: 'study-row' }, pick,
+      h('span', {}, item.name, item.section ? h('span', { class: 'sub' }, item.section) : null), status) };
+  });
+  const choose = (subset) => {
+    const picks = new Set(subset);
+    for (const row of rows) row.pick.checked = picks.has(row.item);
+    update();
+  };
+  const scope = groups.length ? h('select', { class: 'box-input', 'aria-label': T('Выбрать тему'),
+    onchange: (e) => {
+      const group = groups[Number(e.target.value) - 1];
+      currentTopic = group?.title || topic;
+      choose(group?.items || items);
+    },
+  }, h('option', { value: '0' }, T('Весь раздел')), groups.map((group, i) => h('option', { value: i + 1 }, group.title))) : null;
+  const all = button('Выбрать все материалы', () => choose(items));
+  const none = button('Снять выбор', () => choose([]));
+
+  function update() {
+    const active = rows.filter((row) => row.pick.checked);
+    const results = active.map((row) => row.result).filter(Boolean);
+    const instruction = Number(template.value) === Study.templates.length - 1 ? custom.value.trim() : T(Study.templates[template.value][1]);
+    custom.hidden = Number(template.value) !== Study.templates.length - 1;
+    const prompt = results.some((result) => result.text) && instruction
+      ? Study.prompt({ course, topic: currentTopic, instruction }, results, T) : '';
+    if (preview.value !== prompt) preview.value = prompt;
+    const size = Study.size(prompt);
+    info.textContent = !prompt ? '' : [
+      T('Примерно {0} токенов', size.tokens.toLocaleString(LOCALE)),
+      prompt.length > limit ? T('Промт превышает лимит. Снимите выбор с части материалов.')
+        : size.warning ? T('Большой промт может не поместиться в выбранном ИИ-сервисе.') : '',
+    ].filter(Boolean).join(' · ');
+    selection.textContent = T('Выбрано материалов: {0} из {1}', active.length, items.length);
+    extract.disabled = !!run || !active.length;
+    cancel.hidden = !run;
+    if (scope) scope.disabled = !!run;
+    all.disabled = none.disabled = !!run;
+    for (const row of rows) row.pick.disabled = !!run;
+    copy.disabled = save.disabled = chat.disabled = !!run || !prompt || prompt.length > limit || active.length > results.length;
+  }
+
+  template.onchange = custom.oninput = update;
+  dlg.replaceChildren(
+    h('div', { class: 'reader-bar' }, h('h2', { id: 'study-title' }, title), close),
+    h('div', { class: 'study-body' },
+      h('p', { class: 'sub study-context' }, [course, topic].filter(Boolean).join(' · ')),
+      h('p', { class: 'sub' }, T('Текст извлекается на устройстве. Приложение составляет промт для внешнего ИИ. Портал может отметить материалы просмотренными.')),
+      h('div', { class: 'study-actions' }, scope, all, none),
+      selection, h('div', { class: 'study-list' }, rows.map((row) => row.el)),
+      h('div', { class: 'study-actions' }, extract, cancel),
+      h('label', { class: 'study-field' }, T('Шаблон задания'), template), custom,
+      h('label', { class: 'study-field' }, T('Предпросмотр промта'), preview), info, feedback),
+    h('div', { class: 'study-actions study-footer' }, copy, save, chat));
+  const background = () => { if (mobile && document.hidden) run?.abort(); };
+  document.addEventListener('visibilitychange', background);
+  dlg.addEventListener('close', () => {
+    const previous = run;
+    run = null;
+    previous?.abort();
+    itemsRead.clear();
+    document.removeEventListener('visibilitychange', background);
+    if (!dlg.open) {
+      dlg.replaceChildren();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      if (refreshAfter && current === 'course' && ui.course.id === courseId) refreshCourse();
+    }
+  }, { once: true });
+  update();
+  dlg.showModal();
 }
 
 function contentTab(c) {
   if (!c.sections.length) return msg(T('В курсе пока нет материалов'));
   return stagger(h('div', { class: 'sections' }, c.sections.map((s) => {
     const t = tally(s.activities);
+    const materials = studyItems(s);
     const det = h('details', { class: 'card section', open: ui.course.closed.has(s.id) ? null : '' },
       h('summary', {}, h('span', { class: 'sec-name' }, s.name || T('Без названия')),
         t.total ? h('span', { class: 'pill' + (t.done === t.total ? ' ok' : '') }, `${t.done}/${t.total}`) : null),
       s.summary ? rich(s.summary, true) : null,
+      materials.length ? h('div', { class: 'study-section-action' }, h('button', { class: 'chip-btn',
+        onclick: () => openStudy(studyCourse(), s.name, materials, Study.topics(materials)),
+      }, icon('sparkles'), T('ИИ-помощник по учёбе'))) : null,
       h('div', { class: 'acts' }, s.activities.map(activityRow)));
     det.addEventListener('toggle', () => { if (det.open) ui.course.closed.delete(s.id); else ui.course.closed.add(s.id); });
     return det;
@@ -1634,7 +1828,7 @@ function contentTab(c) {
 }
 
 function materialsTab(c) {
-  const items = c.sections.flatMap((s) => s.activities.map((a) => ({ a, kind: kindOf(a), sec: s.name }))).filter((x) => x.kind);
+  const items = c.sections.flatMap((s) => s.activities.map((a) => ({ a, kind: a.type === 'book' ? 'page' : kindOf(a), sec: s.name }))).filter((x) => x.kind);
   if (!items.length) return msg(T('Файлов и страниц в курсе нет'));
   // A locked item (Ограничено) has no completion mark, but it isn't viewed either: it counts as not viewed.
   const tracked = items.some((x) => x.a.completion);
@@ -1652,12 +1846,18 @@ function materialsTab(c) {
     const done = all.length - all.filter(left).length;
     return h('section', { class: 'mat-group' },
       h('h4', {}, label, h('span', { class: 'n' }, tracked ? `${done}/${all.length}` : String(all.length))),
-      h('div', { class: 'mat-grid' }, group.map(({ a, sec }) =>
-        h('button', { class: 'card mat lift' + (a.url ? '' : ' locked'), 'data-name': a.name.toLowerCase(), hidden: !matches(a.name, ui.course.q), onclick: () => openActivity(a), oncontextmenu: itemMenu(a) },
+      h('div', { class: 'mat-grid' }, group.map(({ a, sec }) => {
+        const opener = h('button', { class: 'card mat lift' + (a.url ? '' : ' locked'), onclick: () => openActivity(a), oncontextmenu: itemMenu(a) },
           a.icon ? h('img', { src: a.icon, alt: '' }) : icon('courses'),
           h('div', { class: 'main' }, h('div', { class: 't' }, a.name), h('div', { class: 'sub' }, a.url ? sec : `${T('Закрыто')} · ${sec}`)),
           !a.url ? h('span', { class: 'mat-lock', title: T('Материал пока закрыт') }, icon('lock'))
-            : a.completion?.done ? h('span', { class: 'mat-done', title: T('Просмотрено') }, icon('check')) : null))));
+            : a.completion?.done ? h('span', { class: 'mat-done', title: T('Просмотрено') }, icon('check')) : null);
+        const assistant = studyItemButton(a);
+        const row = assistant ? h('div', { class: 'study-material-row' }, opener, assistant) : opener;
+        row.dataset.name = a.name.toLowerCase();
+        row.hidden = !matches(a.name, ui.course.q);
+        return row;
+      })));
   })))];
 }
 
@@ -1797,6 +1997,7 @@ Object.assign(views, {
     render(c) {
       const info = ui.course.info || {};
       const all = tally(c.sections.flatMap((s) => s.activities));
+      const materials = c.sections.flatMap((section) => studyItems(section).map((item) => ({ ...item, section: section.name })));
       return [
         h('div', { class: 'card course-hero' },
           info.courseimage ? h('div', { class: 'img', style: `background-image:url("${info.courseimage}")` }) : null,
@@ -1808,6 +2009,9 @@ Object.assign(views, {
             ] : h('div', { class: 'pct' }, T('Отслеживание выполнения не включено')),
             h('div', { class: 'hero-actions' },
               info.id ? favButton(info) : null,
+              materials.length && ui.course.tab !== 'people' ? h('button', { class: 'chip-btn',
+                onclick: () => openStudy(studyCourse(), T('Выбранные материалы'), materials, [], []),
+              }, icon('sparkles'), T('ИИ-помощник по учёбе')) : null,
               h('button', { class: 'chip-btn', onclick: () => portal.open(`${BASE}/grade/report/user/index.php?id=${ui.course.id}`) }, T('Оценки по курсу'))))),
         { content: contentTab, materials: materialsTab, people: peopleTab }[ui.course.tab](c),
       ];
