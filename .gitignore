@@ -16,3 +16,4 @@ private/
 
 # Android build: web assets copied by build-www.js
 www/
+study-vendor/

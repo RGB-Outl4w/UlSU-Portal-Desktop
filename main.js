@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, shell, Tray, Menu, powerMonitor, nativeTheme, Notification, dialog, net: electronNet } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, Tray, Menu, powerMonitor, nativeTheme, Notification, dialog, clipboard, net: electronNet } = require('electron');
 const fs = require('fs');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
+const StudySource = require('./study-source');
 
 // Data folder stays %APPDATA%\ulportal whatever the installer's product name is, so updates and
 // the dev build share one session and cache. Must run before anything reads userData (incl. the lock).
@@ -177,6 +178,69 @@ async function fileReply(url) {
     throw new Error(t('Портал вернул страницу вместо файла'));
   }
   return res;
+}
+
+// Study requests use the same partition and cookies as the reader. Keep this path uncached
+// and check redirects before following them, including redirects from pluginfile.php.
+let studyRequest;
+function studyRead(id, value) {
+  const url = StudySource.url(value);
+  if (!url || studyRequest) throw new Error('STUDY_INVALID');
+  const htmlLimit = 2 * 1024 * 1024;
+  const fileLimit = 20 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    let currentUrl = url;
+    let redirects = 0;
+    const request = electronNet.request({ url, session: ses, useSessionCookies: true, redirect: 'manual' });
+    request.setHeader('Cache-Control', 'no-store, no-cache');
+    const finish = (error, reply) => {
+      if (studyRequest?.id !== id) return;
+      clearTimeout(timeout);
+      studyRequest = null;
+      if (error) {
+        request.abort();
+        if (error === 'EXPIRED') setSession('expired');
+        reject(new Error('STUDY_' + error));
+      } else {
+        resolve(reply);
+      }
+    };
+    const timeout = setTimeout(() => finish('OFFLINE'), 35000);
+    studyRequest = { id, cancel: () => finish('CANCELLED') };
+    request.on('redirect', (_status, _method, target) => {
+      if (/^https:\/\/portal\.ulsu\.ru\/(?:login|auth)\//i.test(target)) return finish('EXPIRED');
+      if (StudySource.url(target) !== target || ++redirects > 5) return finish('MISSING');
+      currentUrl = target;
+      request.followRedirect();
+    });
+    request.on('response', (response) => {
+      const { statusCode, headers } = response;
+      if (statusCode === 401) return finish('EXPIRED');
+      if (statusCode === 403) return finish('RESTRICTED');
+      if (statusCode >= 500) return finish('OFFLINE');
+      if (statusCode !== 200) return finish('MISSING');
+      const type = headers['content-type']?.[0] || '';
+      if (/^video\//i.test(type)) {
+        finish(null, { url: currentUrl, type, bytes: new Uint8Array() });
+        request.abort();
+        return;
+      }
+      const limit = /html/i.test(type) ? htmlLimit : fileLimit;
+      if (Number(headers['content-length']?.[0]) > limit) return finish('LIMIT');
+      const chunks = [];
+      let size = 0;
+      response.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > limit) return finish('LIMIT');
+        chunks.push(chunk);
+      });
+      response.on('error', () => finish('OFFLINE'));
+      response.on('aborted', () => finish('OFFLINE'));
+      response.on('end', () => finish(null, { url: currentUrl, type, bytes: new Uint8Array(Buffer.concat(chunks, size)) }));
+    });
+    request.on('error', () => finish('OFFLINE'));
+    request.end();
+  });
 }
 
 // Same rules as Parse.fileName in parse.js.
@@ -635,6 +699,12 @@ app.whenReady().then(() => {
   ipcMain.handle('upload', (_e, args) => upload(args));
   ipcMain.handle('post', (_e, p, fields) => post(p, fields));
   ipcMain.handle('file', (_e, url) => file(url));
+  ipcMain.handle('studyRead', (_e, id, url) => studyRead(id, url));
+  ipcMain.handle('studyCancel', (_e, id) => { if (studyRequest?.id === id) studyRequest.cancel(); });
+  ipcMain.handle('studyCopy', (_e, text) => {
+    if (typeof text !== 'string' || text.length > 750000) throw new Error('STUDY_LIMIT');
+    clipboard.writeText(text);
+  });
   // Only reads are cached; writes (mark read, send, toggle) always hit the network.
   ipcMain.handle('ajax', (_e, m, a, mode) => (/_get_/.test(m) ? cached(['ajax', m, a], () => ajax(m, a), mode)
     : mode === 'cache' ? Promise.reject(new Error('NOCACHE')) : ajax(m, a)));

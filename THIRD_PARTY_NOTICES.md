@@ -33,8 +33,15 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ## Fonts / Шрифты
 
-The app uses fonts installed with Windows (Segoe UI Variable, Segoe UI). No fonts are bundled.
-Приложение использует шрифты, установленные в Windows; шрифты в составе приложения не распространяются.
+The interface uses fonts installed with Windows (Segoe UI Variable, Segoe UI).
+Интерфейс использует шрифты, установленные в Windows (Segoe UI Variable, Segoe UI).
+
+## AI Study Assistant / ИИ-помощник по учёбе
+
+- [Mozilla PDF.js](https://github.com/mozilla/pdf.js), `pdfjs-dist` 6.5.438, Apache-2.0. The legacy text extraction module and worker are distributed with `study-vendor/PDFJS-LICENSE`. The original notices for bundled Adobe CMaps and PDF standard fonts ship in `study-vendor/cmaps/LICENSE` and `study-vendor/standard_fonts/LICENSE_*`.
+- [zip.js](https://github.com/gildas-lormeau/zip.js), 2.25.0, BSD-3-Clause. Used to read the XML parts of DOCX and PPTX. The browser bundle ships with the upstream license and copyright in `study-vendor/ZIPJS-LICENSE`.
+
+Лицензии и уведомления PDF.js, таблиц Adobe CMap, стандартных шрифтов PDF и zip.js входят в сборки приложения по указанным путям.
 
 ## Not bundled / Не входит в состав
 

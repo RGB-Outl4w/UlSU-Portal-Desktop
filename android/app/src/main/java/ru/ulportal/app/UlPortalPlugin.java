@@ -3,6 +3,8 @@ package ru.ulportal.app;
 import android.app.DownloadManager;
 import android.Manifest;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -14,6 +16,7 @@ import android.os.Environment;
 import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PersistableBundle;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Base64;
@@ -48,15 +51,20 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 
 // Native side of portal-android.js: what main.js does with windows, files and the theme on desktop.
 @CapacitorPlugin(name = "UlPortal")
@@ -161,6 +169,159 @@ public class UlPortalPlugin extends Plugin {
             }
         }
         call.resolve();
+    }
+
+    private final AtomicReference<StudyDownload> studyDownload = new AtomicReference<>();
+
+    private static final class StudyDownload {
+        final String id;
+        volatile boolean cancelled;
+        volatile HttpURLConnection connection;
+
+        StudyDownload(String id) {
+            this.id = id;
+        }
+    }
+
+    // The renderer strips unrelated query parameters. Enforce the allowlist again
+    // before attaching session cookies, and for every redirect.
+    static boolean studyUrlAllowed(URI url) {
+        if (!"https".equals(url.getScheme()) || !"portal.ulsu.ru".equals(url.getRawAuthority()) || url.getRawFragment() != null) return false;
+        String path = url.getRawPath();
+        String query = url.getRawQuery();
+        if (path == null || !path.equals(url.normalize().getRawPath()) || path.toLowerCase(Locale.ROOT).matches(".*%(2f|5c|00|2e).*")) return false;
+        if (path.matches("/pluginfile\\.php/\\d+/mod_(resource|folder|page|book|label)/.+")) {
+            return query == null || query.equals("forcedownload=1");
+        }
+        if (!path.matches("/mod/(page/view|resource/view|book/view|book/tool/print/index)\\.php") || query == null) return false;
+        return query.matches(path.equals("/mod/book/view.php") ? "id=\\d+(&chapterid=\\d+)?" : "id=\\d+");
+    }
+
+    @PluginMethod
+    public void studyRead(PluginCall call) {
+        StudyDownload download = new StudyDownload(call.getString("id", ""));
+        if (download.id.isEmpty() || !studyDownload.compareAndSet(null, download)) {
+            call.reject("STUDY_INVALID");
+            return;
+        }
+        new Thread(() -> {
+            JSObject result = null;
+            String error = null;
+            try {
+                result = readStudyMaterial(URI.create(call.getString("url", "")), download);
+            } catch (IllegalArgumentException e) {
+                error = "STUDY_INVALID";
+            } catch (IOException e) {
+                error = e.getMessage() != null && e.getMessage().startsWith("STUDY_") ? e.getMessage() : "STUDY_OFFLINE";
+            } finally {
+                studyDownload.compareAndSet(download, null);
+            }
+            if (download.cancelled) call.reject("STUDY_CANCELLED");
+            else if (error != null) call.reject(error);
+            else call.resolve(result);
+        }, "study-download").start();
+    }
+
+    private JSObject readStudyMaterial(URI url, StudyDownload download) throws IOException {
+        CookieManager cookies = CookieManager.getInstance();
+        long deadline = android.os.SystemClock.elapsedRealtime() + 35000;
+        for (int hop = 0; hop <= 5; hop++) {
+            if (download.cancelled) throw new IOException("STUDY_CANCELLED");
+            if (android.os.SystemClock.elapsedRealtime() > deadline) throw new IOException("STUDY_OFFLINE");
+            if (!studyUrlAllowed(url)) throw new IOException("STUDY_MISSING");
+            HttpURLConnection connection = (HttpURLConnection) url.toURL().openConnection();
+            download.connection = connection;
+            try {
+                if (download.cancelled) throw new IOException("STUDY_CANCELLED");
+                connection.setInstanceFollowRedirects(false);
+                connection.setUseCaches(false);
+                connection.setConnectTimeout(12000);
+                connection.setReadTimeout(15000);
+                connection.setRequestProperty("Cache-Control", "no-store, no-cache");
+                connection.setRequestProperty("Accept-Encoding", "identity");
+                String cookie = cookies.getCookie(url.toString());
+                if (cookie != null) connection.setRequestProperty("Cookie", cookie);
+                int status = connection.getResponseCode();
+                if (download.cancelled) throw new IOException("STUDY_CANCELLED");
+                connection.getHeaderFields().forEach((header, values) -> {
+                    if ("Set-Cookie".equalsIgnoreCase(header)) for (String value : values) cookies.setCookie(BASE, value);
+                });
+                if (status >= 300 && status < 400) {
+                    String location = connection.getHeaderField("Location");
+                    if (location == null) throw new IOException("STUDY_MISSING");
+                    url = url.resolve(location);
+                    if (BASE.equals(url.getScheme() + "://" + url.getRawAuthority()) && url.getPath().matches("/(login|auth)/.*")) {
+                        throw new IOException("STUDY_EXPIRED");
+                    }
+                    continue;
+                }
+                if (status == 401) throw new IOException("STUDY_EXPIRED");
+                if (status == 403) throw new IOException("STUDY_RESTRICTED");
+                if (status >= 500) throw new IOException("STUDY_OFFLINE");
+                if (status != 200) throw new IOException("STUDY_MISSING");
+                String type = connection.getContentType();
+                if (type == null) type = "";
+                JSObject reply = new JSObject();
+                reply.put("url", url.toString());
+                reply.put("type", type);
+                if (type.toLowerCase(Locale.ROOT).startsWith("video/")) {
+                    reply.put("data", "");
+                    return reply;
+                }
+                int limit = (type.toLowerCase(Locale.ROOT).contains("html") ? 2 : 8) * 1024 * 1024;
+                if (connection.getContentLengthLong() > limit) throw new IOException("STUDY_LIMIT");
+                try (InputStream input = connection.getInputStream()) {
+                    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                    byte[] chunk = new byte[16384];
+                    for (int size; (size = input.read(chunk)) != -1; ) {
+                        if (download.cancelled) throw new IOException("STUDY_CANCELLED");
+                        if (android.os.SystemClock.elapsedRealtime() > deadline) throw new IOException("STUDY_OFFLINE");
+                        if (size > limit - bytes.size()) throw new IOException("STUDY_LIMIT");
+                        bytes.write(chunk, 0, size);
+                    }
+                    reply.put("data", Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP));
+                }
+                return reply;
+            } finally {
+                download.connection = null;
+                connection.disconnect();
+            }
+        }
+        throw new IOException("STUDY_MISSING");
+    }
+
+    @PluginMethod
+    public void studyCancel(PluginCall call) {
+        StudyDownload download = studyDownload.get();
+        if (download != null && download.id.equals(call.getString("id"))) {
+            download.cancelled = true;
+            studyDownload.compareAndSet(download, null);
+            HttpURLConnection connection = download.connection;
+            if (connection != null) new Thread(connection::disconnect, "study-cancel").start();
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void studyCopy(PluginCall call) {
+        String text = call.getString("text");
+        if (text == null || text.length() > 200000) {
+            call.reject("STUDY_LIMIT");
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            try {
+                ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("ULSU Portal", text);
+                PersistableBundle extras = new PersistableBundle();
+                extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
+                clip.getDescription().setExtras(extras);
+                clipboard.setPrimaryClip(clip);
+                call.resolve();
+            } catch (RuntimeException e) {
+                call.reject("STUDY_CLIPBOARD");
+            }
+        });
     }
 
     static boolean isLoginPage(String page) {

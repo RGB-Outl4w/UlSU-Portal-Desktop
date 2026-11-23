@@ -15,8 +15,11 @@
   "main": "main.js",
   "private": true,
   "scripts": {
+    "prestart": "node build-study-vendor.js",
     "start": "electron .",
+    "predist": "node build-study-vendor.js",
     "dist": "electron-builder --win --publish never",
+    "predist:mac": "node build-study-vendor.js",
     "dist:mac": "electron-builder --mac --publish never",
     "android:sync": "node build-www.js && cap sync android"
   },
@@ -24,8 +27,10 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@zip.js/zip.js": "2.25.0",
     "electron": "^45.0.0",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "pdfjs-dist": "6.5.438"
   },
   "build": {
     "appId": "ru.ulportal.app",
@@ -41,6 +46,9 @@
       "login.css",
       "layout.js",
       "parse.js",
+      "study-source.js",
+      "study.js",
+      "study-vendor/**/*",
       "i18n.js",
       "index.html",
       "app.css",
