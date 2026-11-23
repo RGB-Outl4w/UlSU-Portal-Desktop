@@ -31,7 +31,7 @@ The portal logs you out every time you close the browser, and signing back in me
 |---|---|
 | **Today** | Live "now / next class" banner, today's classes, upcoming deadlines, latest notifications, debts. Blocks can be moved, resized, added and removed |
 | **Schedule** | Current and next week with the I/II week parity, the class in progress highlighted |
-| **Android widget** (unreleased) | Add **ULSU timetable** from your launcher’s widget picker. It shows the next class from your saved timetable, even offline. Tap it to open Schedule. |
+| **Android widget** (1.3.0 beta) | Add **ULSU timetable** from your launcher’s widget picker. It shows the next class from your saved timetable, even offline. Tap it to open Schedule. |
 | **Calendar** | Month view with classes and course events; later weeks estimated from the I/II alternation |
 | **Courses** | Courses open inside the app: sections, completion checkboxes, a materials gallery, an in-app PDF viewer, folders, presentations in one click (system app), participants, favourites, the 3 most recent courses; the same filter and sort as the portal's Course overview, shared with the website |
 | **Deadlines & grades** | Upcoming and overdue work; grades with sorting and filters, and every graded item of a course |
@@ -92,7 +92,7 @@ Requires [Node.js](https://nodejs.org) 20 or newer.
 - **Data.** The portal has no public API for this, so the app uses the same requests the website makes, and reads some pages (schedule, academic record, study plan) directly.
 - **Speed and offline.** Each section first shows its saved copy instantly, then refreshes quietly from the network.
 
-### Deadline reminders and course grade alerts (unreleased)
+### Deadline reminders and course grade alerts (1.3.0 beta)
 
 Enable either in Settings. Reminders cover actionable deadlines in the next 24 hours. Grade alerts track changes to course grades shown on the Grades screen. The first check records current values. Checks run while the desktop app is open or in the tray, and through Android’s background refresh, whose timing depends on the device.
 
