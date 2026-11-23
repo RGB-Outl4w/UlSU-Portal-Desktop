@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { widgetSchedule } = require('./parse');
 
 app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'ulportal-parse-')));
 
@@ -35,6 +36,26 @@ app.whenReady().then(async () => {
   const run = (fn, markup) => win.webContents.executeJavaScript(
     `Parse.${fn}(new DOMParser().parseFromString(${JSON.stringify(markup)}, 'text/html'))`);
   try {
+    const day = new Date(2026, 10, 24);
+    const later = new Date(2026, 11, 1);
+    const widget = widgetSchedule({
+      next: { days: [{ date: later, pairs: [] }] },
+      current: { days: [{ date: day, pairs: [
+        { time: '11:15 - 12:45', subject: ' Базы данных ', place: ' 101 ' },
+        { time: '9:30–11:00', subject: 'Алгоритмы', place: '' },
+        { time: '25:00 - 26:00', subject: 'Bad time', place: '' },
+        { time: '10:00 - 11:00', subject: '', place: 'Not a class' },
+      ] }] },
+      guessed: { days: [{ date: new Date(2027, 0, 1), pairs: [] }] },
+    });
+    assert.deepStrictEqual(widget, {
+      expiresAt: +new Date(2026, 11, 2),
+      lessons: [
+        { start: +new Date(2026, 10, 24, 9, 30), subject: 'Алгоритмы', place: '' },
+        { start: +new Date(2026, 10, 24, 11, 15), subject: 'Базы данных', place: '101' },
+      ],
+    });
+    assert.deepStrictEqual(widgetSchedule({}), { expiresAt: 0, lessons: [] });
     const g = await run('gradeDetail', GRADES);
     assert.deepStrictEqual(g.map((r) => r.kind), ['category', 'item', 'item', 'subtotal', 'total']);
     assert.strictEqual(g[1].name, '1.1 Данные (тест)');

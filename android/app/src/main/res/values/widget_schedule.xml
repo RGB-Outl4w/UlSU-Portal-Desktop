@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_surface">#F2F5FD</color>
+    <color name="widget_text">#17223A</color>
+    <color name="widget_accent">#0D45CA</color>
+    <color name="widget_muted">#49556E</color>
+    <string name="widget_name">ULSU timetable</string>
+    <string name="widget_description">The next class from your saved ULSU timetable</string>
+    <string name="widget_next_class">Next class</string>
+    <string name="widget_open_schedule">Open Schedule</string>
+    <string name="widget_load_schedule">Load or refresh your timetable</string>
+    <string name="widget_no_classes">No upcoming classes</string>
+</resources>

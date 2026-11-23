@@ -4,6 +4,8 @@
 
 - Added optional deadline reminders in the final 24 hours and alerts when a previously seen course grade changes.
 - Добавили напоминания в течение 24 часов до дедлайна и уведомления об изменениях известных приложению итоговых оценок по курсам.
+- Added an Android home-screen widget for the next class in the saved timetable. Tap it to open Schedule.
+- Добавили виджет Android со следующей парой из сохранённого расписания. Нажатие открывает раздел «Расписание».
 
 ## 1.2.12 — 2026-11-21
 

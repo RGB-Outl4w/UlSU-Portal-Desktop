@@ -251,6 +251,44 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
   const clearCache = () => store('readwrite', (s) => s.clear());
+  let widgetQueue = Promise.resolve();
+  let widgetRevision = 0;
+  let widgetWritten = 0;
+  let cacheClears = 0;
+
+  function queueWidget(work) {
+    widgetQueue = widgetQueue.catch(() => {}).then(work);
+    return widgetQueue;
+  }
+
+  function resetWidget() {
+    widgetWritten = ++widgetRevision;
+    return queueWidget(() => native('clearScheduleWidget'));
+  }
+
+  async function scheduleWidgetWriter() {
+    if (cacheClears) return null;
+    const revision = ++widgetRevision;
+    const { generation } = await native('scheduleWidgetGeneration');
+    return (schedule) => queueWidget(async () => {
+      if (revision <= widgetWritten) return;
+      await native('updateScheduleWidget', { ...schedule, generation });
+      if (revision > widgetWritten) widgetWritten = revision;
+    });
+  }
+
+  async function clearUserCache(beforeClear) {
+    cacheClears++;
+    const widget = resetWidget().catch(() => {});
+    try {
+      await beforeClear?.();
+      await clearCache();
+    } finally {
+      await widget;
+      cacheClears--;
+    }
+  }
+
   const DOCS = ['PRIVACY.md', 'PRIVACY.ru.md', 'NOTICE.md', 'LICENSE', 'LICENSE.ru.md', 'THIRD_PARTY_NOTICES.md'];
 
   window.portal = {
@@ -268,14 +306,13 @@
     ajax: (m, a, mode) => (/_get_/.test(m) ? cached(['ajax', m, a], () => ajax(m, a), mode)
       : mode === 'cache' ? Promise.reject(new Error('NOCACHE')) : ajax(m, a)),
     open: (url) => native('open', { url }),
-    async logout() {
+    logout: () => clearUserCache(async () => {
       if (sesskey) await net(`${BASE}/login/logout.php?sesskey=${sesskey}`).catch(() => {});
       sesskey = null;
       userid = null;
       declined = false;
       await native('clearCookies');
-      await clearCache(); // cached pages hold personal data
-    },
+    }),
     theme: (mode) => native('theme', { mode }),
     setLang: async () => {},
     async about() {
@@ -283,7 +320,8 @@
       return { version: i.version, runtime: [['Android', `${i.android} (API ${i.sdk})`], ['WebView', i.webview]], dataDir: null };
     },
     doc: (name) => (DOCS.includes(name) ? fetch(name).then((r) => r.text()) : Promise.resolve(null)),
-    clearCache,
+    clearCache: () => clearUserCache(),
+    scheduleWidgetWriter,
     checkUpdate,
     installUpdate,
     onUpdateProgress: (cb) => Capacitor.nativeCallback('UlPortal', 'addListener', { eventName: 'updateProgress' }, (d) => cb(d.p)),

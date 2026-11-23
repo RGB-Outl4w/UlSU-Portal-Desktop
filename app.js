@@ -29,21 +29,23 @@ const clean = (list) => list.flat(Infinity).filter((k) => k != null && k !== '' 
 let diskMode = false;
 let diskAt = Infinity;
 let staleAt = null; // set when a network read fell back to the disk copy (portal unreachable)
-const viaDisk = (call) => {
+const viaDisk = (call, onCache) => {
   const mode = diskMode ? 'cache' : undefined;
   return call(mode).then((r) => {
     if (!mode) return r;
+    onCache?.();
     diskAt = Math.min(diskAt, r.at);
     return r.data;
   }, async (e) => {
     if (mode || !isOffline(e)) throw e;
     const r = await call('cache').catch(() => { throw e; }); // no saved copy: still "offline"
+    onCache?.();
     staleAt = Math.min(staleAt ?? Infinity, r.at);
     offline(staleAt, e);
     return r.data;
   });
 };
-const pget = (path) => viaDisk((mode) => portal.get(path, mode));
+const pget = (path, onCache) => viaDisk((mode) => portal.get(path, mode), onCache);
 const pajax = (method, args) => viaDisk((mode) => portal.ajax(method, args, mode));
 
 async function fromDisk(load) {
@@ -237,7 +239,10 @@ function parsePlan(doc) {
 
 // /my/ holds week parity and profile; the timetable itself is loaded by the schedule block via AJAX.
 async function loadMy() {
-  const [my, sched] = await Promise.all([pget('/my/'), pget('/blocks/schedule/ajax_schedule.php')]);
+  const updateWidget = !diskMode && portal.scheduleWidgetWriter ? await portal.scheduleWidgetWriter().catch(() => null) : null;
+  let usedCache = false;
+  const markCached = () => { usedCache = true; };
+  const [my, sched] = await Promise.all([pget('/my/', markCached), pget('/blocks/schedule/ajax_schedule.php', markCached)]);
   const doc = html(my + JSON.parse(sched).html);
   const data = { weeks: parseSchedule(doc), profile: parseProfile(doc), userid: Number(doc.querySelector('[data-userid]')?.dataset.userid) };
   renderProfile(data.profile);
@@ -252,6 +257,7 @@ async function loadMy() {
   mySesskey = my.match(/"sesskey":"(\w+)"/)?.[1] || mySesskey;
   myContext = my.match(/"contextid":(\d+)/)?.[1] || myContext; // /my/ is in the user's own context
   myUserid = data.userid || myUserid;
+  if (updateWidget && data.userid && !usedCache) updateWidget(Parse.widgetSchedule(data.weeks)).catch(() => {});
   return data;
 }
 
