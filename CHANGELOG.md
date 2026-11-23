@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## Unreleased / Не выпущено
+
+- Added optional deadline reminders in the final 24 hours and alerts when a previously seen course grade changes.
+- Добавили напоминания в течение 24 часов до дедлайна и уведомления об изменениях известных приложению итоговых оценок по курсам.
+
 ## 1.2.12 — 2026-11-21
 
 - Updated the author credits in the app, website, and documentation.

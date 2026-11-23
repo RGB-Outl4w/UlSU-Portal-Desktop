@@ -36,6 +36,7 @@
     },
     "files": [
       "main.js",
+      "alerts.js",
       "preload.js",
       "app.js",
       "login.css",

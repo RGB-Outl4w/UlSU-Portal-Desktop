@@ -3022,17 +3022,21 @@ $('#news-close').addEventListener('click', () => {
   pref('newsSeen', [...newsSeen(), newsShown.id].slice(-50).join(','));
   checkNews();
 });
-// Settings switches; a pref left empty means the default: announcements and the update check on,
-// automatic error reports off.
-const SWITCHES = { news: 'on', autoUpdate: 'on', errReports: 'off' };
+// The settings store an empty value when the default is selected.
+const SWITCHES = { news: 'on', autoUpdate: 'on', errReports: 'off', deadlineReminders: 'off', gradeAlerts: 'off' };
 for (const [key, def] of Object.entries(SWITCHES)) {
   const seg = $(`#${key}-seg`);
-  const mark = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.v === (pref(key) || def)));
+  const mark = () => seg.querySelectorAll('button').forEach((b) => {
+    const active = b.dataset.v === (pref(key) || def);
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
   seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     pref(key, b.dataset.v === def ? '' : b.dataset.v);
     mark();
     slide(seg);
-    if (key !== 'errReports') checkNews();
+    if (key === 'news' || key === 'autoUpdate') checkNews();
+    if ((key === 'deadlineReminders' || key === 'gradeAlerts') && b.dataset.v === 'on') portal.poll();
   }));
   mark();
 }
@@ -3543,7 +3547,9 @@ document.querySelectorAll('#theme-seg button').forEach((b) => b.addEventListener
   if (portal.platform === 'android') keepPlace();
   setTheme(b.dataset.theme);
 }));
-$('#settings').addEventListener('toggle', (e) => { if (e.newState === 'open') { slide($('#theme-seg')); slide($('#lang-seg')); slide($('#news-seg')); slide($('#autoUpdate-seg')); slide($('#errReports-seg')); } });
+$('#settings').addEventListener('toggle', (e) => {
+  if (e.newState === 'open') e.currentTarget.querySelectorAll('.seg').forEach(slide);
+});
 $('#collapse').addEventListener('click', toggleCollapse);
 $('#logout').addEventListener('click', async () => {
   $('#settings').hidePopover();

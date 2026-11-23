@@ -91,6 +91,10 @@ Requires [Node.js](https://nodejs.org) 20 or newer.
 - **Data.** The portal has no public API for this, so the app uses the same requests the website makes, and reads some pages (schedule, academic record, study plan) directly.
 - **Speed and offline.** Each section first shows its saved copy instantly, then refreshes quietly from the network.
 
+### Deadline reminders and course grade alerts (unreleased)
+
+Enable either in Settings. Reminders cover actionable deadlines in the next 24 hours. Grade alerts track changes to course grades shown on the Grades screen. The first check records current values. Checks run while the desktop app is open or in the tray, and through Android’s background refresh, whose timing depends on the device.
+
 ## Privacy
 
 Everything stays on your computer. No analytics, no telemetry, and nothing about you is collected. The app talks to portal.ulsu.ru and to sites you open yourself. It also makes two plain reads that carry no personal data: GitHub's latest release number (every 6 hours) and the developer's public announcement list on Supabase. Both can be turned off in Settings. Problem reports from About, and error reports if you switch them on, go to the developer without any personal data. Read the full [Privacy Policy](PRIVACY.md).

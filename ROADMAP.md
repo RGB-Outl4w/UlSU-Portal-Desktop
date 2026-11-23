@@ -348,3 +348,8 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - **Phone layout** (checked at 390 px in the dev build with live data): pills and «Все →» in tile headers don't wrap; the «Ближайшие занятия» date is `ср, 18.11` on phones so it fits beside the title; KPI tiles in two columns; recent courses scroll sideways; the plan's «Семестр» label is hidden; progress rows put «Оценить» and the mark under the subject; `.icon-btn` is 44 px (`.month-name` 112 px so the calendar tools stay on one row).
 - **Empty next week:** the portal publishes next week late (it was empty on 2026-11-16 and filled on 2026-11-17). Расписание, the Сегодня tile and the calendar day panel now say the portal has no timetable yet, instead of "no classes". `pairsOn` returns `unknown` for weeks that take their pattern from an empty next week.
 - **Tested by the user, works:** sending chat messages, announcements against the real table and on Android, course folders, opening .pptx, Текущая успеваемость.
+
+## 1.3.0 Group B implementation
+
+- **Reminders and grade alerts:** opt-in settings on desktop and Android. The existing portal checks look for actionable deadlines in the final 24 hours and changes to previously seen course grades. Confirmation against a signed-in test account remains part of release verification.
+- **Android home-screen widget and assignment submission:** planned for the same milestone. The widget needs launcher and offline refresh checks. Standard Moodle 3.7 distinguishes editing a submission from sending it for grading, which can ask the student to accept a submission statement. Verify the university’s form, available submission types, and draft and final states in a test course.
