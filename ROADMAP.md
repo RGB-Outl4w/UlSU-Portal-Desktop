@@ -314,7 +314,13 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 
 ## 1.2.7 round (2026-11-08)
 
-- **Next milestone, 1.3.0 (Group B):** reminders, grade alerts, Android widget, assignment submission.
+- **Next milestone, 1.3.0 (Group B):** deadline reminders, course grade alerts, and the Android home-screen widget.
+
+> [!NOTE]
+> **Deferred items**
+>
+> **Native assignment submission.** Revisit after the portal’s draft and final submission flows, allowed upload types, and any required submission statement have been verified in a university test course. Assignments continue to open on the portal.
+
 - **Save to device:** `saveItems(a)` gives the ctxMenu rows for an item; the reader button and right click / long press (`itemMenu`) share them. `Parse.cleanPage` makes a safe copy of a page inside its inert document, then `toMarkdown` (also plain text) and `toHtml` write it. Images: data URLs in .html/.pdf, `<title>_files/` beside .md (fixed name, so renaming the .md in the dialog keeps the links), none in .txt.
 - `session.fetch` leaves `res.url` empty, so a file's extension comes from Content-Disposition, then Content-Type (`withExt`). `download()` now asks the portal first, then shows the dialog, and streams to `<target>.part`.
 - PDF of a page: hidden window, scripts off, `printToPDF`; desktop only.
@@ -348,3 +354,8 @@ Windows is unchanged (local smoke run). Still needs a real Mac: ⌘ shortcuts, E
 - **Phone layout** (checked at 390 px in the dev build with live data): pills and «Все →» in tile headers don't wrap; the «Ближайшие занятия» date is `ср, 18.11` on phones so it fits beside the title; KPI tiles in two columns; recent courses scroll sideways; the plan's «Семестр» label is hidden; progress rows put «Оценить» and the mark under the subject; `.icon-btn` is 44 px (`.month-name` 112 px so the calendar tools stay on one row).
 - **Empty next week:** the portal publishes next week late (it was empty on 2026-11-16 and filled on 2026-11-17). Расписание, the Сегодня tile and the calendar day panel now say the portal has no timetable yet, instead of "no classes". `pairsOn` returns `unknown` for weeks that take their pattern from an empty next week.
 - **Tested by the user, works:** sending chat messages, announcements against the real table and on Android, course folders, opening .pptx, Текущая успеваемость.
+
+## 1.3.0 Group B implementation
+
+- **Reminders and grade alerts:** opt-in settings on desktop and Android. The existing portal checks look for actionable deadlines in the final 24 hours and changes to previously seen course grades. Confirmation against a signed-in test account remains part of release verification.
+- **Android home-screen widget:** implemented on its own feature branch. The launcher displays the next saved class and opens Schedule when tapped. Confirm behavior on a physical device and against the signed-in portal before release.

@@ -506,9 +506,10 @@ public class UlPortalPlugin extends Plugin {
 
     @PluginMethod
     public void clearCookies(PluginCall call) {
-        PortalCheck.reset(getContext());
+        long generation = PortalCheck.beginLogout(getContext());
         CookieManager.getInstance().removeAllCookies((ok) -> {
             CookieManager.getInstance().flush();
+            PortalCheck.endLogout(generation);
             call.resolve();
         });
     }

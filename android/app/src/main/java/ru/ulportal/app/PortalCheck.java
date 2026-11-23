@@ -23,6 +23,7 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import com.getcapacitor.JSObject;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -44,6 +45,9 @@ import org.json.JSONTokener;
 public class PortalCheck {
     static final String BASE = UlPortalPlugin.BASE;
     static final String CHANNEL = "portal";
+    private static final Object SESSION_LOCK = new Object();
+    private static volatile boolean signingOut;
+    private static volatile long sessionGeneration;
 
     // Background run; Android may stretch the 15 min (Doze), so the keepalive is best-effort.
     public static class Job extends Worker {
@@ -74,43 +78,69 @@ public class PortalCheck {
     }
 
     // Logout: forget the session, and don't report its end.
-    static void reset(Context ctx) {
-        prefs(ctx).edit().clear().apply();
+    static long beginLogout(Context ctx) {
+        synchronized (SESSION_LOCK) {
+            signingOut = true;
+            long generation = ++sessionGeneration;
+            PortalAlerts.reset(ctx);
+            prefs(ctx).edit().clear().apply();
+            return generation;
+        }
+    }
+
+    static void endLogout(long generation) {
+        synchronized (SESSION_LOCK) {
+            if (generation == sessionGeneration) signingOut = false;
+        }
+    }
+
+    static boolean current(long generation) {
+        return !signingOut && sessionGeneration == generation;
+    }
+
+    private static JSObject inactive() {
+        return new JSObject().put("session", "expired");
     }
 
     // Returns { session: ok|expired|maintenance, notifications, messages } (counts only when ok).
     static synchronized JSObject check(Context ctx) throws Exception {
+        long alertGeneration = sessionGeneration;
+        if (!current(alertGeneration)) return inactive();
         SharedPreferences p = prefs(ctx);
         String sesskey = p.getString("sesskey", null);
         long userid = p.getLong("userid", 0);
         Object res = null;
         for (int attempt = 0; attempt < 2; attempt++) {
             if (sesskey == null || userid == 0) {
-                Http my = http(BASE + "/my/", null);
-                if (my.status == 503 || find(my.body, "<body[^>]*\\b(pagelayout-maintenance)\\b") != null) return state(ctx, "maintenance");
-                if (find(my.body, "<body[^>]*\\b(notloggedin)\\b") != null) return state(ctx, "expired");
+                Http my = http(BASE + "/my/", null, alertGeneration);
+                if (my.status == 503 || find(my.body, "<body[^>]*\\b(pagelayout-maintenance)\\b") != null) return state(ctx, "maintenance", alertGeneration);
+                if (find(my.body, "<body[^>]*\\b(notloggedin)\\b") != null) return state(ctx, "expired", alertGeneration);
                 sesskey = find(my.body, "\"sesskey\":\"(\\w+)\"");
                 String id = find(my.body, "data-userid=\"(\\d+)\"");
-                if (sesskey == null || id == null) return state(ctx, "expired");
+                if (sesskey == null || id == null) return state(ctx, "expired", alertGeneration);
                 userid = Long.parseLong(id);
-                p.edit().putString("sesskey", sesskey).putLong("userid", userid).apply();
+                synchronized (SESSION_LOCK) {
+                    if (!current(alertGeneration)) return inactive();
+                    p.edit().putString("sesskey", sesskey).putLong("userid", userid).apply();
+                }
             }
             String calls = new JSONArray()
                 .put(call(0, "message_popup_get_popup_notifications", new JSONObject().put("useridto", userid).put("newestfirst", true).put("limit", 10).put("offset", 0)))
                 .put(call(1, "core_message_get_conversations", new JSONObject().put("userid", userid).put("limitfrom", 0).put("limitnum", 20)))
                 .toString();
-            Http r = http(BASE + "/lib/ajax/service.php?sesskey=" + sesskey + "&info=poll", calls);
-            if (r.status == 503) return state(ctx, "maintenance");
+            Http r = http(BASE + "/lib/ajax/service.php?sesskey=" + sesskey + "&info=poll", calls, alertGeneration);
+            if (r.status == 503) return state(ctx, "maintenance", alertGeneration);
             res = new JSONTokener(r.body).nextValue();
             JSONObject err = res instanceof JSONArray ? firstError((JSONArray) res) : (JSONObject) res;
             if (err == null) break;
             JSONObject ex = err.optJSONObject("exception");
             String code = ex != null ? ex.optString("errorcode") : err.optString("errorcode");
-            if ("sitemaintenance".equals(code)) return state(ctx, "maintenance");
-            if (attempt == 1) return state(ctx, "expired");
+            if ("sitemaintenance".equals(code)) return state(ctx, "maintenance", alertGeneration);
+            if (attempt == 1) return state(ctx, "expired", alertGeneration);
             sesskey = null; // stale sesskey or session: look at /my/ once
         }
 
+        if (!current(alertGeneration)) return inactive();
         JSONArray all = (JSONArray) res;
         JSONObject notes = all.getJSONObject(0).getJSONObject("data");
         JSONArray list = notes.getJSONArray("notifications");
@@ -153,17 +183,28 @@ public class PortalCheck {
                 text(str(last, "text")), "messages");
             shown++;
         }
-        p.edit().putLong("seenNote", maxNote).putLong("seenMsg", maxMsg).apply();
-
-        UlPortalPlugin.persistSession();
-        JSObject ret = state(ctx, "ok");
+        JSObject ret;
+        synchronized (SESSION_LOCK) {
+            if (!current(alertGeneration)) return inactive();
+            p.edit().putLong("seenNote", maxNote).putLong("seenMsg", maxMsg).apply();
+            UlPortalPlugin.persistSession();
+            ret = state(ctx, "ok", alertGeneration);
+        }
         ret.put("notifications", unreadNotes);
         ret.put("messages", unreadMsgs);
+        PortalAlerts.check(ctx, userid, sesskey, alertGeneration);
         return ret;
     }
 
     // Remembers the session state; notifies once when a working session ends.
-    static JSObject state(Context ctx, String state) {
+    static JSObject state(Context ctx, String state, long generation) {
+        synchronized (SESSION_LOCK) {
+            if (!current(generation)) return inactive();
+            return updateState(ctx, state);
+        }
+    }
+
+    private static JSObject updateState(Context ctx, String state) {
         SharedPreferences p = prefs(ctx);
         String before = p.getString("state", "none");
         p.edit().putString("state", state).apply();
@@ -195,12 +236,16 @@ public class PortalCheck {
     }
 
     // UI language from app.js prefs (mirrored by UlPrefs); Russian unless English was picked or the phone is English.
-    static String t(Context ctx, String ru, String en) {
-        String lang = null;
+    static JSONObject webPrefs(Context ctx) {
         try {
-            lang = new JSONObject(ctx.getSharedPreferences("webprefs", Context.MODE_PRIVATE).getString("localStorage", "{}")).optString("lang", null);
+            return new JSONObject(ctx.getSharedPreferences("webprefs", Context.MODE_PRIVATE).getString("localStorage", "{}"));
         } catch (Exception ignored) {
+            return new JSONObject();
         }
+    }
+
+    static String t(Context ctx, String ru, String en) {
+        String lang = webPrefs(ctx).optString("lang", null);
         if (lang == null) lang = java.util.Locale.getDefault().getLanguage().equals("ru") ? "ru" : "en";
         return "en".equals(lang) ? en : ru;
     }
@@ -238,31 +283,44 @@ public class PortalCheck {
 
     // Plain request with the WebView's portal cookies (shared with the app and the sign-in page).
     static Http http(String url, String json) throws Exception {
+        return http(url, json, -1);
+    }
+
+    static Http http(String url, String json, long generation) throws Exception {
+        if (generation >= 0 && !current(generation)) throw new IOException("Session ended");
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setConnectTimeout(20_000);
-        c.setReadTimeout(30_000);
-        CookieManager cookies = CookieManager.getInstance();
-        String cookie = cookies.getCookie(BASE);
-        if (cookie != null) c.setRequestProperty("Cookie", cookie);
-        if (json != null) {
-            c.setRequestMethod("POST");
-            c.setDoOutput(true);
-            c.setRequestProperty("Content-Type", "application/json");
-            try (OutputStream out = c.getOutputStream()) {
-                out.write(json.getBytes(StandardCharsets.UTF_8));
+        try {
+            c.setUseCaches(false);
+            c.setConnectTimeout(20_000);
+            c.setReadTimeout(30_000);
+            CookieManager cookies = CookieManager.getInstance();
+            String cookie = cookies.getCookie(BASE);
+            if (cookie != null) c.setRequestProperty("Cookie", cookie);
+            if (json != null) {
+                c.setRequestMethod("POST");
+                c.setDoOutput(true);
+                c.setRequestProperty("Content-Type", "application/json");
+                try (OutputStream out = c.getOutputStream()) {
+                    out.write(json.getBytes(StandardCharsets.UTF_8));
+                }
             }
+            Http r = new Http();
+            r.status = c.getResponseCode();
+            synchronized (SESSION_LOCK) {
+                if (generation >= 0 && !current(generation)) throw new IOException("Session ended");
+                for (Map.Entry<String, List<String>> h : c.getHeaderFields().entrySet()) {
+                    if (h.getKey() != null && h.getKey().equalsIgnoreCase("Set-Cookie")) for (String v : h.getValue()) cookies.setCookie(BASE, v);
+                }
+            }
+            try (InputStream in = r.status >= 400 ? c.getErrorStream() : c.getInputStream()) {
+                ByteArrayOutputStream buf = new ByteArrayOutputStream();
+                byte[] chunk = new byte[16384];
+                for (int n; in != null && (n = in.read(chunk)) > 0; ) buf.write(chunk, 0, n);
+                r.body = buf.toString("UTF-8");
+            }
+            return r;
+        } finally {
+            c.disconnect();
         }
-        Http r = new Http();
-        r.status = c.getResponseCode();
-        for (Map.Entry<String, List<String>> h : c.getHeaderFields().entrySet()) {
-            if (h.getKey() != null && h.getKey().equalsIgnoreCase("Set-Cookie")) for (String v : h.getValue()) cookies.setCookie(BASE, v);
-        }
-        try (InputStream in = r.status >= 400 ? c.getErrorStream() : c.getInputStream()) {
-            ByteArrayOutputStream buf = new ByteArrayOutputStream();
-            byte[] chunk = new byte[16384];
-            for (int n; in != null && (n = in.read(chunk)) > 0; ) buf.write(chunk, 0, n);
-            r.body = buf.toString("UTF-8");
-        }
-        return r;
     }
 }

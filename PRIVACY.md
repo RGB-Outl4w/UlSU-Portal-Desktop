@@ -39,6 +39,8 @@ The app data folder is `%APPDATA%\ulportal` on Windows and `~/Library/Applicatio
 
 The app checks the portal for new notifications and messages every few minutes while it runs, including from the tray / menu bar. Notification text is shown by your operating system on your computer and is not sent anywhere else.
 
+If you enable deadline reminders or course grade alerts, the app reads the portal’s deadlines or grade overview during its regular checks. It keeps a local baseline of course grades and the IDs and due times of deadlines it has already signaled. These records are specific to your account on that device and are cleared on logout. The app sends none of these records to the developer.
+
 ## Deleting your data
 
 - **Settings → Log out** ends the portal session and deletes the saved cookies and cached copies.
